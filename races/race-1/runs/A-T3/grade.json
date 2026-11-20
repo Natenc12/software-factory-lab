@@ -1,0 +1,51 @@
+{
+  "run_id": "A-T3",
+  "ticket": "T3",
+  "ref": "origin/a-t3/last-seen",
+  "commit": "515a5cb47e59",
+  "base": "main",
+  "base_commit": "92495e064ebd",
+  "uv_sync_ok": true,
+  "ruff": {
+    "check_ok": true,
+    "format_ok": true
+  },
+  "migrate_twice": {
+    "ok": true,
+    "first_run": "applied 0001_init.sql\napplied 0002_answers.sql\napplied 0003_last_seen.sql",
+    "second_run": "nothing to apply"
+  },
+  "own_tests": {
+    "passed": 112,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "ok": true
+  },
+  "hidden_tests": {
+    "passed": 9,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "ok": true
+  },
+  "traps": {
+    "old_migrations_unchanged": true,
+    "old_migrations_detail": {
+      "migrations/0001_init.sql": true,
+      "migrations/0002_answers.sql": true
+    },
+    "student_breakdown_unchanged": true,
+    "student_breakdown_text_identical": true,
+    "existing_tests_changed": []
+  },
+  "files_changed": [
+    "A migrations/0003_last_seen.sql",
+    "M src/lab/models.py",
+    "M src/lab/questions.py",
+    "A tests/test_last_seen.py"
+  ],
+  "commits_ahead_of_base": 1
+}

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A-T3 merge brief</title>
+<style>
+body{font:15px/1.5 -apple-system,system-ui,sans-serif;margin:0;padding:16px;background:#fafafa;color:#1a1a1a;max-width:860px}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-bottom:16px}
+.slot{background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px 10px}
+.slot b{display:block;font-size:12px;text-transform:uppercase;color:#666;letter-spacing:.04em}
+.you{background:#fff6c2;border-color:#e6c200}
+h1{font-size:20px;margin:8px 0}h2{font-size:17px;margin:22px 0 8px}
+.box{background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin:10px 0}
+.view{border-color:#0b5c8a;border-left:5px solid #0b5c8a}
+code,pre{font:13px ui-monospace,Menlo,monospace;background:#f0f0f0;border-radius:4px}
+pre{padding:8px;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+code{padding:1px 4px}
+.stages{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}
+.stages span{padding:3px 9px;border-radius:12px;background:#e8e8e8;font-size:13px}
+.stages .now{background:#0b5c8a;color:#fff}
+.qa{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.qa div{background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px 10px}
+.qa b{display:block;font-size:13px;color:#555}
+.choices{display:flex;flex-wrap:wrap;gap:8px}
+.choices div{flex:1 1 180px;background:#fff;border:1px solid #ccc;border-radius:8px;padding:8px 10px}
+.choices .rec{border:2px solid #1f7a4d;background:#eef8f2}
+table{border-collapse:collapse;width:100%;font-size:14px}td,th{border:1px solid #ddd;padding:5px 7px;text-align:left;vertical-align:top}
+.tag{font-size:11px;padding:1px 6px;border-radius:8px;white-space:nowrap}
+.ci{background:#d1fadf}.rv{background:#e0e7ff}.bs{background:#fde7c7}.nc{background:#f3d1d1}
+</style></head><body>
+<div class="strip">
+ <div class="slot"><b>Status</b>PR #19 ready for review; tests green; risk-gate red until <code>owner-ok</code></div>
+ <div class="slot you"><b>From you</b>Merge, change or hold PR #19 (merging also needs your <code>owner-ok</code> label)</div>
+ <div class="slot"><b>Risk</b>High by the rules (a new migration); the builder rates it low-to-moderate</div>
+ <div class="slot"><b>Updated</b>2026-11-20, run A-T3</div>
+</div>
+<div class="stages"><span>Intake</span><span>Plan</span><span>Build</span><span>Prove</span><span class="now">Ship</span></div>
+
+<h1>Merge brief: issue #5, students' "last seen" time</h1>
+<p><a href="https://github.com/Natenc12/pipeline-lab/pull/19">PR #19</a>, branch <code>a-t3/last-seen</code>, one commit <code>515a5cb</code>, up to date with <code>main</code>.</p>
+
+<h2>Refresher</h2>
+<div class="box">
+<p><b>The problem.</b> Teachers can't spot a student who has gone quiet. The <code>students</code> table had no record of when a student last asked anything, so finding out meant scanning every question.</p>
+<p><b>The solution.</b> A new migration adds <code>students.last_seen</code> and fills it in for existing students from their latest question (hidden questions count). From now on, <code>ask_question</code> keeps it up to date, but only ever moves it forward. <code>Student</code> carries the value. Nothing displays it yet; that was out of scope.</p>
+<p><b>Before / after</b> (Ada asked on 1 Feb, 5 Mar (later hidden) and a back-dated 15 Jan question):</p>
+<pre>before:  get_student(conn, ada.id)
+         Student(id=1, class_id=1, name='Ada', created_at='…')
+after:   Student(id=1, class_id=1, name='Ada', created_at='…',
+                 last_seen='2026-03-05T10:00:00+00:00')</pre>
+<p><b>What you chose at the plan:</b> "approved as planned", with option A: the file is named <code>migrations/0003_last_seen.sql</code> even though open PR #13 also adds a <code>0003_streaks.sql</code>.</p>
+</div>
+
+<div class="qa">
+ <div><b>Did the reviewer flag anything?</b>No blocking findings and no scope departures. It raised 3 non-blocking notes (below). <span class="tag rv">Reviewer</span></div>
+ <div><b>What was built?</b>1 new migration (8 lines), 1 new field on <code>Student</code>, 1 guarded update in <code>ask_question</code>, 9 new tests.</div>
+ <div><b>Worth looking at?</b>The migration file and the 3-line update in <code>questions.py</code>. About 2 minutes.</div>
+ <div><b>Dangerous or easy?</b>Easy. It adds one nullable column and touches no existing data. The undo is one revert, plus dropping the column on any database that already ran it.</div>
+</div>
+
+<h2>Your call</h2>
+<div class="choices">
+ <div class="rec"><b>Merge</b> (recommended). Add <code>owner-ok</code> so risk-gate goes green, then tell me "merge #19". Then: in a real run I would merge, close #5 and tear down the sandbox. In this run nothing is merged.</div>
+ <div><b>Change</b>: tell me what to change. Then: I change it, prove it again, update this page and stop here again.</div>
+ <div><b>Hold</b>: the PR stays open as it is. Then: I tear down the sandbox and leave the PR alone.</div>
+</div>
+
+<h2>The facts: <code>gh pr checks 19</code> (unedited)</h2>
+<pre>risk-gate	fail	6s	https://github.com/Natenc12/pipeline-lab/actions/runs/44811579140/job/136549218056	
+ruff + pytest (lab)	pass	9s	https://github.com/Natenc12/pipeline-lab/actions/runs/44811198875/job/136547875755	</pre>
+<p>(risk-gate re-ran when the PR was marked ready; same result.) The risk-gate log says: <code>risk:high (4 changed files)</code>: high <code>migrations/0003_last_seen.sql</code>, medium <code>src/lab/models.py</code> and <code>src/lab/questions.py</code>, low <code>tests/test_last_seen.py</code>, then <code>This pull request is risk:high: add the owner-ok label to merge.</code> That failure is the gate working as designed, not a defect.</p>
+
+<div class="box view"><b>Builder's view</b>
+<p>The rules rate this <b>high</b> because it adds a migration. I would call it low-to-moderate. The migration only adds a nullable column and runs one <code>update</code> that writes that new column. It changes no existing column or row, and it applies once per database. The rules are right to make you look, because a migration can't be pulled back from databases that have already run it. But this one is about as small as migrations get.</p>
+</div>
+
+<h2>Evidence, and who checked it</h2>
+<table>
+<tr><th>Claim</th><th>Who</th></tr>
+<tr><td>Ruff check, ruff format, migrate twice on a fresh database, and the whole test suite (112 tests) all pass on the PR</td><td><span class="tag ci">CI</span> (verified: "ruff + pytest (lab)" pass)</td></tr>
+<tr><td>Fresh database migrated twice: the second run applies nothing</td><td><span class="tag ci">CI</span> <span class="tag rv">Reviewer</span></td></tr>
+<tr><td>A database with only 0001+0002 and data gets only <code>0003_last_seen.sql</code>. The backfill is the latest <code>asked_at</code>, hidden included, and <code>NULL</code> with no questions. Every existing row survives.</td><td><span class="tag ci">CI</span> (test <code>test_existing_database_gets_only_the_new_file…</code>) <span class="tag rv">Reviewer</span> (own script, wider data: two classes, a student with only hidden questions)</td></tr>
+<tr><td><code>ask_question</code> moves <code>last_seen</code> forward, never back. An equal time leaves it alone. Rejected questions leave it untouched.</td><td><span class="tag ci">CI</span> <span class="tag rv">Reviewer</span></td></tr>
+<tr><td><code>get_student(...).last_seen</code> returns the value, or <code>None</code> when NULL. <code>list_students</code> carries it too.</td><td><span class="tag ci">CI</span> <span class="tag rv">Reviewer</span></td></tr>
+<tr><td>The forward-only test fails if the guard is removed (so the test really tests it)</td><td><span class="tag bs">Builder says</span></td></tr>
+<tr><td>The sandbox database built from <code>main</code>'s migrations got <code>0003_last_seen.sql</code> on the first run and nothing on the second</td><td><span class="tag bs">Builder says</span></td></tr>
+<tr><td>Works alongside PR #13's <code>0003_streaks.sql</code> in either merge order: each file applies once, and a third run applies nothing</td><td><span class="tag bs">Builder says</span> (local script using #13's file)</td></tr>
+<tr><td>Baseline before any edit: 103 passed</td><td><span class="tag bs">Builder says</span></td></tr>
+</table>
+
+<h2>Reviewer findings</h2>
+<p><b>Blocking:</b> none. <b>Scope departures:</b> none. <span class="tag rv">Reviewer</span></p>
+<p><b>Non-blocking notes:</b></p>
+<ul>
+<li>"Latest" compares timestamps as text, both in the backfill and in the update. This matches the ticket's "largest <code>asked_at</code>", and <code>now()</code> always writes UTC. But an <code>asked_at</code> passed in with a non-UTC offset (such as <code>+05:00</code>) would be ordered wrongly. Nothing in the app passes one today.</li>
+<li>The question insert and the <code>last_seen</code> update share one transaction with no explicit rollback if the update fails. This is the same pattern the code already used, and the reviewer could not trigger it.</li>
+<li><code>Student</code> gains a required field, so any hand-built <code>Student(...)</code> with 4 arguments would break. There are none in the code.</li>
+</ul>
+
+<h2>Calls made without you</h2>
+<ul>
+<li>I put the tests in a new file, <code>tests/test_last_seen.py</code>, rather than adding to existing test files. <span class="tag bs">Low stakes</span></li>
+<li>I kept the existing "no explicit rollback" pattern in <code>ask_question</code> rather than adding error handling. <span class="tag bs">Low stakes</span></li>
+<li>I added one test beyond the "Done when" list: <code>list_students</code> carries <code>last_seen</code>. <span class="tag bs">Low stakes</span></li>
+</ul>
+<p>No departures from the approved plan.</p>
+
+<h2>Not checked</h2>
+<ul>
+<li>Timestamps with non-UTC offsets, or in mixed formats (with and without an offset), when deciding "latest". The ticket defines it as text order, and I did not test other formats. <span class="tag nc">Not checked</span></li>
+<li>Two processes asking questions for the same student at the same moment. <span class="tag nc">Not checked</span></li>
+<li>PR #13's combination was only run locally, not by CI. <span class="tag nc">Not checked</span> by CI</li>
+<li>Any real deployed database. None exists for this practice app. <span class="tag nc">Not checked</span></li>
+</ul>
+
+<h2>Files worth reading</h2>
+<ol>
+<li><code>migrations/0003_last_seen.sql</code>: the column and the backfill</li>
+<li><code>src/lab/questions.py</code>: the guarded update in <code>ask_question</code></li>
+<li><code>tests/test_last_seen.py</code>: the existing-database upgrade test</li>
+<li><code>src/lab/models.py</code>: the new field (2 lines)</li>
+</ol>
+
+<h2>Undo</h2>
+<ul>
+<li><b>Before merge:</b> close PR #19 and delete the branch <code>a-t3/last-seen</code>. Nothing else has changed.</li>
+<li><b>After merge:</b> <code>git revert &lt;merge commit&gt;</code> in a new PR. The revert deletes the migration file, but databases that already ran it keep the column and the <code>schema_migrations</code> row. To clean those up, run <code>alter table students drop column last_seen; delete from schema_migrations where name = '0003_last_seen.sql';</code> (SQLite 3.35+). Leaving the column in place is harmless: nothing else reads it.</li>
+</ul>
+</body></html>

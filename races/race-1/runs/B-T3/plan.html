@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B-T3 plan</title>
+<style>
+body{font:15px/1.5 -apple-system,system-ui,sans-serif;margin:0;padding:16px;max-width:760px;color:#1d1d1f;background:#fff}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:16px}
+.slot{border:1px solid #ddd;border-radius:8px;padding:8px 10px}.slot b{display:block;font-size:12px;color:#666;text-transform:uppercase}
+.you{background:#fff6c2;border-color:#e6cf4f}
+h1{font-size:20px}h2{font-size:16px;margin-top:22px}code{background:#f2f2f2;padding:1px 4px;border-radius:4px;font-size:13px}
+li{margin:4px 0}.ok{background:#eaf7ee;border:1px solid #9fd4ae;border-radius:8px;padding:10px}
+</style></head><body>
+<div class="strip">
+<div class="slot"><b>Status</b>Intake done; moving to Build</div>
+<div class="slot you"><b>From you</b>Nothing</div>
+<div class="slot"><b>Risk</b>High (adds a migration; <code>migrations/</code> is a high rule)</div>
+<div class="slot"><b>Updated</b>2026-11-20</div>
+</div>
+<h1>#6 Record when each student was last seen: plan</h1>
+<p class="ok"><b>Contract checked against <code>origin/main</code>: no amendment needed. Ends in a pull request.</b></p>
+
+<h2>What I checked (Builder says)</h2>
+<ul>
+<li><code>students</code> has exactly <code>id, class_id, name, created_at</code> today; <code>Student</code> has those four fields in that order.</li>
+<li>Only <code>0001_init.sql</code> and <code>0002_answers.sql</code> exist; <code>migrate.py</code> records names and skips applied files, so a new <code>0003_…sql</code> reaches existing databases.</li>
+<li>Every Example of done can be played out: <code>migrate(migrations_dir=…)</code> builds a 0001+0002-only database; <code>hide_question</code> hides; <code>ask_question</code> takes <code>asked_at</code>.</li>
+<li>No existing test builds a <code>Student</code> by hand or compares students after a question is asked, so a new last field without a default breaks none of them.</li>
+<li>The only place that inserts questions is <code>ask_question</code>.</li>
+</ul>
+
+<h2>Defaults I will use</h2>
+<ul>
+<li>New file <code>migrations/0003_student_last_seen.sql</code>: <code>alter table students add column last_seen text</code>, then backfill with <code>max(asked_at)</code> over all of the student's questions, hidden included.</li>
+<li><code>ask_question</code> runs one <code>update … set last_seen = ? where id = ? and (last_seen is null or last_seen &lt; ?)</code> in the same transaction as the insert.</li>
+<li>"Later" means later as text, the same rule SQLite's <code>max()</code> uses for the backfill, so the two always agree. This is right for timestamps in one format (the app's own <code>now()</code> output, or the examples' form).</li>
+<li>No index or other schema change (Scope Out).</li>
+</ul>
+<h2>Stages</h2>
+<p>Intake ✓ · Plan ✓ · Build · Prove · Ship (merge brief, Stop 2)</p>
+</body></html>

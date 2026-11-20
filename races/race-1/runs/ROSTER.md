@@ -19,3 +19,5 @@ Practice repo setup notes:
 | A-T2 | #3 | a9ff1eb534157487c | 2026-11-20 | done: PR #16, hidden 7/7, traps clean, 2 stops (no rescues), ~113k tokens, ~8 min; reviewer caught py3.10 lone-\r bug, fixed |
 | B-T2 | #4 | af5cdecd92307f531 | 2026-11-20 | done: PR #17, hidden 7/7, traps clean, 2 stops (no rescues), ~109k tokens, ~8 min; found py3.10 lone-\r at intake, built as signed per sheet reply |
 - Answer-sheet gap (B-T2 STOP 1): B raised a real contract contradiction (Python 3.10's csv.writer doesn't quote a lone \r, while the contract says line breaks are quoted) plus formula injection, each with a recommendation. The sheet's only matching case is S1-B-none ("The contract stands as written. Go ahead."), sent verbatim. A's plan stops get "go with your recommended options". Not symmetric; review when scoring. Credit B for a legitimate Stop 1.
+| A-T3 | #5 | a058776e98a5ba3e3 | 2026-11-20 | done: PR #19, hidden 9/9, traps clean, 2 stops (no rescues), ~107k tokens, ~6.5 min |
+| B-T3 | #6 | ad2c03ca9cabbfddd | 2026-11-20 | done: PR #18, hidden 9/9, traps clean, 1 stop (no rescues), ~107k tokens, ~7 min; flagged its own in-progress label as 'should have asked' |

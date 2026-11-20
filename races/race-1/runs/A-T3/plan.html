@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A-T3 plan: last seen</title>
+<style>
+body{font:15px/1.5 -apple-system,system-ui,sans-serif;margin:0;padding:16px;background:#fafafa;color:#1a1a1a;max-width:860px}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-bottom:16px}
+.slot{background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px 10px}
+.slot b{display:block;font-size:12px;text-transform:uppercase;color:#666;letter-spacing:.04em}
+.you{background:#fff6c2;border-color:#e6c200}
+h1{font-size:20px;margin:8px 0}h2{font-size:17px;margin:22px 0 8px}
+.card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin:10px 0}
+.opt{border-left:4px solid #ccc;padding:4px 10px;margin:8px 0}
+.rec{border-left-color:#1f7a4d;background:#eef8f2}
+code,pre{font:13px ui-monospace,Menlo,monospace;background:#f0f0f0;border-radius:4px}
+pre{padding:8px;overflow-x:auto;white-space:pre-wrap}
+code{padding:1px 4px}
+.stages{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}
+.stages span{padding:3px 9px;border-radius:12px;background:#e8e8e8;font-size:13px}
+.stages .now{background:#0b5c8a;color:#fff}
+table{border-collapse:collapse;width:100%;font-size:14px}td,th{border:1px solid #ddd;padding:5px 7px;text-align:left;vertical-align:top}
+.tag{font-size:11px;padding:1px 6px;border-radius:8px;background:#e0e7ff;white-space:nowrap}
+</style></head><body>
+<div class="strip">
+ <div class="slot"><b>Status</b>Plan ready; nothing built yet</div>
+ <div class="slot you"><b>From you</b>Yes to the plan (and the one naming choice below)</div>
+ <div class="slot"><b>Risk</b>High by the rules (touches <code>migrations/</code>); needs your <code>owner-ok</code> at merge</div>
+ <div class="slot"><b>Updated</b>2026-11-20, run A-T3</div>
+</div>
+<div class="stages"><span>Intake</span><span class="now">Plan</span><span>Build</span><span>Prove</span><span>Ship</span></div>
+
+<h1>Issue #5: record when each student was last seen</h1>
+<p><b>This ends in a pull request</b> (a build, not a spike). It will not be merged in this run.</p>
+
+<h2>The ticket in two lines</h2>
+<p>Teachers can't see who has gone quiet, because nothing stores when a student last asked something. Add a <code>students.last_seen</code> column (backfilled from existing questions), keep it current in <code>ask_question</code>, and expose it on <code>Student</code>. Showing it anywhere is out of scope.</p>
+
+<h2>Intake check against <code>origin/main</code></h2>
+<table>
+<tr><th>Ticket says</th><th>Found</th></tr>
+<tr><td><code>students</code> has only id, class_id, name, created_at</td><td>True (<code>migrations/0001_init.sql</code>) <span class="tag">Builder says</span></td></tr>
+<tr><td>Only 0001 and 0002 exist; new file is 0003</td><td>True on main. <b>But open PR #13 (streaks) also adds <code>migrations/0003_streaks.sql</code></b>; see the card below <span class="tag">Builder says</span></td></tr>
+<tr><td><code>Student</code> in <code>src/lab/models.py</code>, built by <code>from_row</code></td><td>True; read by <code>get_student</code> / <code>list_students</code> with <code>select *</code>, so the new column flows through <span class="tag">Builder says</span></td></tr>
+<tr><td><code>ask_question</code> lives in <code>src/lab/questions.py</code></td><td>True; it takes an optional <code>asked_at</code> (defaults to now) <span class="tag">Builder says</span></td></tr>
+<tr><td><code>migrate()</code> takes <code>migrations_dir</code></td><td>True (<code>scripts/migrate.py</code>) <span class="tag">Builder says</span></td></tr>
+</table>
+<p>Nothing the "Done when" list needs is missing. Unrelated thing noticed and left alone: the page offset bug in <code>list_questions</code> (already covered by open PRs #14/#15).</p>
+
+<h2>One decision</h2>
+<div class="card">
+<p><b>What do I name the migration file, given PR #13 also adds a <code>0003</code>?</b></p>
+<p>The migrate script tracks files by full name, so two different <code>0003_*</code> files both apply and don't clash; they touch different tables. The only cost is a slightly odd-looking history.</p>
+<div class="opt rec"><b>A. <code>migrations/0003_last_seen.sql</code> (recommended)</b> — what the ticket asks for. If #13 merges too, the folder holds <code>0003_last_seen.sql</code> and <code>0003_streaks.sql</code>; each applies once on every database, in either merge order. Then: I build with this name.</div>
+<div class="opt"><b>B. <code>migrations/0004_last_seen.sql</code></b> — keeps numbers unique if #13 lands first, but leaves a gap (no 0003) if it doesn't, and departs from the ticket text. Then: I build with this name and say so in the merge brief.</div>
+</div>
+
+<h2>The plan (defaults I'll use)</h2>
+<ol>
+<li><b>New migration</b> (0001 and 0002 untouched):
+<pre>alter table students add column last_seen text;
+update students set last_seen =
+  (select max(asked_at) from questions q where q.student_id = students.id);</pre>
+Hidden questions count (no <code>hidden</code> filter); a student with no questions gets <code>NULL</code> because <code>max()</code> of nothing is <code>NULL</code>.</li>
+<li><b><code>ask_question</code></b>: in the same transaction as the insert, before the one commit:
+<pre>update students set last_seen = ?
+ where id = ? and (last_seen is null or last_seen &lt; ?)</pre>
+So an older <code>asked_at</code> never moves it back. "Later" is compared as text, the same way the backfill's <code>max(asked_at)</code> picks "largest", so the two always agree.</li>
+<li><b><code>Student</code></b>: add <code>last_seen: str | None</code> as the last field; <code>from_row</code> fills it. New students start <code>NULL</code> via the column default; <code>enrol_student</code> is unchanged.</li>
+<li><b>Tests</b>: fresh DB migrates twice cleanly; a DB built from only 0001+0002 with data (one student with visible + a later hidden question, one with none) gets only the new file, right backfill, rows kept; <code>ask_question</code> moves forward and not back; <code>get_student(...).last_seen</code> returns the value or <code>None</code>.</li>
+<li><b>Prove</b>: run CI's steps locally, open a draft PR early, independent reviewer agent (this touches the database), then the merge brief.</li>
+</ol>
+
+<h2>Not doing</h2>
+<p>No display in summary or CLI, no "inactive" reports, no other schema change, no edits to 0001/0002, nothing in <code>list_questions</code>.</p>
+
+<h2>Heads-up for merge time</h2>
+<p>The PR will be <b>risk:high</b> because of <code>migrations/</code>, so the <code>risk-gate</code> check stays red until you add <code>owner-ok</code>. I won't touch that label.</p>
+</body></html>

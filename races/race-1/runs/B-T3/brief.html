@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B-T3 merge brief</title>
+<style>
+body{font:15px/1.5 -apple-system,system-ui,sans-serif;margin:0;padding:16px;max-width:820px;color:#1d1d1f;background:#fff}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:16px}
+.slot{border:1px solid #ddd;border-radius:8px;padding:8px 10px}.slot b{display:block;font-size:12px;color:#666;text-transform:uppercase}
+.you{background:#fff6c2;border-color:#e6cf4f}
+h1{font-size:20px;margin:8px 0}h2{font-size:16px;margin-top:24px;border-bottom:1px solid #eee;padding-bottom:4px}h3{font-size:14px;margin:14px 0 4px;color:#444}
+code{background:#f2f2f2;padding:1px 4px;border-radius:4px;font-size:13px;word-break:break-word}
+table{border-collapse:collapse;width:100%;font-size:14px}td,th{border-bottom:1px solid #eee;padding:6px 4px;vertical-align:top;text-align:left}
+td.t{width:22px;font-weight:bold;color:#1a7f37}td.w{white-space:nowrap;font-size:12px;color:#555}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:10px;background:#eef;margin-left:4px}
+.ask{background:#ffe9d6}.box{border:1px solid #ccd;border-radius:8px;padding:10px 12px;background:#f7f8fc}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}.opt{border:1px solid #ddd;border-radius:8px;padding:10px}
+.rec{border-color:#1a7f37;background:#eaf7ee}pre{background:#f6f6f6;padding:8px;overflow-x:auto;font-size:12px;white-space:pre-wrap}
+li{margin:4px 0}
+</style></head><body>
+<div class="strip">
+<div class="slot"><b>Status</b>Ship: PR #18 ready for review. Tests CI green; <code>risk-gate</code> red until <code>owner-ok</code></div>
+<div class="slot you"><b>From you</b>Merge, Change or Hold. To merge you'd also add <code>owner-ok</code> yourself (high risk).</div>
+<div class="slot"><b>Risk</b>High by the rules (<code>migrations/</code>). Additive: one new nullable column</div>
+<div class="slot"><b>Updated</b>2026-11-20</div>
+</div>
+<h1>#6 Record when each student was last seen: merge brief</h1>
+<p>PR: <a href="https://github.com/Natenc12/pipeline-lab/pull/18">Natenc12/pipeline-lab#18</a>, branch <code>b-t3/last-seen</code>, one commit <code>01df4f0</code>, up to date with <code>main</code>. Not merged; nothing is done until you merge.</p>
+
+<h2>The contract, ticked</h2>
+<p style="font-size:13px;color:#555">Who checked: <b>CI</b> = GitHub CI ran it, green. <b>Reviewer</b> = reproduced by the independent review agent. <b>Builder says</b> = my run only. New tests are in <code>tests/test_last_seen.py</code>; CI ran 113 tests (103 existing + 10 new), all passed.</p>
+
+<h3>Examples of done</h3>
+<table>
+<tr><td class="t">✓</td><td>Existing database (0001+0002) with Ada at 03-01 and 03-04 (hidden), Ben nothing → Ada <code>2026-03-04T10:00:00</code>, Ben <code>NULL</code>; every class, student, question and answer row still there; second run applies nothing.<br><code>test_example_existing_database_is_backfilled_and_keeps_every_row</code> (also checks the jobs table)</td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td>Fresh database migrated twice → <code>students.last_seen</code> exists; second run applies nothing.<br>CI step "Apply migrations twice": <code>applied 0003_student_last_seen.sql</code> then <code>nothing to apply</code>; <code>test_example_fresh_database_migrated_twice_has_last_seen</code></td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td><code>enrol_student(...)</code> → <code>get_student(...).last_seen is None</code>.<br><code>test_example_new_student_starts_with_no_last_seen</code></td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td>Ada at 03-04 asks at 03-05 → <code>2026-03-05T08:00:00</code>; then asks at 02-01 → stays <code>2026-03-05T08:00:00</code>.<br><code>test_example_ask_question_moves_last_seen_forward_never_back</code></td><td class="w">CI + Reviewer</td></tr>
+</table>
+
+<h3>Must not change</h3>
+<table>
+<tr><td class="t">✓</td><td><code>0001_init.sql</code>, <code>0002_answers.sql</code> never edited.<br><code>git diff --name-status origin/main...HEAD</code> lists only the new 0003 file, <code>models.py</code>, <code>questions.py</code> and the new test; <code>test_applied_migrations_are_unchanged</code> pins both files' sha256</td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td>Existing rows in every table survive, unchanged apart from the new column.<br>Before/after snapshot of all six tables in the Example 1 test; I also migrated the sandbox database built from <code>main</code> (twice): it applied only 0003</td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td><code>Student</code>'s fields keep names and order.<br><code>test_student_fields_keep_their_order_with_last_seen_last</code></td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td><code>ask_question</code>'s signature and return value.<br><code>test_ask_question_signature_and_return_value_are_unchanged</code></td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td>Every existing test passes unchanged.<br>No existing test file touched; 103 existing tests pass in CI</td><td class="w">CI + Reviewer</td></tr>
+</table>
+
+<h3>Decisions</h3>
+<table>
+<tr><td class="t">✓</td><td>Nullable text column holding an ISO timestamp. <code>pragma table_info</code>: <code>last_seen|TEXT|notnull=0</code></td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td><code>last_seen</code> = largest <code>asked_at</code>, hidden questions count. Example 1 test (hidden one wins); <code>test_hiding_a_question_leaves_last_seen_alone</code></td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td>Backfill from latest question; no questions → <code>NULL</code>. Example 1 test (Ben)</td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td>New students start with <code>NULL</code>. Example 3 test</td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td><code>ask_question</code> moves it forward only (or from <code>NULL</code>). Example 4 test; same transaction as the insert</td><td class="w">CI + Reviewer</td></tr>
+<tr><td class="t">✓</td><td><code>Student.last_seen: str | None</code>, last field, filled by <code>from_row</code>. Field-order test</td><td class="w">CI + Reviewer</td></tr>
+</table>
+
+<h3>Scope Out</h3>
+<table>
+<tr><td class="t">✓</td><td>Not shown anywhere: <code>cli.py</code> and <code>summary.py</code> untouched (diff)</td><td class="w">Reviewer</td></tr>
+<tr><td class="t">✓</td><td>No "inactive student" alerts or reports (diff)</td><td class="w">Reviewer</td></tr>
+<tr><td class="t">✓</td><td>No other schema change: no index; <code>sqlite_master</code> before/after differs only in <code>students</code></td><td class="w">Reviewer</td></tr>
+</table>
+
+<h2>Your call</h2>
+<div class="opts">
+<div class="opt rec"><b>Merge</b> (recommended)<br>Add <code>owner-ok</code> to #18 yourself, then say "merge it". Then <code>risk-gate</code> re-runs green and #18 can merge (in this run nothing is merged).</div>
+<div class="opt"><b>Change</b><br>Tell me what to change. Then I change it, re-prove it, update this page and stop here again.</div>
+<div class="opt"><b>Hold</b><br>The PR stays open and ready; nothing else happens.</div>
+</div>
+
+<h2>Calls made without you</h2>
+<ul>
+<li><b>"Later" means later as text.</b> The backfill uses SQLite <code>max(asked_at)</code> and <code>ask_question</code> uses <code>last_seen &lt; asked_at</code>, both plain string comparison, so the two always agree. Right for one ISO format (the app's <code>now()</code> writes <code>…+00:00</code>; the ticket's examples use the form without an offset). It would mis-order times with different offsets, e.g. <code>…T10:00:00+05:00</code> vs <code>…T06:00:00+00:00</code>. Nothing writes those today. <span class="tag">Low stakes</span></li>
+<li><b>I added the <code>in-progress</code> label to #6</b> when I claimed it. Step 2 of my checklist says to do this, but rule 6 asks for label changes to be shown first. <span class="tag">Should have asked</span></li>
+<li><b>File name</b> <code>migrations/0003_student_last_seen.sql</code>. <span class="tag">Low stakes</span></li>
+<li><b>Extra tests beyond the examples:</b> a pinned sha256 for 0001/0002 (fails if anyone edits an applied migration); only the asking student changes; an ask with no <code>asked_at</code> stores the same time in both places; hiding leaves <code>last_seen</code> alone; field order; signature. <span class="tag">Low stakes</span></li>
+<li><b>No index on <code>last_seen</code></b>, because Scope Out rules out other schema changes. A future "gone quiet" view might want one. <span class="tag">Low stakes</span></li>
+</ul>
+
+<h2>CI checks (<code>gh pr checks 18 --repo Natenc12/pipeline-lab</code>, unedited)</h2>
+<pre>risk-gate	fail	6s	https://github.com/Natenc12/pipeline-lab/actions/runs/44811123892/job/136547618658
+ruff + pytest (lab)	pass	11s	https://github.com/Natenc12/pipeline-lab/actions/runs/44811124098/job/136547618709	</pre>
+<p style="font-size:13px">PR label applied by CI: <code>risk:high</code>. <code>risk-gate</code> fails because <code>owner-ok</code> is missing. That is expected, and adding it is yours to do.</p>
+
+<div class="box"><b>Builder's view</b><br>
+I agree it's high-risk in kind: it changes the schema of every existing database, and that can't be taken back by reverting. In size, it's small: one nullable column is added, and the backfill writes only that column. One thing the rules don't capture: <code>src/lab/questions.py</code> (the question write path) is only medium under the rules, but it's where the behaviour change lives. Read it closely. The PR is high anyway because of the migration.</div>
+
+<h2>Reviewer findings</h2>
+<p><b>Blocking: none.</b> The fresh review agent wrote 23 checks of its own from the contract before reading the diff, and all passed. It also ran pytest (113 passed), ruff, and the CLI migration twice.</p>
+<p>Non-blocking (not provable):</p>
+<ul>
+<li>String comparison mis-orders mixed UTC offsets (the same point as the first call above).</li>
+<li><code>last_seen</code> is a stored copy. Any future code that inserts questions without going through <code>ask_question</code> would leave it stale. Today <code>ask_question</code> is the only insert.</li>
+</ul>
+
+<h2>Not checked</h2>
+<ul>
+<li>Migrating a copy of a real, populated database. None was available; only test and sandbox databases were used.</li>
+<li>Backfill speed on a large database. It's one correlated <code>max()</code> per student, and the existing <code>questions_student_id</code> index should serve it. Not measured.</li>
+<li>Two simultaneous asks by the same student. Each runs a single conditional <code>update</code>, so the later time should win either way. Not tested.</li>
+<li>Timestamps with different UTC offsets (known limitation, above).</li>
+</ul>
+
+<h2>Noticed, not touched (outside Scope)</h2>
+<p><code>list_questions</code> in <code>src/lab/questions.py</code> uses offset <code>max(first_row - 1, 0)</code>, so page 2 seems to start one row early and repeat the last row of page 1 (Builder says, from reading; not run). If you want, I can draft an issue for it and show you the text first.</p>
+
+<h2>Files worth reading</h2>
+<ol>
+<li><code>migrations/0003_student_last_seen.sql</code> (8 lines)</li>
+<li><code>src/lab/questions.py</code>: <code>ask_question</code></li>
+<li><code>src/lab/models.py</code>: <code>Student</code></li>
+<li><code>tests/test_last_seen.py</code></li>
+</ol>
+
+<h2>Undo</h2>
+<ul>
+<li><b>Before merge:</b> <code>gh pr close 18 --repo Natenc12/pipeline-lab --delete-branch</code>, then <code>gh issue edit 6 --repo Natenc12/pipeline-lab --remove-label in-progress</code>.</li>
+<li><b>After merge:</b> <code>git revert</code> the merge commit in a new PR. That restores the code. Databases that already ran 0003 keep the <code>last_seen</code> column and their <code>schema_migrations</code> row. That's harmless, because the old <code>Student.from_row</code> reads columns by name and ignores the extra one. Never delete 0003 from history. Removing the column would take a new <code>0004</code> migration, which would be its own decision.</li>
+</ul>
+</body></html>
