@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B-T4 merge brief: PR #20</title>
+<style>
+body{font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;margin:0;padding:16px;color:#1d1d1f;background:#fff;max-width:820px;line-height:1.45}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:18px}
+.slot{border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px}
+.slot b{display:block;font-size:11px;text-transform:uppercase;color:#666;letter-spacing:.04em}
+.you{background:#fff6c2;border-color:#e6c800}
+h1{font-size:20px;margin:0 0 6px}h2{font-size:16px;margin:22px 0 6px;border-bottom:1px solid #eee;padding-bottom:3px}
+code{background:#f3f3f3;padding:1px 4px;border-radius:4px;font-size:12.5px;word-break:break-word}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+td,th{border:1px solid #e3e3e3;padding:6px 7px;vertical-align:top;text-align:left}
+th{background:#fafafa}
+.y{color:#1F7A4D;font-weight:700}.n{color:#B42318;font-weight:700}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:10px;background:#eef;margin:1px 0}
+.ci{background:#e3f4ea}.rv{background:#e8eefc}.bs{background:#f4efe3}.nc{background:#f6e3e3}
+.box{border:1px solid #ddd;border-radius:8px;padding:10px 12px;margin:10px 0}
+.view{background:#f7f7fb}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.choice{border:1px solid #ccc;border-radius:8px;padding:8px 10px;font-size:14px}
+.rec{border:2px solid #1F7A4D}
+pre{background:#f6f6f6;padding:8px;overflow-x:auto;font-size:12px;white-space:pre-wrap;word-break:break-all}
+li{margin:3px 0}
+.diag{font-family:ui-monospace,Menlo,monospace;font-size:13px;background:#fafafa;border:1px solid #eee;border-radius:6px;padding:8px}
+</style></head><body>
+<div class="strip">
+<div class="slot"><b>Status</b>Ship: PR #20 ready, CI green, up to date with main</div>
+<div class="slot you"><b>From you</b>Merge, Change or Hold?</div>
+<div class="slot"><b>Risk</b>risk:medium (CI). No <code>owner-ok</code> needed</div>
+<div class="slot"><b>Updated</b>2026-11-20</div>
+</div>
+
+<h1>Issue #8: class summary no longer counts hidden questions</h1>
+<p>PR <a href="https://github.com/Natenc12/pipeline-lab/pull/20">#20</a>, branch <code>b-t4/summary-hidden-total</code>, one commit <code>a3383de</code>. Ends in a pull request (not merged; this run never merges).</p>
+
+<div class="diag">
+Biology: 1 visible question, 1 hidden question (answered)<br>
+before → total <b>2</b> · answered 0 · unanswered <b>2</b><br>
+after&nbsp; → total <b>1</b> · answered 0 · unanswered <b>1</b>
+</div>
+<p>The change: one SQL line in <code>src/lab/summary.py</code>. The <code>total</code> query gets <code>and hidden = 0</code>, the same filter <code>answered</code> already had. Plus 4 tests in <code>tests/test_summary.py</code>, one for each Example of done.</p>
+
+<h2>The contract, ticked</h2>
+<p style="font-size:13px">Who checked it: <span class="tag ci">CI</span> = GitHub's CI ran it and it passed · <span class="tag rv">Reviewer</span> = the independent review agent reproduced it · <span class="tag bs">Builder says</span> = my own run, not re-checked · <span class="tag nc">Not checked</span></p>
+<table>
+<tr><th></th><th>Contract line</th><th>Who checked</th><th>Shown by</th></tr>
+<tr><th colspan="4">Examples of done</th></tr>
+<tr><td class="y">✓</td><td>One visible + one hidden (answered) → total 1, answered 0, unanswered 1</td><td><span class="tag ci">CI</span> <span class="tag rv">Reviewer</span></td><td><code>test_one_visible_and_one_hidden_answered_question</code>. Fails on today's code (gives 2/0/2): <span class="tag bs">Builder says</span> <span class="tag rv">Reviewer</span></td></tr>
+<tr><td class="y">✓</td><td>Three visible (one answered) + two hidden (one answered) → 3, 1, 2</td><td><span class="tag ci">CI</span> <span class="tag rv">Reviewer</span></td><td><code>test_three_visible_one_answered_and_two_hidden_one_answered</code>. Fails on today's code: <span class="tag bs">Builder says</span> <span class="tag rv">Reviewer</span></td></tr>
+<tr><td class="y">✓</td><td>Every question hidden → 0, 0, 0</td><td><span class="tag ci">CI</span> <span class="tag rv">Reviewer</span></td><td><code>test_every_question_hidden</code>. Fails on today's code (gives 2/0/2): <span class="tag bs">Builder says</span> <span class="tag rv">Reviewer</span></td></tr>
+<tr><td class="y">✓</td><td>No questions at all → 0, 0, 0 (as today)</td><td><span class="tag ci">CI</span> <span class="tag rv">Reviewer</span></td><td><code>test_no_questions_at_all</code>. Passes on today's code too, as the contract says.</td></tr>
+<tr><th colspan="4">Must not change</th></tr>
+<tr><td class="y">✓</td><td><code>student_breakdown</code>: code stays as it is, known bug included</td><td><span class="tag rv">Reviewer</span> <span class="tag bs">Builder says</span></td><td>Reviewer: <code>inspect.getsource</code> matches <code>origin/main</code>, and the known bug (<code>questions: 1</code> for a silent student) is still there. Me: the function's text is byte-identical to main (<code>diff</code>). CI does not guard this.</td></tr>
+<tr><td class="y">✓</td><td>Keys and shape of the dict <code>class_summary</code> returns</td><td><span class="tag rv">Reviewer</span></td><td>Reviewer compared key order, value types and the <code>students</code> list with <code>origin/main</code> on the same data. The diff does not touch the return statement.</td></tr>
+<tr><td class="y">✓</td><td>Counts for classes with no hidden questions</td><td><span class="tag ci">CI</span> <span class="tag rv">Reviewer</span></td><td>CI: the existing tests <code>test_counts_per_student_and_class</code>, <code>test_other_classes_do_not_leak_in</code> and <code>test_cli</code> summary still pass. Reviewer: on 25 random classes with no hidden questions, the output was identical to main's.</td></tr>
+<tr><td class="y">✓</td><td>Every existing test passes unchanged</td><td><span class="tag ci">CI</span> <span class="tag rv">Reviewer</span></td><td>CI: 107 passed (103 at baseline + 4 new). Reviewer: the test diff has no removed lines; main's <code>test_summary.py</code> passes against the new code.</td></tr>
+<tr><th colspan="4">Decisions</th></tr>
+<tr><td class="y">✓</td><td>Hidden questions are left out of the class total, answered and unanswered</td><td><span class="tag ci">CI</span> <span class="tag rv">Reviewer</span></td><td>The 4 example tests; the reviewer's random-seed check against an independent count of visible questions.</td></tr>
+<tr><td class="y">✓</td><td><code>unanswered</code> stays <code>total - answered</code></td><td><span class="tag rv">Reviewer</span></td><td>Line unchanged in the diff. The reviewer asserted it on every seed; it was never negative.</td></tr>
+<tr><td class="y">✓</td><td>The returned dict keeps the same keys and shape</td><td><span class="tag rv">Reviewer</span></td><td>Same as the Must not change line above.</td></tr>
+<tr><th colspan="4">Scope Out</th></tr>
+<tr><td class="y">✓</td><td><code>student_breakdown</code> left exactly as it is</td><td><span class="tag rv">Reviewer</span> <span class="tag bs">Builder says</span></td><td>See above. The diff hunk touches line 20 only.</td></tr>
+<tr><td class="y">✓</td><td>The shape of the returned dict, the CLI, and any other module</td><td><span class="tag rv">Reviewer</span></td><td><code>git diff --stat origin/main</code>: 2 files (<code>src/lab/summary.py</code> 1 line, <code>tests/test_summary.py</code> +47).</td></tr>
+</table>
+
+<h2>Your call</h2>
+<div class="choices">
+<div class="choice rec"><b>Merge</b> (recommended). CI is green and the branch is up to date with main, so it can merge at once. No <code>owner-ok</code> needed (risk:medium). Then I'd close #8 and remove <code>in-progress</code>, with the text shown to you first. This run never merges, so the PR stays open.</div>
+<div class="choice"><b>Change</b>: tell me what. Then I make it, re-prove it and bring this page back.</div>
+<div class="choice"><b>Hold</b>: the PR stays open as it is. Then I tear down the sandbox, leaving the branch pushed.</div>
+</div>
+
+<h2>Calls made without you</h2>
+<ul>
+<li><b>Low stakes.</b> I ran the independent review even though step 6 doesn't require one here: the change is not database, queue, migrations, answer logic or CI, and the rules rate it medium. It is a SQL query, and you get independent ticks this way.</li>
+<li><b>Low stakes.</b> The new tests check only the class-level <code>total</code>/<code>answered</code>/<code>unanswered</code>, through a small helper <code>class_counts</code>. They never assert on <code>students</code>, so the known <code>student_breakdown</code> bug cannot fail them, and fixing that bug later will not break them.</li>
+<li><b>Low stakes.</b> The PR body says "Ticket: #8" rather than "Fixes #8", so merging does not close the issue on its own.</li>
+<li><b>Should have asked / my mistake.</b> I pointed the reviewer at a scratch folder (<code>…/scratchpad/review</code>) that turned out to be shared with other sessions' runs. The reviewer found another run's files there (a <code>conftest.py</code> pointing at B-T1, a <code>review.db</code> that vanished mid-run). It moved its own work into private subfolders, then deleted three leftover files it took for stale: <code>conftest.py</code>, <code>test_summary_main.py</code> and <code>review.db</code>. If another run was using them, it may have been disturbed. This PR is not affected: the reviewer's results came from its own files, and CI does not depend on that folder. Next time each reviewer gets its own uniquely named folder.</li>
+</ul>
+
+<h2>CI checks (pasted unedited)</h2>
+<pre>$ gh pr checks 20 --repo Natenc12/pipeline-lab
+risk-gate	pass	6s	https://github.com/Natenc12/pipeline-lab/actions/runs/44812065855/job/136550880779	
+ruff + pytest (lab)	pass	12s	https://github.com/Natenc12/pipeline-lab/actions/runs/44812065838/job/136550879512	</pre>
+<p style="font-size:13px">PR labels: <code>risk:medium</code>. Merge state: <code>CLEAN</code>. From the CI log: Ruff "All checks passed!", migrations "applied 0001, 0002" then "nothing to apply", Tests "107 passed".</p>
+
+<div class="box view"><b>Builder's view</b><br>
+I agree with the rules' risk:medium. The change is one filter in a read-only count query. It writes nothing, needs no migration, and changes no stored data. The only visible effect is that classes with hidden questions now show smaller <code>total</code> and <code>unanswered</code> numbers, which is the fix. Before the PR I ran CI's steps locally with CI's settings (<code>UV_PYTHON=3.10</code>, <code>UV_LOCKED=1</code>): ruff clean, format clean, migrations twice, 107 passed. <span class="tag bs">Builder says</span></div>
+
+<h2>Reviewer findings</h2>
+<p><b>Blocking: none.</b> No departures from Must not change, Scope or Decisions. The reviewer wrote 36 checks of its own before reading the diff; 21 of them fail on main's code, all in cases with hidden questions. All pass on the branch. It also confirmed that a second call gives the same result, that un-hiding a question brings its count back, and that an unknown class raises the same error as before.</p>
+<p><b>Non-blocking:</b></p>
+<ul>
+<li>The new tests don't put a class with no hidden questions next to one with hidden questions. The existing tests and the reviewer's random check cover that case.</li>
+<li><code>total</code> and <code>answered</code> are still two separate queries, so their filters could drift apart again if one is edited later. That is acceptable within this ticket's scope.</li>
+</ul>
+
+<h2>Not checked</h2>
+<ul>
+<li>CI has no guard that <code>student_breakdown</code> stays unchanged. Only the reviewer and I checked it, on this commit.</li>
+<li>No real or production database was looked at. None exists in this lab, and nothing stored changes.</li>
+<li>The known <code>student_breakdown</code> bug is still there, on purpose (Scope Out, its own ticket).</li>
+</ul>
+
+<h2>Files worth reading</h2>
+<ul>
+<li><code>src/lab/summary.py</code> (line 20)</li>
+<li><code>tests/test_summary.py</code> (the 4 new tests at the bottom)</li>
+</ul>
+
+<h2>Undo</h2>
+<ul>
+<li>Before merge: close PR #20 (<code>gh pr close 20 --repo Natenc12/pipeline-lab --delete-branch</code>).</li>
+<li>After merge: <code>git revert &lt;merge commit&gt;</code> on a branch, then open a PR. No data or migration to undo.</li>
+</ul>
+</body></html>

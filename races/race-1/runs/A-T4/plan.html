@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A-T4 Plan: #7 summary total</title>
+<style>
+body{font-family:-apple-system,system-ui,sans-serif;margin:0;padding:16px;background:#fafafa;color:#1a1a1a;line-height:1.45;max-width:760px}
+h1{font-size:1.25rem;margin:.2em 0 .6em}h2{font-size:1.05rem;margin:1.4em 0 .5em}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:16px}
+.slot{background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:.9rem}
+.slot b{display:block;font-size:.72rem;text-transform:uppercase;color:#666;letter-spacing:.04em}
+.slot.you{background:#fff6c2;border-color:#e6cf4a}
+.card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin:10px 0}
+.opt{border-left:4px solid #ccc;padding:6px 10px;margin:8px 0;background:#f6f6f6}
+.opt.rec{border-color:#2a8a3e;background:#eef8f0}
+code,pre{font-family:ui-monospace,Menlo,monospace;font-size:.85rem}
+pre{background:#f2f2f2;padding:8px;border-radius:6px;overflow-x:auto;white-space:pre-wrap}
+.stages{font-size:.85rem;color:#555}.stages span{padding:2px 6px;border-radius:4px}.stages .on{background:#1a1a1a;color:#fff}
+table{border-collapse:collapse;width:100%;font-size:.9rem}td,th{border:1px solid #ddd;padding:5px 7px;text-align:left;vertical-align:top}
+.tag{font-size:.72rem;background:#e8e8e8;border-radius:4px;padding:1px 5px;white-space:nowrap}
+</style></head><body>
+<div class="strip">
+ <div class="slot"><b>Status</b>Plan ready; nothing built</div>
+ <div class="slot you"><b>From you</b>Yes to the plan, and pick 1 option on the card below (or "go with defaults")</div>
+ <div class="slot"><b>Risk</b>Medium by the rules (<code>src/lab/summary.py</code> matches no rule; <code>tests/</code> is low). No <code>owner-ok</code> needed.</div>
+ <div class="slot"><b>Updated</b>2026-11-20, run A-T4</div>
+</div>
+<p class="stages"><span>Intake</span> → <span class="on">Plan</span> → <span>Build</span> → <span>Prove</span> → <span>Ship</span></p>
+<h1>#7 Class summary: total counts hidden questions</h1>
+<p><b>This ends in a pull request</b> (a build, not a spike). Nothing gets merged without your word at Stop 2.</p>
+
+<h2>The ticket, checked against main</h2>
+<div class="card">
+<p><code>class_summary</code> counts every question in the class for <code>total</code>, hidden ones included, while <code>answered</code> already skips hidden ones. So <code>unanswered = total - answered</code> goes up by one for every hidden question.</p>
+<pre># src/lab/summary.py on origin/main, lines 19-21
+total = conn.execute(
+    "select count(*) from questions where class_id = ?", (class_id,)
+).fetchone()[0]          # &lt;- no "and hidden = 0"</pre>
+<table>
+<tr><th>Claim in the ticket</th><th>Checked</th></tr>
+<tr><td><code>total</code> includes hidden questions; <code>answered</code> already leaves them out</td><td>True on main <span class="tag">Builder says</span></td></tr>
+<tr><td><code>questions.hidden = 1</code> marks hidden (comment in <code>migrations/0001_init.sql</code>)</td><td>True <span class="tag">Builder says</span></td></tr>
+<tr><td><code>count_questions</code> in <code>src/lab/questions.py</code> already counts visible questions</td><td>True (<code>where class_id = ? and hidden = 0</code>) <span class="tag">Builder says</span></td></tr>
+<tr><td><code>student_breakdown</code> has its own known bug, tracked on its own ticket</td><td>The bug is real (<code>count(*)</code> over a left join counts 1 for a student with no questions). I could not find its ticket among the repo's 12 issues. <span class="tag">Builder says</span></td></tr>
+</table>
+<p>Nothing the "Done when" list needs is missing: the test fixtures (<code>conn</code>, <code>biology</code>) and <code>hide_question</code> / <code>ask.answer</code> exist. One catch: <code>ask.answer</code> refuses a hidden question, so the test answers it first, then hides it.</p>
+</div>
+
+<h2>The plan</h2>
+<div class="card">
+<ol>
+<li><b>Fix:</b> make the class <code>total</code> count only visible questions (one line in <code>class_summary</code>; see the card for how). <code>answered</code> and <code>unanswered = total - answered</code> unchanged, dict keys and shape unchanged.</li>
+<li><b>Test:</b> one new test in <code>tests/test_summary.py</code>: Ada asks two questions, one is answered and then hidden → <code>total</code> 1, <code>answered</code> 0, <code>unanswered</code> 1. I run it on today's code first to show it fails (today: 2, 0, 2).</li>
+<li><b>No-hidden classes unchanged:</b> the three existing summary tests stay as they are and must still pass.</li>
+<li><b>Not touched:</b> <code>student_breakdown</code>, the CLI, every other module. The new test asserts only the class numbers, not the per-student list, so it neither checks nor bakes in the known <code>student_breakdown</code> bug (Ben, with no questions, would show 1 there).</li>
+<li>Run CI's steps locally, open a draft PR, get CI green, then the merge brief (Stop 2).</li>
+</ol>
+</div>
+
+<h2>One decision</h2>
+<div class="card">
+<p><b>How should the class total leave out hidden questions?</b></p>
+<div class="opt rec"><b>A. Reuse <code>count_questions</code> (recommended)</b>
+<pre>before: total = conn.execute("select count(*) from questions where class_id = ?", ...)
+after:  total = count_questions(conn, class_id)   # from lab.questions</pre>
+The summary and the question list then use the same "what counts as visible" rule, so they cannot drift apart again. Adds one import from <code>lab.questions</code> (summary already imports from <code>lab.classes</code>).<br>Then: a 3-line diff in <code>summary.py</code>.</div>
+<div class="opt"><b>B. Add the filter in place</b>
+<pre>after:  "select count(*) from questions where class_id = ? and hidden = 0"</pre>
+Smallest possible change, matches how the <code>answered</code> query is written right next to it. Two copies of the visible rule remain.<br>Then: a 1-line diff in <code>summary.py</code>.</div>
+</div>
+
+<h2>Defaults I will use unless you say otherwise</h2>
+<div class="card"><ul>
+<li>Branch <code>a-t4/summary-hidden-total</code> in a sandbox worktree; your checkout is not touched.</li>
+<li>I will also run the fresh reviewer agent. The checklist only requires it for database / queue / migrations / answer logic / CI changes, and this is none of those strictly, but the change is a SQL count and the review is cheap.</li>
+<li>No other GitHub writes than: the <code>in-progress</code> label on #7, the branch, and the PR.</li>
+<li>Not filing anything about the missing <code>student_breakdown</code> ticket unless you ask; if you want, I draft it for you to approve.</li>
+</ul></div>
+</body></html>

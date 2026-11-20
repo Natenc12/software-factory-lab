@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A-T4 Merge brief: PR #21</title>
+<style>
+body{font-family:-apple-system,system-ui,sans-serif;margin:0;padding:16px;background:#fafafa;color:#1a1a1a;line-height:1.45;max-width:760px}
+h1{font-size:1.25rem;margin:.2em 0 .6em}h2{font-size:1.05rem;margin:1.4em 0 .5em}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:16px}
+.slot{background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:.9rem}
+.slot b{display:block;font-size:.72rem;text-transform:uppercase;color:#666;letter-spacing:.04em}
+.slot.you{background:#fff6c2;border-color:#e6cf4a}
+.card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin:10px 0}
+.view{background:#eef3fb;border:1px solid #b9cbe8;border-radius:8px;padding:12px 14px;margin:10px 0}
+.q{margin:8px 0}.q b{display:block}
+.btns{display:flex;flex-wrap:wrap;gap:8px}.btns div{border:1px solid #ccc;border-radius:6px;padding:6px 10px;background:#fff;font-size:.9rem}
+.btns .rec{border-color:#2a8a3e;background:#eef8f0}
+code,pre{font-family:ui-monospace,Menlo,monospace;font-size:.85rem}
+pre{background:#f2f2f2;padding:8px;border-radius:6px;overflow-x:auto;white-space:pre-wrap}
+.stages{font-size:.85rem;color:#555}.stages span{padding:2px 6px;border-radius:4px}.stages .on{background:#1a1a1a;color:#fff}
+table{border-collapse:collapse;width:100%;font-size:.9rem}td,th{border:1px solid #ddd;padding:5px 7px;text-align:left;vertical-align:top}
+.tag{font-size:.72rem;background:#e8e8e8;border-radius:4px;padding:1px 5px;white-space:nowrap}
+.tag.ci{background:#d7f0dc}.tag.rv{background:#dfe8fb}.tag.nc{background:#f6dcdc}
+</style></head><body>
+<div class="strip">
+ <div class="slot"><b>Status</b>PR #21 ready for review, CI green, up to date with main. Not merged.</div>
+ <div class="slot you"><b>From you</b>Merge, Change or Hold for PR #21</div>
+ <div class="slot"><b>Risk</b>Medium (CI label <code>risk:medium</code>); <code>owner-ok</code> not needed</div>
+ <div class="slot"><b>Updated</b>2026-11-20, run A-T4</div>
+</div>
+<p class="stages"><span>Intake</span> → <span>Plan</span> → <span>Build</span> → <span>Prove</span> → <span class="on">Ship</span></p>
+<h1>#7 Class summary counts hidden questions: <a href="https://github.com/Natenc12/pipeline-lab/pull/21">PR #21</a></h1>
+
+<h2>Refresher</h2>
+<div class="card">
+<p><b>The problem.</b> When a teacher hid a question, it vanished from the list, but the class summary still counted it in <code>total</code>. Since <code>unanswered</code> is <code>total - answered</code>, the "still waiting" number went up by one for every hidden question.</p>
+<p><b>The solution.</b> The class total now comes from <code>count_questions</code>, the function that already counts only visible questions for the question list. Nothing else in the summary changes: same keys, same <code>unanswered = total - answered</code>, and <code>student_breakdown</code> is untouched.</p>
+<pre>One visible question + one answered-then-hidden question
+before: total 2, answered 0, unanswered 2
+after:  total 1, answered 0, unanswered 1</pre>
+<p><b>What you chose at the plan:</b> option A, reuse <code>count_questions</code> rather than adding <code>and hidden = 0</code> inline. You also said yes to running the fresh reviewer.</p>
+</div>
+
+<h2>The four answers</h2>
+<div class="card">
+<div class="q"><b>Did the reviewer flag anything?</b>No blocking findings and no departures from scope. It raised three non-blocking notes, listed below. <span class="tag rv">Reviewer</span></div>
+<div class="q"><b>What was built?</b>A 2-line change in <code>src/lab/summary.py</code> (one import, one line in place of three) and one new test in <code>tests/test_summary.py</code>.</div>
+<div class="q"><b>Worth looking at?</b>Only if you want to. The whole diff is 13 lines; the summary change is the 5 lines at the top of the diff.</div>
+<div class="q"><b>Dangerous or easy?</b>Easy. It is one read-only count. No schema change, no data change, no change to the returned shape.</div>
+</div>
+<div class="btns"><div class="rec"><b>Merge</b> (recommended)</div><div><b>Change</b>: tell me what</div><div><b>Hold</b></div></div>
+
+<h2>The facts: <code>gh pr checks 21</code>, unedited</h2>
+<pre>risk-gate	pass	6s	https://github.com/Natenc12/pipeline-lab/actions/runs/44812136601/job/136551118891	
+ruff + pytest (lab)	pass	10s	https://github.com/Natenc12/pipeline-lab/actions/runs/44812136476/job/136551118823</pre>
+<div class="view"><b>Builder's view.</b> Medium by the rules, and I agree. It feels lower than medium because it is one read-only count, but I see no reason to argue with the rules. The PR is up to date with main (<code>92495e0</code>), and GitHub reports it as cleanly mergeable.</div>
+
+<h2>Evidence</h2>
+<div class="card"><table>
+<tr><th>Done when</th><th>Result</th><th>Who checked</th></tr>
+<tr><td>Visible + hidden (answered) question gives total 1, answered 0, unanswered 1</td><td>Yes. The new test asserts exactly this.</td><td><span class="tag ci">CI</span> <span class="tag rv">Reviewer</span></td></tr>
+<tr><td>Classes with no hidden questions give the same numbers as today</td><td>Yes. The 3 existing summary tests pass unchanged. The reviewer also compared main against this branch on 200 random classes with no hidden questions: 0 differences in the whole dict.</td><td><span class="tag ci">CI</span> (existing tests) <span class="tag rv">Reviewer</span> (random comparison)</td></tr>
+<tr><td>A new test fails on today's code and passes with the fix</td><td>Yes. On main it fails with <code>assert (2, 0, 2) == (1, 0, 1)</code>; on the branch it passes.</td><td><span class="tag rv">Reviewer</span> (also my run, <span class="tag">Builder says</span>)</td></tr>
+<tr><td><code>student_breakdown</code> not modified</td><td>Yes. No diff line touches it.</td><td><span class="tag rv">Reviewer</span></td></tr>
+<tr><td>Existing tests pass, ruff clean, CI green</td><td>104 passed (baseline was 103). <code>ruff check</code> and <code>ruff format --check</code> are clean, and migrations ran twice.</td><td><span class="tag ci">CI</span></td></tr>
+<tr><td>Edge cases: everything hidden, hiding the same question twice, a class that doesn't exist</td><td>All behave correctly (0/0/0; 0/0/0; the same <code>LookupError</code> as main).</td><td><span class="tag rv">Reviewer</span></td></tr>
+</table></div>
+
+<h2>Reviewer findings</h2>
+<div class="card">
+<p><b>Blocking:</b> none. <b>Departures from the ticket or plan:</b> none.</p>
+<p><b>Non-blocking:</b></p>
+<ul>
+<li>The "visible" rule (<code>hidden = 0</code>) is still written twice in <code>class_summary</code>: inside <code>count_questions</code> and in the inline <code>answered</code> query. Leaving <code>answered</code> alone was part of the approved plan. I'd only change it if you want a follow-up.</li>
+<li>The test answers the question and then hides it, because <code>answer()</code> refuses a hidden question. The case of a hidden question that was never answered isn't in the test, but the reviewer checked it by script and it was correct.</li>
+<li>The new test doesn't check the per-student numbers. That is on purpose, so it neither tests nor locks in the out-of-scope <code>student_breakdown</code> bug.</li>
+</ul>
+</div>
+
+<h2>Calls made without you</h2>
+<div class="card"><ul>
+<li>The test's name, its question text, and using Ada from the existing <code>biology</code> fixture. <span class="tag">Low stakes</span></li>
+<li>Commit message "Leave hidden questions out of the class summary total". <span class="tag">Low stakes</span></li>
+<li>The PR says "Closes #7", so merging it would close the issue automatically. <span class="tag">Low stakes</span> (it is the ticket being delivered)</li>
+</ul><p>I didn't depart from the plan.</p></div>
+
+<h2>Not checked</h2>
+<div class="card"><ul>
+<li>How the summary looks through the CLI (<code>src/lab/cli.py</code>). It reads the same dict, but I didn't run it. <span class="tag nc">Not checked</span></li>
+<li>Whether the ticket the issue mentions for the <code>student_breakdown</code> bug exists. I didn't find it among the repo's issues and didn't file one. <span class="tag nc">Not checked</span></li>
+<li>Python versions other than 3.10, which is what CI pins. <span class="tag nc">Not checked</span></li>
+</ul></div>
+
+<h2>Files worth reading (at most 4)</h2>
+<div class="card"><ol>
+<li><code>src/lab/summary.py</code>: the total line in <code>class_summary</code></li>
+<li><code>tests/test_summary.py</code>: <code>test_hidden_questions_are_left_out_of_class_totals</code></li>
+</ol></div>
+
+<h2>Undo</h2>
+<div class="card">
+<p><b>Before merge:</b> <code>gh pr close 21 --repo Natenc12/pipeline-lab --delete-branch</code>, then <code>gh issue edit 7 --repo Natenc12/pipeline-lab --remove-label in-progress</code>.</p>
+<p><b>After merge:</b> <code>git revert -m 1 &lt;merge commit&gt;</code> on a branch, then a PR. If it was a squash merge, use <code>git revert &lt;squash commit&gt;</code>. Then reopen #7. No data or schema to roll back.</p>
+</div>
+</body></html>

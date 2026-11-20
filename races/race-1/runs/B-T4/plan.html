@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B-T4 plan: issue #8</title>
+<style>
+body{font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;margin:0;padding:16px;color:#1d1d1f;background:#fff;max-width:760px;line-height:1.45}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:18px}
+.slot{border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px}
+.slot b{display:block;font-size:11px;text-transform:uppercase;color:#666;letter-spacing:.04em}
+.you{background:#fff6c2;border-color:#e6c800}
+h1{font-size:20px;margin:0 0 8px}h2{font-size:16px;margin:20px 0 6px}
+code{background:#f3f3f3;padding:1px 4px;border-radius:4px;font-size:13px}
+.ok{border-left:4px solid #1F7A4D;background:#eef7f1;padding:8px 12px;border-radius:4px}
+li{margin:4px 0}
+</style></head><body>
+<div class="strip">
+<div class="slot"><b>Status</b>Plan done; moving to Build</div>
+<div class="slot you"><b>From you</b>Nothing</div>
+<div class="slot"><b>Risk</b>medium by the rules (<code>src/lab/summary.py</code>, tests)</div>
+<div class="slot"><b>Updated</b>2026-11-20</div>
+</div>
+<h1>Issue #8: class summary counts hidden questions</h1>
+<p class="ok"><b>Contract checked against <code>origin/main</code>: no amendment needed. Ends in a pull request.</b></p>
+<h2>What I checked (Builder says)</h2>
+<ul>
+<li>The bug is real: in <code>class_summary</code> the <code>total</code> query has no <code>hidden = 0</code> filter, while <code>answered</code> already has one.</li>
+<li>All four Examples of done can be played out with today's API (answer a question first, then hide it; <code>ask.answer</code> refuses hidden questions) and their expected numbers follow from the Decisions.</li>
+<li>Must not change lines are true today: <code>student_breakdown</code> has the known <code>count(*)</code> bug; the existing tests have no hidden questions, so they keep passing.</li>
+<li>No other code uses the class <code>total</code> except the CLI's <code>summary</code> command, which prints the dict as is (its test has no hidden questions).</li>
+</ul>
+<h2>Defaults I will use</h2>
+<ul>
+<li>One-line fix: add <code>and hidden = 0</code> to the <code>total</code> query. Nothing else in <code>src/</code>.</li>
+<li>Four new tests in <code>tests/test_summary.py</code>, one per Example of done, named after them. They check only the class-level counts, so the known <code>student_breakdown</code> bug does not leak into them.</li>
+<li>A mechanical check that <code>student_breakdown</code> is byte-identical to <code>main</code>.</li>
+</ul>
+<h2>Stages</h2>
+<p>Intake ✓ · Plan ✓ · Build · Prove · Ship (merge brief, Stop 2)</p>
+</body></html>
