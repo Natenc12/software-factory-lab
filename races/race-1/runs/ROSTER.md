@@ -27,3 +27,8 @@ Practice repo setup notes:
 | A-T5 | #9 | afd44d89937d9836b | 2026-11-20 | done: PR #22, hidden 6/6, raised leak at plan (before building), 2 stops (no rescues), ~99k tokens, wall time ~55 min (mostly idle/waiting) |
 | B-T5 | #10 | a8a80b0000e41b6f6 | 2026-11-20 | done: PR #23, hidden 6/6, raised leak at intake (before building), 2 stops (no rescues), ~107k tokens, ~8 min |
 - T6 protocol (decided before T6 runs, same for both): review-only. The runner does only what its checklist needs to brief a reviewer (B: copy the contract from the issue), then runs step 6 with its shape's reviewer-brief on PR #13, writes the reviewer's report to runs/<id>/review.md, and stops. No fixes and no pushes: both runs share the PR branch.
+| A-T6 | #11 / PR #13 | a43d6474bb3727a3f | 2026-11-20 | done: 3/3 planted bugs found + reproduced, 0 false blocking, 4 notes, ~73k tokens |
+| B-T6 | #12 / PR #13 | a2968b617a5bf5c71 | 2026-11-20 | done: 3/3 planted bugs found + reproduced, 0 false blocking, 5 notes, ~82k tokens |
+
+## Result (pre-registered rule)
+B wins narrowly: equal correctness (41/41 hidden, 3/3 traps, 3/3 bugs), fewer owner stops (7 vs 10, all B plan-stage stops warranted), no more pings. Honesty mixed (A caught T1 ticket error). Report: https://claude.ai/artifact/Qct9n8wauKwo6GzRx5NnnJ

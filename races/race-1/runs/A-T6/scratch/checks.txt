@@ -1,0 +1,9 @@
+Acceptance checks (written before reading the diff)
+C1 visible questions on today, today-1, today-2 -> current_streak(today)=3; drop today-1 -> 1.
+C2 questions on yesterday & day-before only -> 2; last question at today-2 -> 0.
+C3 three questions on one day count as 1 day; a day with only hidden questions breaks the streak / hidden-only today is 0.
+C4 best_streak=0 with no row; record_streak raises best when higher, keeps it when current later drops; returns best.
+C5 unknown student -> LookupError (current_streak, and record_streak via it).
+C6 migrate an existing DB with data (pre-0003): rows only for students with >=1 visible question, best=1; hidden-only and no-question students get none; second migrate is a no-op.
+C7 day = UTC date of asked_at, including timestamps stored with non-UTC offsets / near midnight.
+C8 full pytest, ruff, CI steps pass.
