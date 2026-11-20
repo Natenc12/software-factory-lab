@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A-T2 merge brief: CSV export (#3, PR #16)</title>
+<style>
+  :root { --ink:#1d2127; --muted:#5b6470; --line:#d9dde3; --bg:#ffffff; --soft:#f5f6f8; --yellow:#fff4c2; --yellowline:#e2c84a; --green:#1f7a4d; --amber:#a35f00; --red:#b42318; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--ink); font:15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 24px 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 14px; }
+  .strip { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:6px; margin-bottom:16px; }
+  .slot { border:1px solid var(--line); border-radius:8px; padding:8px; background:var(--soft); min-width:0; }
+  .slot b { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .slot.you { background:var(--yellow); border-color:var(--yellowline); }
+  @media (max-width: 560px) { .strip { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  .stages { display:flex; flex-wrap:wrap; gap:4px; margin: 0 0 16px; font-size:13px; }
+  .stages span { padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+  .stages span.now { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .box { border:1px solid var(--line); border-radius:10px; padding:12px; margin:10px 0; }
+  .refresher { background:#f3f6fb; }
+  .four dt { font-weight:700; margin-top:8px; }
+  .four dd { margin:2px 0 0 0; }
+  .choices { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:6px; }
+  @media (max-width: 560px) { .choices { grid-template-columns: 1fr; } }
+  .choice { border:1px solid var(--line); border-radius:8px; padding:8px; }
+  .choice.rec { border-color: var(--green); background:#eef7f2; }
+  .choice b { display:block; }
+  .builder { border-left:4px solid var(--amber); background:#fdf6ec; }
+  pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  pre { background:var(--soft); border:1px solid var(--line); border-radius:6px; padding:8px; overflow-x:auto; white-space:pre; }
+  ul, ol { padding-left: 20px; }
+  li { margin: 3px 0; }
+  .tag { font-size:11px; font-weight:700; border-radius:4px; padding:1px 5px; border:1px solid var(--line); background:var(--soft); white-space:nowrap; }
+  .tag.ci { background:#e6f4ec; border-color:#9fd3b5; }
+  .tag.rv { background:#e8eefb; border-color:#a9bde8; }
+  .tag.nc { background:#fdecea; border-color:#f0b0a8; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Merge brief: export a class's questions as CSV</h1>
+  <p class="sub">Ticket <a href="https://github.com/Natenc12/pipeline-lab/issues/3">#3</a> · PR <a href="https://github.com/Natenc12/pipeline-lab/pull/16">#16</a> (head <code>c1c0c1b</code>, branch <code>a-t2/csv-export</code>) · run A-T2</p>
+
+  <div class="strip">
+    <div class="slot"><b>Status</b>Run ended. PR #16 left open, not merged. Sandbox removed.</div>
+    <div class="slot you"><b>From you</b>Nothing.</div>
+    <div class="slot"><b>Risk</b>Medium by the rules; no <code>owner-ok</code> needed. Builder's view: low.</div>
+    <div class="slot"><b>Updated</b>2026-11-20</div>
+  </div>
+
+  <div class="stages"><span>Intake</span><span>Plan</span><span>Build</span><span>Prove</span><span class="now">Ship</span></div>
+
+  <div class="box refresher">
+    <h2 style="margin-top:0">Refresher</h2>
+    <p><b>Problem.</b> Teachers want a class's questions in a spreadsheet. Today the only way out is paging through the CLI <code>list</code>, which doesn't show who asked or the answer.</p>
+    <p><b>Solution.</b> A new function <code>export_class_questions(conn, class_id)</code> in a new file <code>src/lab/export.py</code> returns the class's visible questions as CSV text, one row per question in id order, with the student's name and the answer. It writes no file and touches no existing code or schema.</p>
+    <p><b>Before → after</b> (the ticket's worked example, now a test):</p>
+    <pre>before: no way to get this out
+after:  question_id,student,asked_at,question,answer
+        1,Ada,2026-03-01T09:00:00,What is DNA?,From the class material: DNA carries genetic information.
+        2,Ben,2026-03-01T09:05:00,"Why, though?",
+        3,Ada,2026-03-01T09:10:00,"What does ""ATP"" mean?",</pre>
+    <p><b>What you chose at the plan:</b> build exactly what the ticket says (option A), and I draft a follow-up issue about spreadsheet formulas for you to look at here. You also kept the optional agent review.</p>
+  </div>
+
+  <div class="box">
+    <dl class="four">
+      <dt>Did the reviewer flag anything?</dt>
+      <dd>Yes, one blocking finding, now fixed: on Python 3.10 (what CI uses) a lone carriage return (<code>\r</code>) inside a question was written unquoted, so a spreadsheet split that row in two. I reproduced it, added a test that failed, and fixed it. The reviewer re-checked the fix and found nothing new.</dd>
+      <dt>What was built?</dt>
+      <dd>One new function (46 lines) and 10 tests (137 lines), in two new files. Nothing else changed.</dd>
+      <dt>Worth looking at?</dt>
+      <dd>Only the fix's <code>_csv_line</code> helper in <code>src/lab/export.py</code>: it is the one place I departed from the ticket's suggested recipe (details under Calls made without you).</dd>
+      <dt>Dangerous or easy?</dt>
+      <dd>Easy. Read-only query, new module nobody calls yet, undo is one revert.</dd>
+    </dl>
+    <div class="choices">
+      <div class="choice rec"><b>Merge</b>Recommended. Merge #16 (closes #3). Then I'd file the follow-up only if you say yes to it.</div>
+      <div class="choice"><b>Change</b>Tell me what; I change it, re-prove, update this page and stop again.</div>
+      <div class="choice"><b>Hold</b>PR stays open as is; say what you're waiting for.</div>
+    </div>
+  </div>
+
+  <h2>The facts: <code>gh pr checks 16</code>, unedited</h2>
+<pre>risk-gate	pass	6s	https://github.com/Natenc12/pipeline-lab/actions/runs/44810255045/job/136544673885
+ruff + pytest (lab)	pass	12s	https://github.com/Natenc12/pipeline-lab/actions/runs/44810254928/job/136544674049	</pre>
+
+  <div class="box builder">
+    <b>Builder's view</b>
+    <p>The rules call this <b>risk:medium</b> (any new file under <code>src/lab/</code> that isn't on the high list). I'd call it low: it only reads, no existing code calls it, and every behaviour in the ticket is pinned by an exact-string test. The rules and I agree that it does not need <code>owner-ok</code>.</p>
+  </div>
+
+  <h2>Evidence, by who checked it</h2>
+  <ul>
+    <li><span class="tag ci">CI</span> Ruff, ruff format, migrations twice and the full test suite pass on head <code>c1c0c1b</code>; <code>risk-gate</code> passes (risk:medium).</li>
+    <li><span class="tag ci">CI</span> The worked example comes out byte for byte (<code>test_worked_example_from_the_ticket</code>), built through the real functions, including the fake provider's answer and <code>hide_question</code>.</li>
+    <li><span class="tag ci">CI</span> Header only for a class with no questions, and for a class whose only questions are hidden; hidden answered questions left out; other classes left out and rows in id order with interleaved ids; commas, double quotes, <code>\n</code>, <code>\r\n</code> and lone <code>\r</code> quoted as <code>csv.writer</code> does and read back unchanged; no <code>\r\n</code> line endings, last line ends in <code>\n</code>; unknown class raises <code>LookupError</code>; result is a <code>str</code>.</li>
+    <li><span class="tag rv">Reviewer</span> On the first head (<code>29a99d0</code>), its own 8 acceptance checks: import and type, worked example, empty/all-hidden, exclusion and order, unknown ids (999999, -1, 0), only two files changed, second call identical and writes nothing to the database, scope matches the ticket. All passed except the lone-<code>\r</code> case.</li>
+    <li><span class="tag rv">Reviewer</span> Re-check on head <code>c1c0c1b</code>: the lone-<code>\r</code> case now reads back as one row. It ran 6,750 field combinations through the old and new code on Python 3.10.20. The only outputs that differ are the ones containing a lone <code>\r</code>. On 3.12 and 3.13 the two give identical output. All its other checks still pass, and nothing new was found.</li>
+    <li><span class="tag">Builder says</span> I reproduced the reviewer's finding on Python 3.10.20 (<code>csv.writer(lineterminator="\n")</code> gives <code>a\rb,...</code> unquoted; with the default <code>"\r\n"</code> terminator it gives <code>"a\rb",...</code>). The new test failed before the fix and passes after.</li>
+    <li><span class="tag">Builder says</span> I ran CI's steps as written locally (Python 3.10, <code>UV_LOCKED=1</code>): 113 passed, baseline before any edit was 103 passed. The export tests also pass on Python 3.12 and 3.13.</li>
+  </ul>
+
+  <h2>Reviewer findings</h2>
+  <ul>
+    <li><b>Blocking (fixed):</b> lone <code>\r</code> unquoted on Python 3.10, splitting the row. Fixed in <code>c1c0c1b</code> with a test; the reviewer re-checked it and found no new issues.</li>
+    <li><b>Departures from scope:</b> none.</li>
+    <li><b>Non-blocking:</b> tests lacked a lone-<code>\r</code> case (added); output could differ by Python version until the fix (now the same on 3.10, 3.12 and 3.13, Reviewer); <code>list_questions</code> page offset looks off by one (already tickets #1/#2, out of scope).</li>
+  </ul>
+
+  <h2>Calls made without you</h2>
+  <ul>
+    <li><b>Departed from the plan's stated method to fix the reviewer's finding.</b> <span class="tag">Low stakes</span> The plan said I'd write with <code>csv.writer(..., lineterminator="\n")</code>, as the ticket's notes suggest. That recipe breaks the ticket's own rule ("quoted if it contains a line break") on Python 3.10. The fix keeps <code>csv.writer</code> with its real default terminator and swaps only the line ending it adds for <code>\n</code>, one row at a time. Every other field comes out the same as before (Reviewer: 6,750 combinations compared). If you'd rather keep the recipe and accept the lone-<code>\r</code> edge, say Change and I'll revert <code>c1c0c1b</code>.</li>
+    <li><b>Test answers with odd characters are inserted straight into the <code>answers</code> table</b> in the test file, since the fake provider never produces them. <span class="tag">Low stakes</span></li>
+  </ul>
+
+  <h2>Follow-up (kept here, not filed)</h2>
+  <p>You said no GitHub actions beyond the PR and the <code>in-progress</code> label, so this stays on the page instead of becoming an issue. <b>CSV export: cells starting with <code>=</code> <code>+</code> <code>-</code> <code>@</code> open as formulas in spreadsheets.</b> Question and answer text is typed by students and goes into the CSV as stored. A spreadsheet reads a cell like <code>=HYPERLINK("http://example.com","click")</code> as a live formula. The usual fix is a leading <code>'</code>, but that breaks #3's rule that the export round-trips the stored text, so it needs a decision first: neutralise or not, and which columns. Full draft text: <code>runs/A-T2/followup-issue.md</code>.</p>
+
+  <h2>Not checked</h2>
+  <ul>
+    <li><span class="tag nc">Not checked</span> Opening the exported text in a real spreadsheet app (Excel, Numbers, Google Sheets).</li>
+    <li><span class="tag nc">Not checked</span> Large classes (performance); the query uses the existing <code>(class_id, id)</code> index, but nothing was timed.</li>
+  </ul>
+
+  <h2>Files worth reading</h2>
+  <ol>
+    <li><code>src/lab/export.py</code>: the function and the <code>_csv_line</code> helper.</li>
+    <li><code>tests/test_export.py</code>: the worked example and the lone-<code>\r</code> test at the end.</li>
+  </ol>
+
+  <h2>Undo</h2>
+  <ul>
+    <li>Before merge: close PR #16 and delete branch <code>a-t2/csv-export</code>; remove the <code>in-progress</code> label from #3.</li>
+    <li>After merge: <code>git revert -m 1 &lt;merge commit&gt;</code> (or revert the squash commit) in a new PR. No data or schema to roll back; the change only adds two files.</li>
+  </ul>
+</main>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A-T2 plan: CSV export (#3)</title>
+<style>
+  :root { --ink:#1d2127; --muted:#5b6470; --line:#d9dde3; --bg:#ffffff; --soft:#f5f6f8; --yellow:#fff4c2; --yellowline:#e2c84a; --green:#1f7a4d; --amber:#a35f00; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--ink); font:15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 24px 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 14px; }
+  .strip { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:6px; margin-bottom:16px; }
+  .slot { border:1px solid var(--line); border-radius:8px; padding:8px; background:var(--soft); min-width:0; }
+  .slot b { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .slot.you { background:var(--yellow); border-color:var(--yellowline); }
+  @media (max-width: 560px) { .strip { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  .stages { display:flex; flex-wrap:wrap; gap:4px; margin: 0 0 16px; font-size:13px; }
+  .stages span { padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+  .stages span.now { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .ends { border-left:4px solid var(--green); background:#eef7f2; padding:8px 12px; border-radius:4px; }
+  .card { border:1px solid var(--line); border-radius:10px; padding:12px; margin:10px 0; }
+  .card h3 { margin:0 0 6px; font-size:15px; }
+  .opt { border-top:1px dashed var(--line); padding-top:8px; margin-top:8px; }
+  .rec { display:inline-block; font-size:11px; font-weight:700; color:#fff; background:var(--green); border-radius:4px; padding:1px 6px; margin-left:4px; }
+  pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  pre { background:var(--soft); border:1px solid var(--line); border-radius:6px; padding:8px; overflow-x:auto; white-space:pre; }
+  ul { padding-left: 20px; }
+  li { margin: 3px 0; }
+  .tag { font-size:11px; font-weight:700; border-radius:4px; padding:1px 5px; border:1px solid var(--line); background:var(--soft); white-space:nowrap; }
+  table { border-collapse: collapse; width:100%; font-size:13.5px; }
+  td, th { border:1px solid var(--line); padding:5px 6px; text-align:left; vertical-align:top; }
+  .wrap { overflow-x:auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Plan: export a class's questions as CSV</h1>
+  <p class="sub">Ticket <a href="https://github.com/Natenc12/pipeline-lab/issues/3">#3</a> (T2-A) · run A-T2</p>
+
+  <div class="strip">
+    <div class="slot"><b>Status</b>Plan, waiting for you. Nothing built yet.</div>
+    <div class="slot you"><b>From you</b>A yes to this plan, plus one pick on the card below (or "go with your recommendation").</div>
+    <div class="slot"><b>Risk</b>Medium by the rules (new file in <code>src/lab/</code>). No <code>owner-ok</code> needed.</div>
+    <div class="slot"><b>Updated</b>2026-11-20</div>
+  </div>
+
+  <div class="stages"><span>Intake</span><span class="now">Plan</span><span>Build</span><span>Prove</span><span>Ship</span></div>
+
+  <p class="ends"><b>This ends in a pull request</b> (a build ticket, not a spike). Nothing gets merged without your word at Stop 2.</p>
+
+  <h2>What the ticket asks</h2>
+  <p>A new function <code>export_class_questions(conn, class_id) -&gt; str</code> in a new file <code>src/lab/export.py</code>. It returns the class's visible questions as CSV text: header <code>question_id,student,asked_at,question,answer</code>, one row per visible question in id order, Python's default <code>csv</code> quoting, <code>\n</code> line endings, and <code>LookupError</code> for an unknown class. Plus tests. No CLI, no files written, no other formats, no changes to existing modules or the schema.</p>
+  <p>The ticket's worked example must come out byte for byte:</p>
+  <pre>question_id,student,asked_at,question,answer
+1,Ada,2026-03-01T09:00:00,What is DNA?,From the class material: DNA carries genetic information.
+2,Ben,2026-03-01T09:05:00,"Why, though?",
+3,Ada,2026-03-01T09:10:00,"What does ""ATP"" mean?",</pre>
+
+  <h2>Intake check (against <code>origin/main</code>, 92495e0)</h2>
+  <ul>
+    <li><span class="tag">Builder says</span> <code>src/lab/export.py</code> does not exist yet; nothing to collide with.</li>
+    <li><span class="tag">Builder says</span> <code>get_class</code> raises <code>LookupError</code> for an unknown id, as the ticket says. I will call it to get the same error.</li>
+    <li><span class="tag">Builder says</span> <code>answers.question_id</code> is <code>unique</code>, so at most one answer per question, as the ticket says. A plain left join cannot duplicate rows.</li>
+    <li><span class="tag">Builder says</span> The worked example's answer text is exactly what the built-in fake provider gives for "What is DNA?" with the test Biology material, so the test can produce it through the real <code>ask.answer</code> path instead of a hand-typed row.</li>
+    <li><span class="tag">CI</span> <code>main</code>'s last CI run is green. Nothing in "Done when" depends on anything that doesn't exist yet.</li>
+  </ul>
+
+  <h2>One decision</h2>
+  <div class="card">
+    <h3>A question that starts with <code>=</code> could run as a formula in a spreadsheet. Leave it as the ticket says?</h3>
+    <p>The ticket says the question text goes in "as is". Spreadsheet apps treat a cell starting with <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> as a formula, so a student could type a question that does something odd when the teacher opens the file. This is a known CSV issue, not something the ticket mentions.</p>
+
+    <div class="opt"><b>A. Build exactly what the ticket says, and I draft a follow-up issue for you to look at at Stop 2.</b><span class="rec">Recommended</span>
+      <pre>question: =HYPERLINK("http://x","click")
+row:      5,Ada,2026-03-02T10:00:00,"=HYPERLINK(""http://x"",""click"")",</pre>
+      Then: the PR matches the ticket and its worked example exactly. The follow-up text is shown to you at Stop 2; nothing is filed without your yes.
+    </div>
+    <div class="opt"><b>B. Build exactly what the ticket says, and drop the point.</b>
+      <pre>(same output as A)</pre>
+      Then: same PR, no follow-up drafted.
+    </div>
+    <div class="opt"><b>C. Neutralise such cells now by putting a <code>'</code> in front.</b>
+      <pre>row:      5,Ada,2026-03-02T10:00:00,"'=HYPERLINK(""http://x"",""click"")",</pre>
+      Then: this departs from the ticket's "as is" decision, and the export no longer round-trips the stored text. I would treat it as a change to the ticket and note it at the top of the merge brief.
+    </div>
+  </div>
+
+  <h2>Defaults I will use unless you say otherwise</h2>
+  <ul>
+    <li><b>Files:</b> new <code>src/lab/export.py</code> and new <code>tests/test_export.py</code>. Nothing else changes.</li>
+    <li><b>How it works:</b> call <code>get_class</code> first (unknown class → <code>LookupError</code>), then one query: the class's questions with <code>hidden = 0</code>, joined to the student for the name, left-joined to <code>answers</code> for the body, <code>order by</code> question id. Write with <code>csv.writer(io.StringIO(), lineterminator="\n")</code>, as the ticket's notes suggest. Read-only: no writes, no commit.</li>
+    <li><b>Tests:</b> the worked example byte for byte, built through the real functions (the existing <code>biology</code> fixture, <code>ask_question</code> with fixed <code>asked_at</code>, <code>ask.answer</code>, <code>hide_question</code>); empty class → header only; class whose only questions are hidden → header only; a hidden question that has an answer is still left out; another class's questions are left out and rows stay in id order when ids interleave across classes; commas, double quotes and line breaks in both the question and the answer are quoted as <code>csv.writer</code> does; no <code>\r\n</code> anywhere and the last line ends in <code>\n</code>; unknown class → <code>LookupError</code>; result is a <code>str</code>.</li>
+    <li><b>Agent review:</b> the checklist only requires one for database, queue, migration, answer-logic or CI changes, and this is none of those. I will run a fresh reviewer anyway, because the whole ticket is an exact byte format that is easy to get subtly wrong. (Say "skip the review" if you'd rather not.)</li>
+    <li><b>Process:</b> my own sandbox worktree and database (your checkout is untouched), baseline tests before any edit, a draft PR early so CI is the proof, branch updated with <code>main</code> before the merge brief.</li>
+    <li><b>Claim:</b> I add the <code>in-progress</code> label to #3 once you say yes (the checklist's claim step).</li>
+  </ul>
+
+  <h2>Seen, out of scope, not touching</h2>
+  <ul>
+    <li><code>list_questions</code> page overlap: already tickets #1/#2 with open PRs.</li>
+    <li><code>class_summary</code> counting hidden questions, and <code>student_breakdown</code> showing 1 for students with no questions: ticket #7/#8 covers the first and says the second is tracked separately.</li>
+  </ul>
+</main>
+</body>
+</html>

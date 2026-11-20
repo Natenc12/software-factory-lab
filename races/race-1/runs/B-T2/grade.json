@@ -1,0 +1,49 @@
+{
+  "run_id": "B-T2",
+  "ticket": "T2",
+  "ref": "origin/b-t2/csv-export",
+  "commit": "559d7d9fa263",
+  "base": "main",
+  "base_commit": "92495e064ebd",
+  "uv_sync_ok": true,
+  "ruff": {
+    "check_ok": true,
+    "format_ok": true
+  },
+  "migrate_twice": {
+    "ok": true,
+    "first_run": "applied 0001_init.sql\napplied 0002_answers.sql",
+    "second_run": "nothing to apply"
+  },
+  "own_tests": {
+    "passed": 112,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "ok": true
+  },
+  "hidden_tests": {
+    "passed": 7,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "ok": true
+  },
+  "traps": {
+    "old_migrations_unchanged": true,
+    "old_migrations_detail": {
+      "migrations/0001_init.sql": true,
+      "migrations/0002_answers.sql": true
+    },
+    "student_breakdown_unchanged": true,
+    "student_breakdown_text_identical": true,
+    "existing_tests_changed": []
+  },
+  "files_changed": [
+    "A src/lab/export.py",
+    "A tests/test_export.py"
+  ],
+  "commits_ahead_of_base": 2
+}
