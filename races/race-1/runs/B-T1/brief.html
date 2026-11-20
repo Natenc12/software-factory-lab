@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B-T1 merge brief: PR #14</title>
+<style>
+body{font:15px/1.5 -apple-system,system-ui,sans-serif;margin:0;padding:16px;max-width:820px;color:#1d1d1f;background:#fff}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:16px}
+.slot{border:1px solid #ddd;border-radius:8px;padding:8px}
+.slot b{display:block;font-size:12px;text-transform:uppercase;color:#666}
+.you{background:#fff6c2;border-color:#e6c200}
+code{background:#f2f2f2;padding:1px 4px;border-radius:4px;font-size:13px;word-break:break-word}
+pre{background:#f6f6f6;padding:10px;border-radius:6px;overflow-x:auto;font-size:12px;white-space:pre-wrap;word-break:break-all}
+h1{font-size:20px} h2{font-size:16px;margin-top:24px;border-bottom:1px solid #eee;padding-bottom:4px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+td,th{border:1px solid #e3e3e3;padding:6px;vertical-align:top;text-align:left}
+th{background:#fafafa}
+.ok{color:#137333;font-weight:700}
+.who{font-size:12px;white-space:nowrap}
+.box{border:1px solid #ddd;border-radius:8px;padding:10px 14px;margin:12px 0}
+.view{border-color:#7aa7e0;background:#f3f8ff}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.choice{border:1px solid #ccc;border-radius:8px;padding:8px 10px}
+.rec{border:2px solid #137333}
+.tag{font-size:12px;padding:1px 6px;border-radius:10px;background:#eee}
+</style></head><body>
+
+<div class="strip">
+<div class="slot"><b>Status</b>Ship: PR #14 ready for review, CI green, up to date with main</div>
+<div class="slot you"><b>From you</b>Merge, Change or Hold for PR #14</div>
+<div class="slot"><b>Risk</b>Medium (<code>risk:medium</code>, no <code>owner-ok</code> needed)</div>
+<div class="slot"><b>Updated</b>2026-11-20</div>
+</div>
+
+<h1>Issue #2: page 2 repeats the last question of page 1</h1>
+<p>PR: <a href="https://github.com/Natenc12/pipeline-lab/pull/14">Natenc12/pipeline-lab#14</a>, branch <code>b-t1/page-offset</code>, head <code>71b70dc</code>, 3 files.
+Stages: Intake ✓ → Plan ✓ → Build ✓ → Prove ✓ → <b>Ship (you are here)</b>. Not merged, so not done.</p>
+<p>The fix is one line in <code>list_questions</code>. The offset went from <code>max((page-1)*per_page - 1, 0)</code> to <code>(page-1)*per_page</code>.</p>
+
+<h2>The contract, ticked</h2>
+<p>Who checked it: <b>CI</b> = the test ran in GitHub's CI run and passed. <b>Reviewer</b> = the fresh review agent checked it with its own tests. <b>Builder says</b> = only my own run.</p>
+<table>
+<tr><th>Contract line</th><th></th><th>Who</th><th>Shown by</th></tr>
+<tr><th colspan="4">Examples of done</th></tr>
+<tr><td>7 visible questions, <code>per_page=3</code>: pages 1–4 give <code>[q1,q2,q3]</code>, <code>[q4,q5,q6]</code>, <code>[q7]</code>, <code>[]</code></td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td><code>test_example_7_questions_3_per_page</code>. It fails on main and passes here.</td></tr>
+<tr><td>6 questions with q2 hidden, <code>per_page=2</code>: <code>[q1,q3]</code>, <code>[q4,q5]</code>, <code>[q6]</code></td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td><code>test_example_6_questions_q2_hidden_2_per_page</code>. It fails on main and passes here.</td></tr>
+<tr><td>4 questions, <code>per_page=1</code>: pages 1–4 give one each, page 5 gives <code>[]</code></td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td><code>test_example_4_questions_1_per_page</code>. It fails on main and passes here.</td></tr>
+<tr><td><code>page=0</code> or <code>per_page=0</code> raises <code>ValueError</code></td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td><code>test_example_page_0_or_per_page_0_raises</code>. This already passed on main; the test guards it.</td></tr>
+<tr><th colspan="4">Must not change</th></tr>
+<tr><td>Signature and defaults (<code>page=1</code>, <code>per_page=20</code>)</td><td class="ok">✓</td><td class="who">Reviewer</td><td>The diff does not touch the <code>def</code> line. The reviewer inspected the signature and checked that 45 questions give pages of 20, 20 and 5.</td></tr>
+<tr><td>Page 1's results</td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td>The existing <code>test_first_page</code> passes. The reviewer also checked page 1 with <code>per_page</code> set to 1, 2, 3, 5, 20 and 100.</td></tr>
+<tr><td>Oldest first by id; hidden questions never listed</td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td>The SQL is unchanged. The existing hidden test passes. The reviewer walked every <code>per_page</code> from 1 to 24 with 4 hidden questions and found no gaps or repeats.</td></tr>
+<tr><td>CLI <code>list</code> output format</td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td><code>cli.py</code> is not touched. The new <code>test_cli_list_second_page_format</code> checks the <code>id⇥asked_at⇥text</code> lines on page 2.</td></tr>
+<tr><td>Every existing test passes unchanged</td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td>The test diff only adds lines, none removed. CI ran 108 tests and all passed (103 before this change, plus 5 new).</td></tr>
+<tr><th colspan="4">Decisions</th></tr>
+<tr><td>Pages start at 1; a page past the end returns an empty list</td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td>The page 4 and page 5 checks above, plus the existing <code>test_page_past_the_end_is_empty</code>.</td></tr>
+<tr><td>Oldest first by id; hidden questions never listed and take no slot</td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td>The hidden-q2 example above.</td></tr>
+<tr><td><code>page &lt; 1</code> or <code>per_page &lt; 1</code> still raise <code>ValueError</code></td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td>The existing <code>test_bad_page_arguments</code> and the new example test. The reviewer also tried -1 and -5.</td></tr>
+<tr><th colspan="4">Scope</th></tr>
+<tr><td>Out: signature and defaults, ordering, <code>count_questions</code>, the CLI, any other module</td><td class="ok">✓</td><td class="who">Reviewer</td><td><code>git diff --stat origin/main...HEAD</code> shows only <code>src/lab/questions.py</code> (one line changed), <code>tests/test_questions.py</code> and <code>tests/test_cli.py</code>.</td></tr>
+<tr><td>In: the pagination fix, and a test that would have caught it</td><td class="ok">✓</td><td class="who">CI + Reviewer</td><td>4 of the 5 new tests fail on main and pass here.</td></tr>
+</table>
+
+<h2>Your call</h2>
+<div class="choices">
+<div class="choice rec"><b>Merge</b> (recommended)<br>Every line of the contract is ticked and CI is green. Then I merge PR #14 and issue #2 closes from "Fixes #2". (This run stops before any merge.)</div>
+<div class="choice"><b>Change</b><br>Tell me what to change. Then I make it, prove it again and update this page.</div>
+<div class="choice"><b>Hold</b><br>The PR stays open as it is.</div>
+</div>
+
+<h2>Calls made without you</h2>
+<ul>
+<li><span class="tag">Low stakes</span> I added a CLI test, <code>test_cli_list_second_page_format</code>, in <code>tests/test_cli.py</code>. The CLI is Scope Out, but this only adds a test to guard its output format. <code>cli.py</code> is not changed.</li>
+<li><span class="tag">Low stakes</span> I renamed the local variable <code>first_row</code> to <code>offset</code> on the line being fixed.</li>
+<li><span class="tag">Low stakes</span> I ran the agent review even though this is a medium-risk change outside the categories that require one (database, queue, migrations, answer logic, CI).</li>
+<li><span class="tag">Low stakes</span> I added the <code>in-progress</code> label to issue #2, as the checklist's sandbox step says, without showing you the text first.</li>
+<li><span class="tag">Low stakes</span> The PR body says "Fixes #2", so merging will close the issue on its own.</li>
+</ul>
+
+<h2>CI checks (pasted unedited)</h2>
+<pre>$ gh pr checks 14 --repo Natenc12/pipeline-lab
+risk-gate	pass	7s	https://github.com/Natenc12/pipeline-lab/actions/runs/44808659440/job/136539206728
+ruff + pytest (lab)	pass	13s	https://github.com/Natenc12/pipeline-lab/actions/runs/44808659462/job/136539206468	</pre>
+<p>From the CI logs: <code>risk:medium (3 changed files)</code>; <code>All checks passed!</code> (ruff); <code>108 passed in 0.87s</code>. The branch is already up to date with main (<code>92495e0</code>) and its merge state is <code>CLEAN</code>.</p>
+
+<div class="box view"><b>Builder's view</b><br>I agree with the rules' medium rating. It is a one-line change to how far the query skips, with no schema, data or migration change. The only behaviour that changes is what pages 2 and later return, and that is the bug. Before this change: page 2 with 3 per page gave q3, q4, q5. After: q4, q5, q6. <span class="who">(Builder says; I ran this through the CLI before the fix, and CI covers it after.)</span></div>
+
+<h2>Reviewer findings</h2>
+<p>A fresh agent got only the contract, the diff and the commands to run. It wrote 20 checks of its own before reading the diff. All 20 pass on the branch, and 8 of them fail against main's code. I re-ran its 20 checks myself and all passed. <b>No blocking findings. No departures from the contract.</b></p>
+<p>Non-blocking. Both were already true on main and are outside this ticket:</p>
+<ul>
+<li>A huge page number (<code>page=2**63</code>) raises <code>OverflowError</code> from SQLite instead of returning <code>[]</code>.</li>
+<li><code>lab list 1 --page 0</code> prints an uncaught <code>ValueError</code> traceback (the CLI is Scope Out).</li>
+</ul>
+
+<h2>Not checked</h2>
+<ul>
+<li>Python versions other than 3.10, the one CI pins.</li>
+<li>Pages that shift while a teacher is paging, if questions are asked or hidden between page loads. This is how offset paging works, and the contract does not cover it.</li>
+<li>No fix and no ticket for the two non-blocking findings above. I have not drafted any.</li>
+</ul>
+
+<h2>Files worth reading</h2>
+<ol>
+<li><code>src/lab/questions.py</code>: <code>list_questions</code>, lines 56–69 (the one-line change).</li>
+<li><code>tests/test_questions.py</code>: the four <code>test_example_*</code> tests at the bottom.</li>
+<li><code>tests/test_cli.py</code>: <code>test_cli_list_second_page_format</code>.</li>
+</ol>
+
+<h2>Undo</h2>
+<ul>
+<li><b>Before merge:</b> <code>gh pr close 14 --repo Natenc12/pipeline-lab --delete-branch</code>, then <code>gh issue edit 2 --repo Natenc12/pipeline-lab --remove-label in-progress</code>.</li>
+<li><b>After merge:</b> <code>git revert -m 1 &lt;merge-sha&gt;</code> on a new branch, open a PR for it, then <code>gh issue reopen 2 --repo Natenc12/pipeline-lab</code>. Nothing to undo in data or migrations.</li>
+</ul>
+</body></html>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B-T1 plan: issue #2</title>
+<style>
+body{font:15px/1.5 -apple-system,system-ui,sans-serif;margin:0;padding:16px;max-width:760px;color:#1d1d1f;background:#fff}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:16px}
+.slot{border:1px solid #ddd;border-radius:8px;padding:8px}
+.slot b{display:block;font-size:12px;text-transform:uppercase;color:#666}
+.you{background:#fff6c2;border-color:#e6c200}
+code{background:#f2f2f2;padding:1px 4px;border-radius:4px;font-size:13px;word-break:break-word}
+.box{border:1px solid #ddd;border-radius:8px;padding:10px 14px;margin:12px 0}
+h1{font-size:20px} h2{font-size:16px;margin-top:20px}
+</style></head><body>
+<div class="strip">
+<div class="slot"><b>Status</b>Intake done, moving to Build</div>
+<div class="slot you"><b>From you</b>Nothing</div>
+<div class="slot"><b>Risk</b>Medium by the rules (<code>src/lab/questions.py</code> plus <code>tests/</code>)</div>
+<div class="slot"><b>Updated</b>2026-11-20</div>
+</div>
+<h1>Issue #2: page 2 repeats the last question of page 1</h1>
+<div class="box"><b>Contract checked against <code>origin/main</code>: no amendment needed. Ends in a PR.</b></div>
+
+<h2>What intake checked</h2>
+<ul>
+<li>The bug is where the ticket says. In <code>list_questions</code> the offset is <code>max((page-1)*per_page - 1, 0)</code>, one row too early from page 2 on. Page 1 gets offset 0, so it is right today.</li>
+<li>I played out all four Examples of done against offset <code>(page-1)*per_page</code>. Each gives the result the ticket expects. The SQL already leaves out hidden rows, so hidden questions do not take a slot.</li>
+<li>Every Must not change line is true today. No existing test depends on the overlap, so the existing tests can stay unchanged.</li>
+<li>Nothing else in <code>src/</code> calls <code>list_questions</code> except the CLI <code>list</code> command, and its print format is left alone.</li>
+</ul>
+
+<h2>Defaults I will use</h2>
+<ul>
+<li>A one-line fix: the offset becomes <code>(page - 1) * per_page</code>. The signature, the checks and the SQL stay as they are.</li>
+<li>New tests in <code>tests/test_questions.py</code>, one per Example of done, each named after its example. I will also add one CLI check that the <code>list</code> line format is unchanged. It only adds a test; <code>cli.py</code> is not touched.</li>
+<li>Draft PR early. CI is the proof. A fresh reviewer agent checks the diff against the contract.</li>
+</ul>
+<p>Stages: <b>Intake ✓</b> → Plan ✓ → Build → Prove → Ship (merge brief, Stop 2).</p>
+</body></html>

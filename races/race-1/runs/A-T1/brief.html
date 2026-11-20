@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Merge brief: #1 page overlap</title>
+<style>
+ body{font:15px/1.5 -apple-system,system-ui,sans-serif;margin:0;padding:16px;background:#fafafa;color:#1a1a1a;max-width:760px}
+ h1{font-size:20px;margin:8px 0 4px} h2{font-size:16px;margin:22px 0 6px}
+ .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin:8px 0 14px}
+ .slot{background:#fff;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:13px}
+ .slot b{display:block;font-size:11px;text-transform:uppercase;color:#666;letter-spacing:.04em}
+ .you{background:#fff6c2;border-color:#e6c200}
+ .box{background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 12px;margin:8px 0}
+ .view{background:#f3efff;border-color:#b9a8ef}
+ .tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:9px;background:#eee;margin-right:4px;white-space:nowrap}
+ .ci{background:#d9f2e1}.bs{background:#e8eefc}.nc{background:#fde2e1}
+ pre,code{font:12.5px ui-monospace,Menlo,monospace} pre{background:#f1f1f1;padding:8px;border-radius:6px;overflow-x:auto;white-space:pre-wrap}
+ table{border-collapse:collapse;width:100%;font-size:13px} td,th{border:1px solid #ddd;padding:4px 6px;text-align:left;vertical-align:top}
+ .choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}
+ .choices div{border:1px solid #ccc;border-radius:6px;padding:8px;background:#fff}
+ .choices .rec{border:2px solid #0a6b2e}
+ ul,ol{padding-left:20px}
+</style></head><body>
+
+<div class="strip">
+ <div class="slot"><b>Status</b>Ship (Stop 2). PR <a href="https://github.com/Natenc12/pipeline-lab/pull/15">#15</a> ready for review, CI green, up to date with main. Not merged.</div>
+ <div class="slot you"><b>From you</b>Merge, Change or Hold.</div>
+ <div class="slot"><b>Risk</b>risk:medium (set by CI). No <code>owner-ok</code> needed. Builder agrees: low in practice.</div>
+ <div class="slot"><b>Updated</b>2026-11-20, run A-T1</div>
+</div>
+
+<h1>#1: Question list page 2 repeated the last question of page 1</h1>
+
+<h2>Refresher</h2>
+<div class="box">
+ <p><b>Problem.</b> When a teacher paged through a class's questions, page 2 began with the question that ended page 1, so one question appeared twice and the pages did not add up to the question count. The page offset was computed one row short, and only page 1 escaped because it was clamped at zero.</p>
+ <p><b>Solution.</b> One line in <code>src/lab/questions.py</code>: the offset is now <code>(page - 1) * per_page</code> instead of <code>max((page - 1) * per_page - 1, 0)</code>. Two new tests lock it in, including with hidden questions.</p>
+ <table>
+  <tr><th>7 questions, 3 per page (CLI <code>list 1 --per-page 3</code>)</th><th>Page 1</th><th>Page 2</th><th>Page 3</th><th>Page 4</th></tr>
+  <tr><td>Before</td><td>1 2 3</td><td><b>3</b> 4 5</td><td>6 7</td><td>(empty)</td></tr>
+  <tr><td>After</td><td>1 2 3</td><td>4 5 6</td><td>7</td><td>(empty)</td></tr>
+ </table>
+ <p style="font-size:13px"><span class="tag bs">Builder says</span> both rows are from my CLI runs in the sandbox.</p>
+ <p><b>What you chose at the plan:</b> approved as planned; <b>skip</b> the independent review agent (not required for this file).</p>
+</div>
+
+<h2>The four answers</h2>
+<table>
+ <tr><td><b>Did the reviewer flag anything?</b></td><td>No reviewer was run; you chose to skip it at Stop 1.</td></tr>
+ <tr><td><b>What was built?</b></td><td>A one-line offset fix and two tests. 2 files, +23 / &minus;1.</td></tr>
+ <tr><td><b>Worth looking at?</b></td><td>Only if you want to: the diff is one line plus tests. The plan-page correction below is worth 10 seconds.</td></tr>
+ <tr><td><b>Dangerous or easy?</b></td><td>Easy. No schema, signature, CLI or ordering change; one caller (the CLI) gets correct pages.</td></tr>
+</table>
+
+<div class="choices" style="margin-top:10px">
+ <div class="rec"><b>Merge</b> (recommended). Then I would merge #15 on your word; #1 closes from "Fixes #1". (Not done in this run.)</div>
+ <div><b>Change</b>. Then I make the change, re-run CI, update this page and stop again.</div>
+ <div><b>Hold</b>. Then the PR stays open as it is.</div>
+</div>
+
+<h2>Correction: you approved a "Today" table that was partly wrong</h2>
+<div class="box">
+ <p>The plan page (and the ticket) said every later page also starts with the last question of the page before (today: page 3 = 5 6 7, page 4 = 7). Reproducing it in the sandbox showed that is not so: only the page 1 &rarr; 2 boundary repeats. Pages from 2 on are each shifted back by one, so they line up with each other; today's pages were 3, 3, 2 and page 4 already empty. The cause and the fix are exactly as planned. <span class="tag bs">Builder says</span></p>
+</div>
+
+<h2>The facts: <code>gh pr checks 15</code> (unedited)</h2>
+<pre>risk-gate	pass	8s	https://github.com/Natenc12/pipeline-lab/actions/runs/44808758213/job/136539548861
+ruff + pytest (lab)	pass	13s	https://github.com/Natenc12/pipeline-lab/actions/runs/44808758237/job/136539549039	</pre>
+<p style="font-size:13px">Head <code>8f2a257</code>, label <code>risk:medium</code>, GitHub merge state CLEAN. <code>gh pr update-branch</code>: already up to date (main is still <code>92495e0</code>).</p>
+
+<div class="box view">
+ <b>Builder's view</b>
+ <p>I agree with the rules' medium. The change is to how one read-only query is paged; nothing writes data and nothing else calls <code>list_questions</code> besides the CLI. I would call it low in practice, but the rules are right not to treat <code>src/</code> as low.</p>
+</div>
+
+<h2>Evidence against "Done when"</h2>
+<table>
+ <tr><th>Check</th><th>Result</th><th>Who checked</th></tr>
+ <tr><td>7 visible, <code>per_page=3</code>: pages 1–3 give 3, 3, 1, together every question once in order; page 4 empty</td><td>Pass: <code>test_pages_cover_every_question_exactly_once</code></td><td><span class="tag ci">CI</span></td></tr>
+ <tr><td>Hidden questions skipped and do not shift pages</td><td>Pass: <code>test_hidden_questions_do_not_shift_pages</code> (9 asked, 2nd and 5th hidden, so one hidden in each of the first two pages' ranges) plus the existing hidden test</td><td><span class="tag ci">CI</span></td></tr>
+ <tr><td><code>page &lt; 1</code>, <code>per_page &lt; 1</code> raise <code>ValueError</code></td><td>Pass: existing <code>test_bad_page_arguments</code>; that code is untouched</td><td><span class="tag ci">CI</span></td></tr>
+ <tr><td>New test fails on today's code, passes with the fix</td><td>I ran both new tests before the fix: both failed (<code>[3, 3, 2] != [3, 3, 1]</code>); after the fix both pass</td><td><span class="tag bs">Builder says</span> (CI only ran the fixed code)</td></tr>
+ <tr><td>All existing tests pass; ruff check, ruff format --check clean; migrations twice</td><td>105 passed (baseline before the edit: 103 passed)</td><td><span class="tag ci">CI</span></td></tr>
+ <tr><td>CI green</td><td>Both checks pass</td><td><span class="tag ci">CI</span></td></tr>
+ <tr><td>CLI before/after (table at top)</td><td>As shown</td><td><span class="tag bs">Builder says</span></td></tr>
+</table>
+
+<h2>Reviewer findings</h2>
+<p>None: no review agent was run (your choice at Stop 1).</p>
+
+<h2>Calls made without you</h2>
+<ul>
+ <li>Hidden-question test layout: 9 questions with the 2nd and 5th hidden, so a slot-taking bug would show on both pages 1 and 2. <span class="tag">Low stakes</span></li>
+ <li>Two commits (tests first, then the fix) instead of one, so the failing test is visible in history. <span class="tag">Low stakes</span></li>
+ <li>Correcting the ticket's "each later page" wording only on this page, not on the issue (no outward comment). <span class="tag">Low stakes</span></li>
+</ul>
+
+<h2>Not checked</h2>
+<ul>
+ <li>No independent reviewer reproduced anything (skipped by choice).</li>
+ <li>CI does not show the new tests failing on old code; that is only my run.</li>
+ <li>No new test for <code>per_page</code> larger than the whole list beyond the existing <code>test_first_page</code> / past-the-end tests.</li>
+ <li>Large classes (thousands of questions) were not tried; the query itself is unchanged.</li>
+</ul>
+
+<h2>Files worth reading</h2>
+<ol>
+ <li><code>src/lab/questions.py</code> (line 67, the one changed line)</li>
+ <li><code>tests/test_questions.py</code> (the two new tests at the end)</li>
+</ol>
+
+<h2>Undo</h2>
+<ul>
+ <li>Before merge: <code>gh pr close 15 --repo Natenc12/pipeline-lab --delete-branch</code> and <code>gh issue edit 1 --repo Natenc12/pipeline-lab --remove-label in-progress</code>.</li>
+ <li>After merge: <code>git revert -m 1 &lt;merge commit&gt;</code> on a branch, PR it. No data or schema to roll back.</li>
+</ul>
+
+</body></html>
