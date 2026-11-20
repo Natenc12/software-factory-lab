@@ -1,0 +1,30 @@
+diff --git a/src/lab/ask.py b/src/lab/ask.py
+index 39cbf71..8b5d92c 100644
+--- a/src/lab/ask.py
++++ b/src/lab/ask.py
+@@ -18,6 +18,13 @@ from lab.questions import get_question
+ 
+ ANSWER_JOB = "answer"
+ 
++_cache: dict[str, str] = {}
++
++
++def clear_answer_cache() -> None:
++    """Forget every cached answer."""
++    _cache.clear()
++
+ 
+ def answer(conn: sqlite3.Connection, question_id: int, provider: Provider | None = None) -> Answer:
+     """Answer a question from its class's material and store the answer (replacing any old one)."""
+@@ -26,7 +33,10 @@ def answer(conn: sqlite3.Connection, question_id: int, provider: Provider | None
+     if question.hidden:
+         raise ValueError(f"question {question_id} is hidden")
+     material = get_class(conn, question.class_id).material
+-    body = provider.answer(question.text, material)
++    body = _cache.get(question.text)
++    if body is None:
++        body = provider.answer(question.text, material)
++        _cache[question.text] = body
+     conn.execute(
+         """
+         insert into answers (question_id, body, provider, created_at) values (?, ?, ?, ?)

@@ -1,0 +1,68 @@
+diff --git a/migrations/0003_last_seen.sql b/migrations/0003_last_seen.sql
+new file mode 100644
+index 0000000..27afe37
+--- /dev/null
++++ b/migrations/0003_last_seen.sql
+@@ -0,0 +1,6 @@
++-- When each student last asked a question (the latest asked_at, hidden questions included).
++
++alter table students add column last_seen text;
++
++update students
++set last_seen = (select max(q.asked_at) from questions q where q.student_id = students.id);
+diff --git a/src/lab/models.py b/src/lab/models.py
+index 494a4a6..e654f7a 100644
+--- a/src/lab/models.py
++++ b/src/lab/models.py
+@@ -24,10 +24,11 @@ class Student:
+     class_id: int
+     name: str
+     created_at: str
++    last_seen: str | None = None
+ 
+     @classmethod
+     def from_row(cls, row: sqlite3.Row) -> Student:
+-        return cls(row["id"], row["class_id"], row["name"], row["created_at"])
++        return cls(row["id"], row["class_id"], row["name"], row["created_at"], row["last_seen"])
+ 
+ 
+ @dataclass(frozen=True)
+diff --git a/src/lab/questions.py b/src/lab/questions.py
+index 7838628..883e018 100644
+--- a/src/lab/questions.py
++++ b/src/lab/questions.py
+@@ -23,9 +23,14 @@ def ask_question(
+     text = text.strip()
+     if not text:
+         raise ValueError("a question needs some text")
++    asked_at = asked_at or now()
+     cur = conn.execute(
+         "insert into questions (class_id, student_id, text, asked_at) values (?, ?, ?, ?)",
+-        (class_id, student_id, text, asked_at or now()),
++        (class_id, student_id, text, asked_at),
++    )
++    conn.execute(
++        "update students set last_seen = ? where id = ? and (last_seen is null or last_seen < ?)",
++        (asked_at, student_id, asked_at),
+     )
+     conn.commit()
+     return get_question(conn, cur.lastrowid)
+diff --git a/tests/test_last_seen.py b/tests/test_last_seen.py
+new file mode 100644
+index 0000000..7b170cd
+--- /dev/null
++++ b/tests/test_last_seen.py
+@@ -0,0 +1,13 @@
++from lab import classes, questions
++
++
++def test_new_student_has_no_last_seen(conn, biology):
++    _, ada, _ = biology
++    assert ada.last_seen is None
++
++
++def test_last_seen_moves_forward_only(conn, biology):
++    klass, ada, _ = biology
++    questions.ask_question(conn, klass.id, ada.id, "One?", "2026-03-04T10:00:00")
++    questions.ask_question(conn, klass.id, ada.id, "Two?", "2026-02-01T10:00:00")
++    assert classes.get_student(conn, ada.id).last_seen == "2026-03-04T10:00:00"

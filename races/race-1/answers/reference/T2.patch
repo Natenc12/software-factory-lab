@@ -1,0 +1,75 @@
+diff --git a/src/lab/export.py b/src/lab/export.py
+new file mode 100644
+index 0000000..167bc34
+--- /dev/null
++++ b/src/lab/export.py
+@@ -0,0 +1,32 @@
++"""Exporting a class's questions for use in a spreadsheet."""
++
++from __future__ import annotations
++
++import csv
++import io
++import sqlite3
++
++from lab.classes import get_class
++
++HEADER = ["question_id", "student", "asked_at", "question", "answer"]
++
++
++def export_class_questions(conn: sqlite3.Connection, class_id: int) -> str:
++    """The class's visible questions as CSV text, oldest first, with each one's answer if any."""
++    get_class(conn, class_id)
++    rows = conn.execute(
++        """
++        select q.id, s.name, q.asked_at, q.text, coalesce(a.body, '') as answer
++        from questions q
++        join students s on s.id = q.student_id
++        left join answers a on a.question_id = q.id
++        where q.class_id = ? and q.hidden = 0
++        order by q.id
++        """,
++        (class_id,),
++    ).fetchall()
++    buf = io.StringIO()
++    writer = csv.writer(buf, lineterminator="\n")
++    writer.writerow(HEADER)
++    writer.writerows(tuple(row) for row in rows)
++    return buf.getvalue()
+diff --git a/tests/test_export.py b/tests/test_export.py
+new file mode 100644
+index 0000000..5725009
+--- /dev/null
++++ b/tests/test_export.py
+@@ -0,0 +1,31 @@
++import pytest
++
++from lab import ask, questions
++from lab.export import export_class_questions
++
++HEADER = "question_id,student,asked_at,question,answer\n"
++
++
++def test_empty_class_is_header_only(conn, biology):
++    klass, _, _ = biology
++    assert export_class_questions(conn, klass.id) == HEADER
++
++
++def test_rows_quoting_and_hidden(conn, biology):
++    klass, ada, ben = biology
++    q1 = questions.ask_question(conn, klass.id, ada.id, "What is DNA?", "2026-03-01T09:00:00")
++    q2 = questions.ask_question(conn, klass.id, ben.id, "Why, though?", "2026-03-01T09:05:00")
++    gone = questions.ask_question(conn, klass.id, ben.id, "Hidden?", "2026-03-01T09:15:00")
++    ask.answer(conn, q1.id)
++    questions.hide_question(conn, gone.id)
++    assert export_class_questions(conn, klass.id) == (
++        HEADER
++        + f"{q1.id},Ada,2026-03-01T09:00:00,What is DNA?,"
++        + "From the class material: DNA carries genetic information.\n"
++        + f'{q2.id},Ben,2026-03-01T09:05:00,"Why, though?",\n'
++    )
++
++
++def test_unknown_class(conn):
++    with pytest.raises(LookupError):
++        export_class_questions(conn, 999)

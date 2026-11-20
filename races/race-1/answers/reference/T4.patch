@@ -1,0 +1,35 @@
+diff --git a/src/lab/summary.py b/src/lab/summary.py
+index a9f6788..3e8355a 100644
+--- a/src/lab/summary.py
++++ b/src/lab/summary.py
+@@ -17,7 +17,7 @@ def class_summary(conn: sqlite3.Connection, class_id: int) -> dict:
+     """
+     klass = get_class(conn, class_id)
+     total = conn.execute(
+-        "select count(*) from questions where class_id = ?", (class_id,)
++        "select count(*) from questions where class_id = ? and hidden = 0", (class_id,)
+     ).fetchone()[0]
+     answered = conn.execute(
+         "select count(*) from questions q join answers a on a.question_id = q.id"
+diff --git a/tests/test_summary.py b/tests/test_summary.py
+index 15c1926..273994d 100644
+--- a/tests/test_summary.py
++++ b/tests/test_summary.py
+@@ -25,6 +25,17 @@ def test_counts_per_student_and_class(conn, biology):
+     ]
+ 
+ 
++def test_hidden_questions_are_left_out_of_class_totals(conn, biology):
++    klass, ada, _ = biology
++    questions.ask_question(conn, klass.id, ada.id, "What is DNA?")
++    gone = questions.ask_question(conn, klass.id, ada.id, "What is RNA?")
++    ask.answer(conn, gone.id)
++    questions.hide_question(conn, gone.id)
++
++    s = class_summary(conn, klass.id)
++    assert (s["total"], s["answered"], s["unanswered"]) == (1, 0, 1)
++
++
+ def test_other_classes_do_not_leak_in(conn, biology):
+     klass, ada, _ = biology
+     other = classes.create_class(conn, "Art")
