@@ -1,0 +1,2 @@
+risk-gate	fail	6s	https://github.com/Natenc12/pipeline-lab/actions/runs/44813163343/job/136554628460	
+ruff + pytest (lab)	pass	11s	https://github.com/Natenc12/pipeline-lab/actions/runs/44813163732/job/136554629096	

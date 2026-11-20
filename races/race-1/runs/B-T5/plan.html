@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#10 contract amendment</title>
+<style>
+  body { font: 15px/1.5 -apple-system, system-ui, sans-serif; margin: 0; padding: 16px; color: #1d1d1f; background: #fafafa; max-width: 820px; }
+  h1 { font-size: 20px; margin: 4px 0 12px; }
+  h2 { font-size: 17px; margin: 24px 0 8px; }
+  .strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 16px; }
+  .slot { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; }
+  .slot b { display: block; font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: .03em; }
+  .slot.you { background: #fff6c2; border-color: #e6cf3a; }
+  .card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+  .opt { border-left: 4px solid #ccc; padding: 6px 10px; margin: 10px 0; background: #f6f6f6; border-radius: 0 6px 6px 0; }
+  .opt.rec { border-left-color: #2e8b57; background: #eef8f1; }
+  code, pre { font: 13px/1.4 ui-monospace, Menlo, monospace; }
+  pre { background: #f0f0f0; padding: 8px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
+  .bad { color: #b00020; } .good { color: #1e7a3c; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  td, th { border: 1px solid #ddd; padding: 6px; vertical-align: top; text-align: left; }
+  .tag { font-size: 12px; background: #eee; border-radius: 4px; padding: 1px 6px; }
+</style>
+</head>
+<body>
+
+<div class="strip">
+  <div class="slot"><b>Status</b>Answered 2026-11-20: you chose a per-class key (class + text, used only while the material is unchanged). Recorded in contract.md. Now at Ship: see brief.html.</div>
+  <div class="slot you"><b>From you</b>Nothing on this page.</div>
+  <div class="slot"><b>Risk</b>High: <code>src/lab/ask.py</code> matches <code>high src/lab/ask*</code> (answer logic). The PR will need your <code>owner-ok</code> label.</div>
+  <div class="slot"><b>Updated</b>2026-11-20</div>
+</div>
+
+<h1>#10 Cache answers by question text: the contract contradicts itself</h1>
+<p>This ticket <b>ends in a pull request</b>. I checked the contract against <code>origin/main</code>. One Decision clashes with two Must not change lines. Building it as written would give students <b>the wrong class's answer</b>.</p>
+
+<h2>The problem</h2>
+<div class="card">
+  <p><b>Decision:</b> "The cache key is the question text exactly as stored."<br>
+  <b>Must not change:</b> "For any question, <code>answer()</code> returns the same answer body it would return without the cache" and "Every existing test passes unchanged."</p>
+  <p>The answer doesn't depend on the text alone. <code>answer()</code> passes the provider the text <b>and the class's material</b> (<code>src/lab/ask.py</code>: <code>provider.answer(question.text, material)</code>), plus whichever provider was passed in. The module's own docstring says it: "the same words asked in two classes can get two different answers." A cache keyed by text alone ignores the material and the provider.</p>
+  <p>I played the contract as written against a copy of <code>main</code> <span class="tag">Builder says</span> (script: <code>runs/B-T5/scratch/repro_textonly.py</code>):</p>
+  <pre>1) same text, two classes ("Where does energy come from?")
+   Biology: From the class material: Mitochondria produce energy for the cell.
+   Cooking: From the class material: Mitochondria produce energy for the cell.
+            <span class="bad">without the cache: ... Energy for a long day comes from oats.</span>
+2) teacher changes the material with set_material, question answered again
+   answer(): From the class material: DNA carries genetic information.
+            <span class="bad">without the cache: ... Genes carry genetic information too.</span></pre>
+  <p>These two cases are existing tests, and both would fail: <code>test_same_question_in_two_classes_gets_each_class_answer</code> and <code>test_answering_again_replaces_the_answer</code> in <code>tests/test_ask.py</code>. A provider passed in (like the <code>Echo</code> one in <code>test_answer_uses_given_provider</code>) would also get back another provider's cached answer, stored under its own name.</p>
+</div>
+
+<h2>Decision: what is the cache keyed by?</h2>
+<div class="card">
+  <div class="opt rec">
+    <b>A. Recommended: key = provider name + the class's material + the question text exactly as stored.</b><br>
+    A hit happens only when the provider would get exactly the same inputs, so the answer is always the one it would give anyway. Still no normalising, no table, nothing outside <code>ask.py</code>.<br>
+    <i>Before (contract as written):</i> Cora in Cooking asks "Where does energy come from?" after Ada asked it in Biology and gets <span class="bad">"Mitochondria produce energy…"</span>.<br>
+    <i>After:</i> Cora's question misses the cache and gets <span class="good">"Energy for a long day comes from oats."</span> Ben in Biology asking Ada's "What is DNA?" still hits, with no provider call (your first Example of done is unchanged). After <code>set_material</code> the material differs, so the next answer is fresh with no extra code.<br>
+    <i>Then:</i> I record the amended Decision and Scope In line in <code>contract.md</code>, build it, and every Example of done and Must not change line stays as you signed it.
+  </div>
+  <div class="opt">
+    <b>B. Key = class id + question text, and clear the cache when material changes.</b><br>
+    <i>Before/after for Cora:</i> same fix as A. But stale answers after <code>set_material</code> are only avoided if <code>src/lab/classes.py</code> clears the cache, which is <b>outside Scope In</b>. And a provider passed in still gets another provider's answer unless the key also includes the provider.<br>
+    <i>Then:</i> the amendment also adds <code>classes.py</code> to Scope In. More moving parts for the same result as A.
+  </div>
+  <div class="opt">
+    <b>C. Keep the text-only key, and loosen Must not change.</b><br>
+    <i>After:</i> Cora gets Biology's "Mitochondria…" answer. Fixing that would mean dropping "same answer body as without the cache" and rewriting the two existing tests.<br>
+    <i>Then:</i> I'd need you to rewrite those Must not change lines. Not recommended: the cache would give wrong answers.
+  </div>
+</div>
+
+<h2>Amended lines if you pick A</h2>
+<table>
+  <tr><th>Line</th><th>Now</th><th>Proposed</th></tr>
+  <tr><td>Decisions, 1st</td><td>The cache key is the question text exactly as stored (<code>ask_question</code> already strips spaces). No lower-casing or other normalising.</td><td>The cache key is (provider name, the class's material, the question text exactly as stored). No lower-casing or other normalising of the text.</td></tr>
+  <tr><td>Scope In, 1st</td><td>An in-memory cache in <code>src/lab/ask.py</code>, keyed by question text: …</td><td>An in-memory cache in <code>src/lab/ask.py</code>, keyed by provider name, class material and question text: <code>answer()</code> looks the key up before calling the provider and stores the provider's answer on a miss.</td></tr>
+</table>
+<p>Everything else stays word for word: the Examples of done, all Must not change lines, Scope Out, and the other three Decisions.</p>
+
+<h2>Defaults I'll use unless you say otherwise (low stakes)</h2>
+<ul>
+  <li>The cache stores a fingerprint (SHA-256) of the material, not the material itself, so a long course text isn't copied into every entry.</li>
+  <li>The hidden check and missing-question check run before the cache lookup, so refusals behave exactly as today.</li>
+  <li>An autouse fixture in <code>tests/conftest.py</code> calls <code>clear_answer_cache()</code> before each test, so one test's cache can't affect another. The existing test functions stay unchanged.</li>
+  <li>"Same answer body" means the same body for the same inputs. A real model that varies between calls will give the cached body on a hit. That's the point of the ticket.</li>
+</ul>
+
+</body>
+</html>

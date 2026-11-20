@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Answer cache plan</title>
+<style>
+  :root { --ink:#1d2228; --muted:#5b6570; --line:#d9dee3; --bg:#ffffff; --panel:#f5f7f9; --yellow:#fff4c2; --yellowline:#e6c84f; --red:#fdecea; --redline:#d9534f; --green:#e9f6ec; --greenline:#3c9a5f; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--ink); font:15px/1.5 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; max-width:820px; }
+  h1 { font-size:21px; margin:6px 0 4px; }
+  h2 { font-size:17px; margin:26px 0 8px; border-bottom:1px solid var(--line); padding-bottom:4px; }
+  h3 { font-size:15px; margin:14px 0 6px; }
+  .strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-bottom:14px; }
+  .slot { border:1px solid var(--line); border-radius:6px; padding:6px 8px; background:var(--panel); font-size:13px; }
+  .slot b { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .slot.you { background:var(--yellow); border-color:var(--yellowline); }
+  @media (max-width:560px) { .strip { grid-template-columns:1fr 1fr; } }
+  .stages { display:flex; flex-wrap:wrap; gap:4px; font-size:12px; margin:4px 0 12px; }
+  .stages span { padding:2px 8px; border-radius:10px; background:var(--panel); border:1px solid var(--line); }
+  .stages span.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .card { border:1px solid var(--line); border-radius:8px; padding:12px; margin:10px 0; }
+  .card.warn { background:var(--red); border-color:var(--redline); }
+  .opt { border:1px solid var(--line); border-radius:6px; padding:10px; margin:8px 0; background:#fff; }
+  .opt.rec { border:2px solid var(--greenline); background:var(--green); }
+  .tag { display:inline-block; font-size:11px; padding:1px 6px; border-radius:8px; background:var(--panel); border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
+  code, pre { font-family: ui-monospace, Menlo, monospace; font-size:13px; }
+  pre { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:8px; overflow-x:auto; white-space:pre-wrap; word-break:break-word; }
+  ul { padding-left:20px; }
+  li { margin:3px 0; }
+  .muted { color:var(--muted); font-size:13px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  td, th { border:1px solid var(--line); padding:5px 6px; text-align:left; vertical-align:top; }
+</style>
+</head>
+<body>
+
+<div class="strip">
+  <div class="slot"><b>Status</b>Plan ready; nothing built</div>
+  <div class="slot you"><b>From you</b>Pick the cache key (A or B), then "go"</div>
+  <div class="slot"><b>Risk</b>High: touches <code>src/lab/ask.py</code></div>
+  <div class="slot"><b>Updated</b>2026-11-20</div>
+</div>
+
+<div class="stages"><span>Intake</span><span class="on">Plan</span><span>Build</span><span>Prove</span><span>Ship</span></div>
+
+<h1>#9: Cache answers by question text</h1>
+<p><b>This ends in a pull request</b> (a build, not a spike). Nothing gets merged without your word, and the PR will also need your <code>owner-ok</code> label because <code>src/lab/ask*</code> is a high-risk path.</p>
+
+<h2>The ticket, in short</h2>
+<p><code>answer()</code> calls the provider every time, even for a question we answered a minute ago. Add an in-memory cache in <code>src/lab/ask.py</code> so a repeat skips the provider, plus <code>clear_answer_cache()</code> and tests. Out of scope: a cache table or migration, expiry or size limits, cache code in the job queue, provider changes, normalising text.</p>
+<p class="muted">Ticket claims I checked against <code>origin/main</code> (Builder says): <code>answer(conn, question_id, provider=None)</code> exists as described; <code>ask_question</code> strips spaces; the queue path <code>answer_pending</code> calls <code>answer()</code>; no open PR touches <code>ask.py</code>.</p>
+
+<h2>One problem with the ticket as written</h2>
+<div class="card warn">
+  <p><b>Keying by question text alone gives wrong answers, and breaks two tests the ticket says must keep passing.</b> <span class="tag">Builder says: read from the code, not yet run</span></p>
+  <p>The answer depends on three things, not one: the question text, <b>the class's material</b>, and the provider. <code>ask.py</code>'s own header says "the same words asked in two classes can get two different answers".</p>
+  <ul>
+    <li><b>Two classes:</b> <code>test_same_question_in_two_classes_gets_each_class_answer</code> asks "Where does energy come from?" in Biology, then in Cooking. With a text-only key, Cooking would get Biology's "Mitochondria produce energy…" instead of "…comes from oats".</li>
+    <li><b>Material edited:</b> <code>test_answering_again_replaces_the_answer</code> changes the class material and re-answers. With a text-only key it would get the old answer back and never see the new material.</li>
+  </ul>
+  <p>So "key = question text exactly" and "every existing test passes" cannot both hold. This needs your call before I build.</p>
+</div>
+
+<h2>Decision: what the cache is keyed on</h2>
+<div class="card">
+  <div class="opt rec">
+    <h3>A. Text + class material + provider name <span class="tag">Recommended</span></h3>
+    <p>Still keyed by the question text exactly as stored (no lower-casing), but a hit also needs the same material and the same provider. That is precisely what the provider sees, so a cached answer is always the answer the provider would have given.</p>
+    <table>
+      <tr><th>Case</th><th>Before</th><th>After</th></tr>
+      <tr><td>Ada and Ben both ask "What is DNA?" in Biology</td><td>2 provider calls</td><td>1 call; both get their own stored answer</td></tr>
+      <tr><td>"Where does energy come from?" in Biology, then Cooking</td><td>Mitochondria / oats</td><td>Mitochondria / oats (2 calls, correct)</td></tr>
+      <tr><td>Teacher edits Biology material, question re-answered</td><td>New answer</td><td>New answer (a miss: material changed)</td></tr>
+    </table>
+    <p>Then: I build it in <code>ask.py</code> only, every existing test stays untouched and passing, and the merge brief says "You approved key = text; I keyed on text + material + provider".</p>
+  </div>
+  <div class="opt">
+    <h3>B. Text only, exactly as the ticket says</h3>
+    <table>
+      <tr><th>Case</th><th>Before</th><th>After</th></tr>
+      <tr><td>Ada and Ben both ask "What is DNA?" in Biology</td><td>2 provider calls</td><td>1 call</td></tr>
+      <tr><td>"Where does energy come from?" in Biology, then Cooking</td><td>Mitochondria / oats</td><td><b>Mitochondria / Mitochondria</b> (wrong class's answer)</td></tr>
+      <tr><td>Teacher edits Biology material, question re-answered</td><td>New answer</td><td><b>Old answer</b> until the process restarts</td></tr>
+    </table>
+    <p>Then: I would have to rewrite the two tests above to expect the wrong answers (or call <code>clear_answer_cache()</code> inside them to hide it). I don't recommend this.</p>
+  </div>
+  <p class="muted">Not offered: keying on text + class id. Editing the material would then serve stale answers unless <code>classes.set_material</code> cleared the cache, which reaches outside <code>ask.py</code> and the ticket's scope.</p>
+</div>
+
+<h2>Defaults I will use (say if any is wrong)</h2>
+<ul>
+  <li>The cache is a module-level dict in <code>src/lab/ask.py</code>; <code>clear_answer_cache()</code> empties it. No table, no migration, no expiry, no size limit.</li>
+  <li>The lookup happens after the hidden/missing checks, so hidden questions still raise exactly as today.</li>
+  <li>On a hit, <code>answer()</code> still writes (or replaces) the <code>answers</code> row with a fresh <code>created_at</code> and the provider's name, and returns it; only the provider call is skipped.</li>
+  <li>A provider error caches nothing (the next try calls the provider again). "Can't find that" answers are cached like any other answer.</li>
+  <li>The queue code is not touched; <code>answer_pending</code> gets the cache through <code>answer()</code>.</li>
+  <li>A shared test fixture in <code>tests/conftest.py</code> clears the cache before every test, so tests never see each other's answers.</li>
+  <li>New tests in <code>tests/test_ask.py</code> with a provider that counts its calls: same text twice = 1 call and 2 stored answers; after <code>clear_answer_cache()</code> = called again; the queue path shares the cache; a hidden question is still refused.</li>
+</ul>
+
+<h2>How it will be proved</h2>
+<ul>
+  <li>CI on a draft PR (ruff, format, migrations twice, all tests). The <code>risk-gate</code> check will stay red until you add <code>owner-ok</code>; I never add it.</li>
+  <li>A fresh reviewer agent (answer logic is a review-required area) writes its own checks from the ticket before reading the diff.</li>
+</ul>
+
+<h2>What I need from you</h2>
+<p><b>Reply "A" (recommended) or "B", and "go".</b> Then I set up the sandbox, claim the ticket with the <code>in-progress</code> label, and start building.</p>
+
+</body>
+</html>

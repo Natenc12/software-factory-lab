@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#10 merge brief</title>
+<style>
+  body { font: 15px/1.5 -apple-system, system-ui, sans-serif; margin: 0; padding: 16px; color: #1d1d1f; background: #fafafa; max-width: 860px; }
+  h1 { font-size: 20px; margin: 4px 0 12px; }
+  h2 { font-size: 17px; margin: 26px 0 8px; }
+  h3 { font-size: 15px; margin: 14px 0 6px; }
+  .strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 16px; }
+  .slot { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; }
+  .slot b { display: block; font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: .03em; }
+  .slot.you { background: #fff6c2; border-color: #e6cf3a; }
+  .card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+  .view { background: #eef3fb; border: 1px solid #b9cbe8; border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; background: #fff; }
+  td, th { border: 1px solid #ddd; padding: 6px; vertical-align: top; text-align: left; }
+  th { background: #f2f2f2; }
+  td.t { text-align: center; font-weight: bold; width: 28px; }
+  .ok { color: #1e7a3c; } .no { color: #b00020; }
+  code, pre { font: 13px/1.4 ui-monospace, Menlo, monospace; word-break: break-word; }
+  pre { background: #f0f0f0; padding: 8px; border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .who { font-size: 12px; background: #e8e8e8; border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+  .opt { border-left: 4px solid #ccc; padding: 6px 10px; margin: 8px 0; background: #f6f6f6; border-radius: 0 6px 6px 0; }
+  .opt.rec { border-left-color: #2e8b57; background: #eef8f1; }
+  .tag { font-size: 12px; border-radius: 4px; padding: 1px 6px; }
+  .ask { background: #fde7c7; } .low { background: #e3efe3; }
+</style>
+</head>
+<body>
+
+<div class="strip">
+  <div class="slot"><b>Status</b>Ship: PR <a href="https://github.com/Natenc12/pipeline-lab/pull/23">#23</a> is ready for review and up to date with main. Tests are green. risk-gate is red until you add <code>owner-ok</code>.</div>
+  <div class="slot you"><b>From you</b>Merge, Change or Hold. To merge you also add the <code>owner-ok</code> label yourself. Agents never add it.</div>
+  <div class="slot"><b>Risk</b>High by the rules (<code>src/lab/ask.py</code> is answer logic). No database, migration or queue change.</div>
+  <div class="slot"><b>Updated</b>2026-11-20, head <code>9b510f1</code></div>
+</div>
+
+<h1>#10 Cache answers per class: merge brief</h1>
+<p>This ticket ends in a pull request. It is built to the contract <b>as you amended it at Stop 1</b>: the cache key is the class plus the question text, and a cached answer is used only while the class's material is unchanged. I made no departures from the contract. One call goes slightly past your amendment's wording: the cached answer is also tied to the provider. It's the first item under "Calls made without you".</p>
+
+<h2>The contract, ticked</h2>
+<p>Who checked: <span class="who">CI</span> = a test in <code>tests/test_answer_cache.py</code> that ran green on GitHub. <span class="who">Reviewer</span> = the independent review agent reproduced it with checks it wrote itself, before it read the diff.</p>
+
+<h3>Examples of done</h3>
+<table>
+<tr><th></th><th>Line</th><th>Who</th><th>Shown by</th></tr>
+<tr><td class="t ok">✓</td><td>Ada asks "What is DNA?": the provider is called once. Ben then asks "What is DNA?": same body, no provider call, and Ben gets his own <code>answers</code> row.</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_example_ada_then_ben_ask_what_is_dna_provider_called_once</code></td></tr>
+<tr><td class="t ok">✓</td><td>Answering the same question twice in a row calls the provider once.</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_example_same_question_twice_in_a_row_calls_provider_once</code></td></tr>
+<tr><td class="t ok">✓</td><td>After <code>clear_answer_cache()</code>, the next <code>answer()</code> for that text calls the provider again.</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_example_after_clear_answer_cache_provider_called_again</code></td></tr>
+<tr><td class="t ok">✓</td><td><i>Amendment:</i> the same text in two classes is answered separately, each from its own class's material.</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_example_same_text_in_two_classes_answered_from_each_class_material</code> (Biology gets "Mitochondria…", Cooking gets "…oats")</td></tr>
+<tr><td class="t ok">✓</td><td><i>Amendment:</i> after <code>set_material</code>, the next answer comes from the new material.</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_example_after_set_material_next_answer_comes_from_new_material</code>. The reviewer also checked material changed back A→B→A, and material changed by direct SQL.</td></tr>
+</table>
+
+<h3>Must not change</h3>
+<table>
+<tr><th></th><th>Line</th><th>Who</th><th>Shown by</th></tr>
+<tr><td class="t ok">✓</td><td>For any question, <code>answer()</code> returns the same body it would without the cache.</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_unchanged_cached_body_equals_the_uncached_body</code> compares each body with the provider called directly. <code>test_a_different_provider_is_not_given_another_providers_cached_answer</code> checks a second provider.</td></tr>
+<tr><td class="t ok">✓</td><td><code>answer()</code>'s signature and the <code>Answer</code> it returns. One <code>answers</code> row per question, replaced when answered again.</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_unchanged_signature_and_return_type</code>, <code>test_unchanged_one_row_per_question_replaced_on_a_hit</code></td></tr>
+<tr><td class="t ok">✓</td><td>Hidden questions are still refused (<code>ValueError</code>). A missing question still raises <code>LookupError</code>.</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_unchanged_hidden_question_refused_even_when_its_text_is_cached</code>. The hidden question is refused even when Ada's identical text is cached, and no row is written.</td></tr>
+<tr><td class="t ok">✓</td><td>Every existing test passes unchanged.</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td>No existing test function was edited. CI ran 115 passed (103 old + 12 new). The reviewer also ran main's own <code>tests/</code>, without the new fixture, against this code: all passed.</td></tr>
+</table>
+
+<h3>Decisions (first line as amended)</h3>
+<table>
+<tr><th></th><th>Line</th><th>Who</th><th>Shown by</th></tr>
+<tr><td class="t ok">✓</td><td>Key = the class + the question text exactly as stored, with no normalising. A cached answer is used only while the class's material is unchanged.</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td>Key <code>(class_id, text)</code>; each entry remembers a fingerprint of the material it was made from (<code>src/lab/ask.py</code>). The reviewer showed that "what is dna?" and "What is DNA" each miss the cache.</td></tr>
+<tr><td class="t ok">✓</td><td>In memory, per process: a module-level dict in <code>src/lab/ask.py</code>. No new table.</td><td><span class="who">Reviewer</span></td><td><code>_answer_cache</code> in <code>ask.py</code>. The diff touches no migration (reviewer read the diff and migrated twice: "nothing to apply").</td></tr>
+<tr><td class="t ok">✓</td><td>On a hit, the <code>answers</code> row is still stored or replaced and returned, exactly as on a miss. Only the provider call is skipped.</td><td><span class="who">CI</span> <span class="who">Reviewer</span></td><td><code>test_example_ada_then_ben…</code>, <code>test_unchanged_one_row_per_question_replaced_on_a_hit</code></td></tr>
+<tr><td class="t ok">✓</td><td><code>lab.ask.clear_answer_cache()</code> empties the cache. Tests call it to start clean.</td><td><span class="who">CI</span></td><td><code>test_example_after_clear…</code>. An autouse fixture in <code>tests/conftest.py</code> calls it around every test.</td></tr>
+</table>
+
+<h3>Scope Out</h3>
+<table>
+<tr><th></th><th>Line</th><th>Who</th><th>Shown by</th></tr>
+<tr><td class="t ok">✓</td><td>No cache table or migration.</td><td><span class="who">Reviewer</span></td><td>Diff: 3 files, <code>src/lab/ask.py</code>, <code>tests/conftest.py</code>, <code>tests/test_answer_cache.py</code></td></tr>
+<tr><td class="t ok">✓</td><td>No cache expiry or size limits.</td><td><span class="who">Reviewer</span></td><td>Diff. The material check isn't time-based expiry: it only stops a stale answer.</td></tr>
+<tr><td class="t ok">✓</td><td>No caching in the job queue code.</td><td><span class="who">Reviewer</span></td><td><code>src/lab/jobs/</code> untouched. Queued answers use the cache through <code>answer()</code> (<code>test_queued_answers_share_the_cache</code>, <span class="who">CI</span>).</td></tr>
+<tr><td class="t ok">✓</td><td>No changes to the provider interface.</td><td><span class="who">Reviewer</span></td><td><code>src/lab/providers/</code> untouched. The cache only reads <code>provider.name</code>, which is already part of the interface.</td></tr>
+<tr><td class="t ok">✓</td><td>No normalising of question text.</td><td><span class="who">Reviewer</span></td><td>The reviewer's case and punctuation check (see Decisions)</td></tr>
+</table>
+
+<h2>Your call</h2>
+<div class="card">
+  <div class="opt rec"><b>Merge (recommended).</b> Add the <code>owner-ok</code> label and reply "merge". risk-gate re-runs green, and then the PR can be merged. <i>Then</i> I stop. This benchmark run never merges, so the PR stays open.</div>
+  <div class="opt"><b>Change.</b> Tell me what to change, for example "drop the provider check" or "store the material itself, not a fingerprint". <i>Then</i> I change it, prove it again, update this page and stop here again.</div>
+  <div class="opt"><b>Hold.</b> The PR stays open as it is. <i>Then</i> I tear down the sandbox (the branch is pushed, so nothing is lost).</div>
+</div>
+
+<h2>Calls made without you</h2>
+<div class="card">
+<ol>
+  <li><span class="tag ask">Should have asked</span> <b>The cached answer is also tied to the provider.</b> Your amendment names the class and the text. I kept that key, but each entry also remembers which provider made it (<code>provider.name</code>). A different provider misses the cache and is called. Without this, <code>answer(conn, q, Echo())</code> after a fake-provider answer would return the fake provider's text stored under "echo". That breaks "same body as without the cache", and only callers who pass a provider are affected. It works exactly like the material check. Say "drop it" if you'd rather not have it.</li>
+  <li><span class="tag low">Low stakes</span> The entry stores a SHA-256 fingerprint of the material, not the material itself, so long course text isn't copied into every entry.</li>
+  <li><span class="tag low">Low stakes</span> <code>tests/conftest.py</code> gets an autouse fixture that empties the cache before and after every test, so tests can't affect each other through the process-wide dict. No existing test function changed.</li>
+  <li><span class="tag low">Low stakes</span> The hidden and missing checks run before the cache lookup, so refusals are exactly as before, and a hidden question never fills the cache.</li>
+  <li><span class="tag low">Low stakes</span> The cache is filled before the <code>answers</code> row is written. If that write failed, the entry would stay, but its body is the provider's real answer for those inputs.</li>
+</ol>
+</div>
+
+<h2>CI checks (unedited)</h2>
+<pre>$ gh pr checks 23 --repo Natenc12/pipeline-lab
+risk-gate	fail	7s	https://github.com/Natenc12/pipeline-lab/actions/runs/44813271972/job/136555002279
+ruff + pytest (lab)	pass	13s	https://github.com/Natenc12/pipeline-lab/actions/runs/44813271802/job/136555001840	</pre>
+<p>The risk-gate log says:</p>
+<pre>risk:high (3 changed files)
+  high    src/lab/ask.py
+  low     tests/conftest.py
+  low     tests/test_answer_cache.py
+##[error]This pull request is risk:high: add the owner-ok label to merge.</pre>
+<p>The ruff + pytest log says "All checks passed!", "24 files already formatted" and "115 passed in 1.07s". <code>gh pr update-branch</code> reported "PR branch already up-to-date".</p>
+
+<div class="view">
+  <b>Builder's view</b>
+  <p>I agree with the rules' <b>high</b>. This changes what <code>answer()</code> does on every call, and a wrong key would quietly give students another class's or a stale answer. That's the bug Stop 1 caught. Within that, it's contained: about 30 lines in one file, no stored data, no migration, no queue change. Undoing it is a plain revert, and restarting the process clears the cache.</p>
+</div>
+
+<h2>Reviewer findings</h2>
+<div class="card">
+  <p><b>Blocking: none.</b> The reviewer's 17 checks are in <code>runs/B-T5/scratch/review/test_review_checks.py</code>. It ran them against main's conftest, without the new fixture: 17 passed. I re-ran them myself: 17 passed <span class="who">Builder says</span>.</p>
+  <p><b>Departures it noted:</b> the provider check (call 1 above), and the new conftest fixture (call 3). It judged both additions, not breaches.</p>
+  <p><b>Non-blocking concerns:</b></p>
+  <ul>
+    <li>Two providers with the same <code>name</code> but different behaviour would share entries. Only the fake provider ships, and it has no settings.</li>
+    <li>No lock on the dict, so two threads could both call the provider for the same question. The bodies stay correct, and the queue runs one worker.</li>
+    <li>The cache is written before the database insert (call 5).</li>
+  </ul>
+  <p><b>It also checked and found fine:</b> two databases in one process (class ids collide, but the material check keeps answers correct), a <code>set_material</code> from another process (material is re-read on every call), a failing provider (nothing cached), and the queue path (one provider call for two queued copies).</p>
+</div>
+
+<h2>Not checked</h2>
+<ul>
+  <li>A real (non-fake) model provider. Only the fake one exists in this repo.</li>
+  <li>Memory growth in a long-running process. There is no size limit, and Scope Out excludes one.</li>
+  <li>Concurrent threads calling <code>answer()</code>, beyond the reviewer's reasoning above.</li>
+  <li>The app end to end through the CLI. It reaches <code>answer()</code>, which is fully tested, but I didn't drive it.</li>
+  <li>risk-gate passing after <code>owner-ok</code> is added. Agents don't add the label.</li>
+</ul>
+
+<h2>Files worth reading</h2>
+<ol>
+  <li><code>src/lab/ask.py</code>: the cache, <code>clear_answer_cache()</code>, and the hit/miss branch in <code>answer()</code>.</li>
+  <li><code>tests/test_answer_cache.py</code>: one test per contract line, named after it.</li>
+  <li><code>tests/conftest.py</code>: the autouse fixture (9 lines).</li>
+</ol>
+
+<h2>Undo</h2>
+<ul>
+  <li><b>Before merge:</b> <code>gh pr close 23 --repo Natenc12/pipeline-lab --delete-branch</code></li>
+  <li><b>After merge:</b> <code>git revert -m 1 &lt;merge commit&gt;</code> on a branch, then open a PR. No data, table or migration to undo. The cache lives only in memory and empties when the process restarts.</li>
+</ul>
+
+</body>
+</html>
