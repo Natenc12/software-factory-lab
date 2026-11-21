@@ -1,0 +1,11 @@
+{
+  "id": "T5",
+  "kind": "vague",
+  "title": "Stop one owner from creating two classes with the same name",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T5",
+  "s3_base_ref": "base/T5-s3",
+  "db": "postgres",
+  "deliverable": "pull_request",
+  "spec_words": {"S0": 0, "S1": 0, "S2": 0, "S3": 0}
+}
