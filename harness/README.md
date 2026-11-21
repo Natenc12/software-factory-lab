@@ -1,3 +1,48 @@
 # Harness
 
-Run launcher, sandbox scripts and cost log. `charter_export.py` turns a saved read of the charter doc into `CHARTER.md`.
+Starts each run as its own headless Claude Code session, in its own sandbox, and records what it cost.
+Python 3.11+, standard library only; needs `claude`, `git`, `gh`, and `psql` for Postgres runs.
+
+| Command | What it does |
+| --- | --- |
+| `python3 -m harness.stage <plan.json>` | Runs a whole stage, 4 at a time, inside a token budget. Safe to re-invoke |
+| `python3 -m harness.run <run-id> --stage ... --ticket ... --repo ... --base ... --model ... --ceiling ...` | Starts or continues one run (`--help` lists every option) |
+| `python3 -m harness.scan <run folder>` | Leak scan of a run's transcript; writes `scan.json` |
+| `python3 -m harness.sandbox down <run folder> [--all]` | Drops the run's database, removes its files |
+
+`SMOKE.md` has the two smoke-run commands. `TRIALS.md` records the real calls that confirmed the CLI
+flags, the clean room and resume.
+
+## How a run works
+
+1. **Sandbox** at `~/factory-runs/<stage>/<run-id>/` (`sandbox.py`): `repo/` holds only the base ref's
+   history on branch `<run-id>/work`, with no remote; `scratch/`, `TICKET.md`, `arm/`, and an SQLite
+   file (`db/lab.db`, as `LAB_DB` and `DATABASE_URL`) or a Postgres database `run_<run_id>` with
+   `vector` (as `DATABASE_URL`). Records and controls live in `harness/`, which the run cannot touch.
+2. **Clean room** (`run.py`): `--setting-sources ""` (no user, project or local settings, so no user
+   skills, hooks, plugins or output style), `--disable-slash-commands`, `--strict-mcp-config`,
+   `--tools` with a fixed list, `--permission-mode dontAsk`, auto-memory off, and a minimal
+   environment. The arm's instruction files are appended to the system prompt; an arm's
+   `agents/*.md` become `--agents`.
+3. **Fence**: the run's own `settings.json` holds deny rules and a PreToolUse hook (`guard.py`) that
+   blocks web tools, `gh`, `curl`, `git fetch/pull/clone/ls-remote/remote/push`, and any path outside
+   the sandbox in this repo, `~/repos`, `~/.claude`, other runs, or anything named `answers` or
+   `hidden`. GitHub is reachable only through `lab` (`lab.py`): ticket, open or update this run's one
+   pull request, and its checks. `lab` never merges, labels or comments.
+4. **Stop and reply** (`owner.py`): a turn ending in a `STOP:` line is saved with its page, stripped of
+   the arm's name and run id, and given to a reply judge (`claude -p`, no tools) with the reply sheet.
+   The judge's reply id picks the exact text sent back with `--resume`. Every reply goes to
+   `owner-log.jsonl`. At most 6 stops by default.
+5. **Ceiling and records** (`stream.py`): usage is read live from the stream; the run is stopped when
+   counted tokens (input + output + cache write) pass its ceiling. `run.json` holds the status
+   (`finished`, `ceiling_hit`, `harness_fault`, `plan_limit`), the four token counts, CLI-reported cost,
+   wall time, turns, stops, session id, branch, PR number and both commits.
+
+## Known limits
+
+- The guard reads command text. A determined run could still reach the network from inside a program
+  (for example Python's `urllib`). The leak scan catches the obvious cases; Claude Code's OS sandbox
+  (`sandbox` in settings) is the stronger wall and is the next thing to add once its network list for
+  PyPI and Postgres is trialled.
+- Live counts use the usage on each streamed message, which under-counts output until the call ends;
+  the final figures come from the result record.
