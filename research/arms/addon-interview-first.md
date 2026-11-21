@@ -3,7 +3,15 @@
 **Tests:** Q6, since it moves the owner's attention to the start, like a better spec. Also Q2.
 **Added to:** P0 in stage 1, as a cheap comparison with spec levels S2 and S3. Then to the best process arm in stage 2 if P0+Interview looks promising.
 
-## Why
+## Current-model evidence
+
+- **Confirmed for other labs:** GPT-5.5, Gemini 3.1 Pro and Grok 4.5 asked only 15–32% of the questions they needed when left to decide ([CONTRA](https://arxiv.org/abs/2610.01769), Oct 2026). Missing requirements cost GPT-5.6-class models 53–67 points of success, and plan mode didn't help ([Instructions are evidence](https://arxiv.org/abs/2610.17757), Oct 2026).
+- **Mixed on the fix:** in CONTRA, better question choice raised pass rates only +0.6 to +1.2 points.
+- **No current Claude evidence.** Anthropic says Fable 5.2 produces good results "from even ambiguous requests" ([Anthropic](https://www.anthropic.com/news/claude-fable-5-2-mythos-5-2), Nov 2026), a vendor claim.
+
+So this add-on is a **prediction this experiment tests**: a forced question round reduces guessing on the vague and flawed tickets at lower attention than a full spec. The large gains below are from older models.
+
+## Why (old-model evidence: Claude Sonnet 3.5/4, 2025)
 
 On vague versions of real GitHub issues, models "do not interact without an explicit prompt". Forcing a question round before work improved results by up to 74%, and Claude Sonnet 4 then reached 89% of its full-spec score. With strong prompting Sonnet 4 spotted vague tasks with 0.89 accuracy and 3% false alarms. With neutral prompting it missed 44% of them. ([Ambig-SWE](https://arxiv.org/html/2502.13069v3), read 2026-11-21.) The charter's vague ticket checks this behaviour ("guessing instead of asking").
 

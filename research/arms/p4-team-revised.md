@@ -2,7 +2,12 @@
 
 **Tests:** Q4. **This replaces the charter's P4. It does not add an arm.**
 
-## Why change P4
+## Current-model evidence
+
+- **Single writer: confirmed on Opus 5.** In Claude Code with Opus 5, letting the main agent spawn parallel sub-agents cut SWE-bench Verified from 83% to 59%. It helped only on the longest tasks and cost 1.4–3.3× the tokens ([sub-agents in parallel](https://arxiv.org/abs/2610.10263), Oct 2026; setups chosen Jul 2026). Independent validation was one of the cases where parallel agents helped.
+- **Blind tester, fresh reviewer, dropping the architect: no current evidence.** These rest on older models (below). They are design choices this arm tests, not findings.
+
+## Why change P4 (mostly old-model evidence, 2023 – Mar 2026)
 
 The charter's P4 has five roles, including a separate architect, each seeing only part of the job. The evidence points against that shape:
 

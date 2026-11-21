@@ -3,7 +3,9 @@
 **Tests:** Q1 and Q2. Also Q4: it is the smallest "team" there is.
 **Place in tie order:** between P1 and P3 (P0, P1, P1R, P3, P2, P4).
 
-## Why
+> **This proposal rests on old-model evidence only.** No study since August 2026 compares a fresh reviewer with self-review on current models. Current evidence shows only that Opus 5.5 is a capable reviewer: it found 74% of real vulnerability-introducing commits in [SecPRBench](https://arxiv.org/abs/2610.33509) (Oct 2026), which gives no false-alarm rate and no self-review comparison. The Mythos 5.2 system card reports the model grades known-Claude work *more harshly* ([Zvi's review of the card](https://thezvi.substack.com/p/fable-and-mythos-52-the-system-card), Nov 2026), which cuts against the old "agents praise their own work" finding. So P1R is a **prediction this experiment tests**: a fresh reviewer adds trustworthy PRs over P1. It is worth running anyway, because the answer decides how short the winning checklist can be.
+
+## Why (old-model evidence, models unnamed or Opus 4.x, 2025 – Apr 2026)
 
 Cognition found that agents work best when only one agent writes code and a reviewer with a clean context loops against it ([source](https://cognition.com/blog/multi-agents-working), read 2026-11-21). Anthropic found a separate sceptical evaluator easier to tune than self-criticism ([source](https://www.anthropic.com/engineering/harness-design-long-running-apps), read 2026-11-21). A model rates its own earlier work as more correct unless it judges in a fresh context ([source](https://arxiv.org/html/2603.04582v1), read 2026-11-21). In race 1, both shapes' reviewers found real bugs: A-T2's reviewer caught a Python 3.10 CSV bug.
 
