@@ -2,13 +2,17 @@
 
 Session calls (`-p --output-format stream-json`) play one step per invocation from a scenario:
 FAKE_SCENARIO_FILE maps a run id (found from the working folder, <run-id>/repo) to a list of steps.
-Steps: finish, stop, limit, big, crash, leak. Record shapes copy a real 2.1.302 trial (2026-11-21).
-Judge calls (`--output-format json`) answer FAKE_JUDGE (default "default").
+Steps: finish, stop, limit, big, crash, leak, token, probe_tester. Record shapes copy a real 2.1.302
+trial (2026-11-21). probe_tester runs the tester agent's own PreToolUse hooks from `--agents` on a
+fixed set of tool calls, as Claude Code does, and logs each call and its result as a subagent's.
+Judge calls (`--output-format json`) answer FAKE_JUDGE (default "default"), or play the answers listed in
+the JSON file FAKE_JUDGE_SEQ, one per call.
 Every call is logged to FAKE_LOG as JSON: argv, stdin, env keys, cwd.
 """
 
 import json
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -54,6 +58,34 @@ def result(sid: str, text: str, i: int, o: int, cw: int, cr: int, is_error: bool
     }
 
 
+TESTER_PROBES = [
+    ("Read", {"file_path": "src/app.py"}),
+    ("Read", {"file_path": "tests/test_app.py"}),
+    ("Grep", {"pattern": "def ", "path": "."}),
+    ("Read", {"file_path": "../scratch/team/contract.md"}),
+    ("Read", {"file_path": "tests/conftest.py"}),
+    ("Write", {"file_path": "tests/test_ticket_acceptance.py", "content": "def test_x(): pass\n"}),
+    ("Write", {"file_path": "src/app.py", "content": "hacked = True\n"}),
+]
+
+
+def run_agent_hooks(spec: dict, tool: str, inp: dict) -> str | None:
+    """Run an agent's PreToolUse hooks for one tool call; return the deny reason, if any."""
+    for group in spec.get("hooks", {}).get("PreToolUse", []):
+        if group.get("matcher", "*") not in ("*", "", tool) and tool not in group["matcher"].split("|"):
+            continue
+        for h in group["hooks"]:
+            data = {"hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": inp, "cwd": os.getcwd()}
+            out = subprocess.run(h["command"], shell=True, input=json.dumps(data), capture_output=True, text=True)
+            if out.returncode == 2:
+                return out.stderr.strip()
+            if out.stdout.strip():
+                d = json.loads(out.stdout).get("hookSpecificOutput", {})
+                if d.get("permissionDecision") == "deny":
+                    return d.get("permissionDecisionReason", "denied")
+    return None
+
+
 def main() -> int:
     argv = sys.argv[1:]
     stdin = sys.stdin.read()
@@ -64,6 +96,13 @@ def main() -> int:
     fmt = argv[argv.index("--output-format") + 1] if "--output-format" in argv else "text"
     if fmt == "json":
         answer = os.environ.get("FAKE_JUDGE", "default")
+        seq = os.environ.get("FAKE_JUDGE_SEQ")
+        if seq:  # a JSON list of answers, one per call, the last one repeated
+            answers = json.loads(Path(seq).read_text())
+            counter = Path(seq + ".count")
+            n = int(counter.read_text()) if counter.exists() else 0
+            counter.write_text(str(n + 1))
+            answer = answers[min(n, len(answers) - 1)]
         print(json.dumps(result("judge", answer, 900, 3, 0, 0, cost=0.002)))
         return 0
 
@@ -144,6 +183,22 @@ def main() -> int:
             {"type": "tool_result", "tool_use_id": "toolu_env", "content": f"GH_TOKEN={fake}\nHOME=/x"},
         ]
         emit({"type": "user", "session_id": sid, "message": {"content": results}})
+    if step == "probe_tester":
+        agents = json.loads(Path(argv[argv.index("--agents") + 1]).read_text())
+        parent = "toolu_agent_tester"
+        start = {"type": "tool_use", "id": parent, "name": "Task", "input": {"subagent_type": "tester"}}
+        emit(assistant(sid, "msg_probe_start", [start], usage(1, 5, 10, 10)))
+        for k, (tool, inp) in enumerate(TESTER_PROBES):
+            call = {"type": "tool_use", "id": f"toolu_probe_{k}", "name": tool, "input": inp}
+            rec = assistant(sid, f"msg_probe_{k}", [call], usage(1, 5, 10, 10))
+            emit({**rec, "parent_tool_use_id": parent})
+            deny = run_agent_hooks(agents["tester"], tool, inp)
+            if deny:
+                res = {"tool_use_id": call["id"], "is_error": True, "content": f"PreToolUse:{tool} hook error: {deny}"}
+            else:
+                res = {"tool_use_id": call["id"], "content": "allowed"}
+            emit({"type": "user", "session_id": sid, "parent_tool_use_id": parent,
+                  "message": {"content": [{"type": "tool_result", **res}]}})  # fmt: skip
     if step == "stop":
         page = Path(os.getcwd()).parent / "scratch" / f"ask-{n}.html"
         page.write_text(f"<html><body><h1>Question from {run_id}</h1><p>Fix the CLI too?</p></body></html>")

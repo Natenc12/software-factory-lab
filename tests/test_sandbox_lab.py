@@ -203,6 +203,7 @@ def test_settings_file_shape(lab_env, practice):
     assert not str(ctl).startswith(str(root) + "/"), "lab must live outside the run's writable folder"
     assert box["network"]["allowedDomains"] == ["pypi.org", "files.pythonhosted.org"]
     assert not any("github" in d for d in box["network"]["allowedDomains"])
+    assert box["network"]["allowLocalBinding"] is True, "a project's tests may serve on localhost"
     fs = box["filesystem"]
     assert str(ctl) in fs["denyWrite"] and str(root / "harness") in fs["denyWrite"]
     home = os.path.realpath(os.path.expanduser("~"))
@@ -221,3 +222,9 @@ def test_settings_file_shape(lab_env, practice):
     root2, _ = make(lab_env, practice, "p1-t1-2", allow_domains=["proxy.golang.org"])
     nets = json.loads((root2 / "harness" / "settings.json").read_text())["sandbox"]["network"]["allowedDomains"]
     assert nets == ["pypi.org", "files.pythonhosted.org", "proxy.golang.org"]
+
+
+def test_extra_env_reaches_the_run_but_never_beats_the_database(lab_env, practice):
+    root, manifest = make(lab_env, practice, "p0-t1-1", extra_env={"UV_PYTHON": "3.10", "DATABASE_URL": "x"})
+    assert manifest["env"]["UV_PYTHON"] == "3.10"
+    assert manifest["env"]["DATABASE_URL"].startswith("sqlite:///")

@@ -43,6 +43,7 @@ FLAGS = {
     "redact": "--redact",
     "forbid": "--forbid",
     "allow_domain": "--allow-domain",
+    "env": "--env",
     "max_wall_min": "--max-wall-min",
     "claude_bin": "--claude-bin",
     "gh_bin": "--gh-bin",

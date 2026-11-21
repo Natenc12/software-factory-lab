@@ -6,6 +6,10 @@ the judge, and a `Reply:` paragraph whose text is sent to the run word for word:
     ## default
     When: anything not covered below.
     Reply: Go with your recommendation and stay within the ticket's scope.
+
+A reply may also carry a `Rescue: yes` line (anywhere in its block, on a line of its own): sending that
+reply means the owner caught a mistake the run should have caught. It is kept out of the reply text and
+logged with the reply. Sheets without it work as before (every reply `rescue: False`).
 """
 
 import html
@@ -34,17 +38,31 @@ JUDGE_FLAGS = [
 ]
 
 
+RESCUE_RE = re.compile(r"^Rescue:[ \t]*(\S*)[ \t]*\n?", re.M | re.I)
+
+
 def parse_sheet(path: Path) -> list[dict]:
     text = Path(path).read_text(encoding="utf-8")
     replies = []
     for block in re.split(r"^##[ \t]+", text, flags=re.M)[1:]:
         head, _, body = block.partition("\n")
         rid = head.strip().split()[0] if head.strip() else ""
+        rescue = RESCUE_RE.search(body)
+        if rescue and rescue.group(1).lower() not in ("yes", "no"):
+            raise ValueError(f"{path}: reply {rid or '?'} has `Rescue: {rescue.group(1)}`; use yes or no")
+        body = RESCUE_RE.sub("", body)
         when = re.search(r"^When:\s*(.*?)(?=^Reply:|\Z)", body, re.M | re.S)
         reply = re.search(r"^Reply:\s*(.*)\Z", body, re.M | re.S)
         if not rid or not reply:
             raise ValueError(f"{path}: reply {rid or '?'} needs a `Reply:` paragraph")
-        replies.append({"id": rid, "when": (when.group(1).strip() if when else ""), "text": reply.group(1).strip()})
+        replies.append(
+            {
+                "id": rid,
+                "when": (when.group(1).strip() if when else ""),
+                "text": reply.group(1).strip(),
+                "rescue": bool(rescue and rescue.group(1).lower() == "yes"),
+            }
+        )
     ids = [r["id"] for r in replies]
     if not replies or len(set(ids)) != len(ids):
         raise ValueError(f"{path}: needs at least one reply and unique ids, got {ids}")

@@ -86,8 +86,26 @@ def drop_postgres(name: str, pg_bin: str = "psql") -> None:
         raise RuntimeError(f"drop {name} failed: {out.stderr.strip()}")
 
 
-def parse_agent(path: Path) -> tuple[str, dict]:
-    """A subagent file: optional `---` front matter (name, description, tools, model), then its prompt."""
+def fill(obj, values: dict):
+    """Replace `{key}` placeholders in every string of a JSON value."""
+    if isinstance(obj, str):
+        for k, v in values.items():
+            obj = obj.replace("{" + k + "}", v)
+        return obj
+    if isinstance(obj, list):
+        return [fill(x, values) for x in obj]
+    if isinstance(obj, dict):
+        return {k: fill(v, values) for k, v in obj.items()}
+    return obj
+
+
+def parse_agent(path: Path, values: dict | None = None) -> tuple[str, dict]:
+    """A subagent file: optional `---` front matter (name, description, tools, model, hooks), then its prompt.
+
+    `hooks:` names a JSON file in the arm folder holding the agent's own hooks, in Claude Code's
+    format. `{python}`, `{arm}` (the arm's copy in the control folder) and `{run}` (the run folder)
+    are filled in from `values`.
+    """
     text = path.read_text(encoding="utf-8")
     meta, body = {}, text
     if text.startswith("---"):
@@ -103,6 +121,12 @@ def parse_agent(path: Path) -> tuple[str, dict]:
         spec["tools"] = [t.strip() for t in re.split(r"[,\s]+", meta["tools"]) if t.strip()]
     if meta.get("model"):
         spec["model"] = meta["model"]
+    if meta.get("hooks"):
+        arm = path.parent.parent
+        hooks_file = (arm / meta["hooks"]).resolve()
+        if not hooks_file.is_relative_to(arm.resolve()) or not hooks_file.is_file():
+            raise RuntimeError(f"{path.name}: hooks file {meta['hooks']} not found in the arm folder")
+        spec["hooks"] = fill(json.loads(hooks_file.read_text(encoding="utf-8")), values or {})
     return name, spec
 
 
@@ -175,7 +199,12 @@ def settings(root: Path, cfg: dict, allow_domains: list[str] = NET_ALLOW, unix_s
             ),
             "allowRead": [str(root)],
         },
-        "network": {"allowedDomains": list(allow_domains), "allowUnixSockets": list(unix_sockets)},
+        # allowLocalBinding: a project's own tests may start a server on localhost and talk to it.
+        "network": {
+            "allowedDomains": list(allow_domains),
+            "allowUnixSockets": list(unix_sockets),
+            "allowLocalBinding": True,
+        },
     }
     file_tools = [t for t in ALLOWED_TOOLS.split() if t not in ("Edit", "Write", "NotebookEdit")]
     return {
@@ -205,6 +234,7 @@ def create(
     pg_bin: str = "psql",
     extra_forbidden: list[str] = (),
     allow_domains: list[str] = (),
+    extra_env: dict | None = None,
 ) -> dict:
     """Build the sandbox. Raises if the folder exists; cleans up after itself if a step fails."""
     parse_run_id(run_id)
@@ -254,6 +284,8 @@ def create(
                 "DATABASE_URL": manifest["database"]["url"],
                 "PGHOST": manifest["database"]["socket"].rsplit("/", 1)[0],
             }
+        # Codebase settings the run needs (for example UV_PYTHON); the database variables always win.
+        env = {**(extra_env or {}), **env}
         write_json(hdir / "sandbox.json", manifest)
 
         ctl.mkdir(parents=True)
@@ -267,7 +299,10 @@ def create(
             parts = [f"<!-- {p.name} -->\n{p.read_text(encoding='utf-8').strip()}\n" for p in instructions]
             (ctl / "arm-prompt.md").write_text("\n".join(parts), encoding="utf-8")
         if agents:
-            write_json(ctl / "agents.json", dict(parse_agent(p) for p in agents))
+            # Agent hooks run from a copy in the control folder, which the session can neither read nor change.
+            shutil.copytree(arm, ctl / "arm")
+            values = {"python": sys.executable, "arm": str(ctl / "arm"), "run": str(root)}
+            write_json(ctl / "agents.json", dict(parse_agent(p, values) for p in agents))
 
         cfg = guard_config(root, runs_root, list(extra_forbidden))
         sockets = [manifest["database"]["socket"]] if db == "postgres" else []

@@ -1,0 +1,35 @@
+diff --git a/src/lab/questions.py b/src/lab/questions.py
+index 7838628..d2b4633 100644
+--- a/src/lab/questions.py
++++ b/src/lab/questions.py
+@@ -61,9 +61,9 @@ def list_questions(
+         raise ValueError("page starts at 1")
+     if per_page < 1:
+         raise ValueError("per_page must be at least 1")
+-    first_row = (page - 1) * per_page
++    offset = (page - 1) * per_page
+     rows = conn.execute(
+         "select * from questions where class_id = ? and hidden = 0 order by id limit ? offset ?",
+-        (class_id, per_page, max(first_row - 1, 0)),
++        (class_id, per_page, offset),
+     ).fetchall()
+     return [Question.from_row(row) for row in rows]
+diff --git a/tests/test_questions.py b/tests/test_questions.py
+index f78a18f..95f1b77 100644
+--- a/tests/test_questions.py
++++ b/tests/test_questions.py
+@@ -35,6 +35,14 @@ def test_first_page(conn, biology):
+     assert questions.list_questions(conn, klass.id, page=1, per_page=3) == asked[:3]
+ 
+ 
++def test_pages_cover_every_question_once(conn, biology):
++    klass, ada, _ = biology
++    asked = ask_many(conn, klass, ada, 7)
++    pages = [questions.list_questions(conn, klass.id, page=p, per_page=3) for p in (1, 2, 3)]
++    assert [len(p) for p in pages] == [3, 3, 1]
++    assert [q for page in pages for q in page] == asked
++
++
+ def test_page_past_the_end_is_empty(conn, biology):
+     klass, ada, _ = biology
+     ask_many(conn, klass, ada, 2)

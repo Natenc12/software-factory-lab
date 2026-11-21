@@ -1,0 +1,21 @@
+{
+  "name": "gct",
+  "repo": "Natenc12/gct-lab",
+  "local_clone": "~/repos/gct-lab",
+  "db": "postgres",
+  "pg_extensions": ["vector"],
+  "env": {"DATABASE_URL": "{db_url}", "CI": "1", "UV_PYTHON": "3.10"},
+  "run_env": {"UV_PYTHON": "3.10"},
+  "install": ["uv", "sync", "--quiet", "--extra", "dev"],
+  "lint": [
+    ["uv", "run", "--quiet", "ruff", "check"],
+    ["uv", "run", "--quiet", "ruff", "format", "--check", "."]
+  ],
+  "migrate": {"cmd": ["uv", "run", "--quiet", "python", "scripts/migrate.py"], "second_run_must_match": null},
+  "migrations_dir": "migrations",
+  "test": ["uv", "run", "--quiet", "pytest", "-q", "-m", "not live"],
+  "test_dirs": ["tests"],
+  "hidden_dir": "tests/hidden",
+  "hidden_test_cmd": "uv run --quiet pytest -q -m 'not live' tests/hidden",
+  "timeout_seconds": 1200
+}

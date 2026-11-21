@@ -9,6 +9,8 @@ from pathlib import Path
 import pytest
 
 FAKES = Path(__file__).parent / "fakes"
+# Fixture packages hold other repos' tests (hidden tests, practice code); never collect them here.
+collect_ignore_glob = ["fixtures/*"]
 ROOT = Path(__file__).resolve().parents[1]
 
 

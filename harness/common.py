@@ -14,12 +14,23 @@ FINAL = ("finished", "ceiling_hit")
 STATUSES = ("running", "finished", "ceiling_hit", "harness_fault", "plan_limit")
 
 
+# A spec-level row puts the level in the arm part: `p0s2` is P0 on spec level S2, `p1rs3` is P1R on S3.
+ARM_SPEC_RE = re.compile(r"^(?P<process>[a-z]+[0-9]+r?)s(?P<spec>[0-3])$")
+
+
 def parse_run_id(run_id: str) -> dict:
-    """`p3-t4-1` -> {"arm": "p3", "ticket": "t4", "repeat": "1"}. Raises ValueError if malformed."""
+    """`p3-t4-1` -> {"arm": "p3", "ticket": "t4", "repeat": "1", "process": "p3", "spec": None}.
+
+    `p0s2-t3-1` also gives "process": "p0" and "spec": "s2". Raises ValueError if malformed.
+    """
     m = RUN_ID_RE.match(run_id or "")
     if not m:
         raise ValueError(f"bad run id {run_id!r}: expected <arm>-<ticket>-<repeat>, e.g. p3-t4-1")
-    return m.groupdict()
+    ids = m.groupdict()
+    spec = ARM_SPEC_RE.match(ids["arm"])
+    ids["process"] = spec.group("process") if spec else ids["arm"]
+    ids["spec"] = f"s{spec.group('spec')}" if spec else None
+    return ids
 
 
 def check_stage(stage: str) -> str:

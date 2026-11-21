@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 
 [tool.ruff]
 line-length = 120
-extend-exclude = ["races"]
+extend-exclude = ["races", "tests/fixtures"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]

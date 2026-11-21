@@ -184,6 +184,7 @@ def handle_stop(a, root: Path, rec: dict, question: str, env: dict) -> dict:
             "page_file": page_file,
             "reply_id": reply["id"],
             "reply_text": reply["text"],
+            "rescue": reply.get("rescue", False),
             "judge_model": a.judge_model,
             "judge_fallback": verdict["fallback"],
             "judge_answers": verdict["answers"],
@@ -229,6 +230,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--redact", action="append", help="extra term to strip from questions (repeatable)")
     ap.add_argument("--forbid", action="append", default=[], help="extra path the run may not touch (repeatable)")
     ap.add_argument("--allow-domain", action="append", default=[], help="extra host the sandbox may reach")
+    ap.add_argument("--env", action="append", default=[], help="KEY=VALUE set in the run's environment (repeatable)")
     ap.add_argument("--max-wall-min", type=float, default=240)
     ap.add_argument("--runs-root", help="default $FACTORY_RUNS_ROOT or ~/factory-runs")
     ap.add_argument("--claude-bin", default=os.environ.get("HARNESS_CLAUDE", "claude"))
@@ -276,6 +278,7 @@ def main(argv: list[str] | None = None) -> int:
                 gh_bin=a.gh_bin,
                 extra_forbidden=a.forbid,
                 allow_domains=a.allow_domain,
+                extra_env=dict(kv.split("=", 1) for kv in a.env),
             )
         except Exception as e:  # noqa: BLE001 - any setup failure is a harness fault, reported plainly
             print(f"{a.run_id}: sandbox setup failed: {e}", file=sys.stderr)

@@ -25,7 +25,9 @@ flags, the clean room and resume.
    skills, hooks, plugins or output style), `--disable-slash-commands`, `--strict-mcp-config`,
    `--tools` with a fixed list, `--permission-mode dontAsk`, auto-memory off, and a minimal
    environment. The arm's instruction files are appended to the system prompt; an arm's
-   `agents/*.md` become `--agents`.
+   `agents/*.md` become `--agents`. An agent file may name its own hooks with `hooks: hooks/<role>.json`
+   (Claude Code's hook format); `{python}`, `{arm}` and `{run}` in it are filled in, and the hooks run
+   from a copy of the arm in the control folder, so the session cannot change them.
 3. **Fence, first layer: the OS sandbox** in the run's `settings.json`. Every Bash command, and every
    program it starts, may reach only PyPI (`pypi.org`, `files.pythonhosted.org`, plus any
    `--allow-domain`) and the Postgres socket; it may write only in the run folder, its temp folder and
