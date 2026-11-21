@@ -89,6 +89,11 @@ Not required by the format above; used by the gct packages and the tools in `tic
 | `feature.patch` | T8 only: the change under review, which `make_base_branches.py` commits on top of the review base |
 | `verify.json` | Output of `tickets/tools/verify_ticket.py` |
 
+Every gct starting branch is free of agent-instruction files (`CLAUDE.md`, `AGENTS.md`, `.claude/`):
+where the source commit had them, `make_base_branches.py` adds one commit on top that deletes them, so
+a replay's `base_ref` is the commit before the fix plus that one commit. `meta.json` records the
+resulting `base_commit`.
+
 `meta.json` and `key.json` for a review ticket also carry `review_base_commit`. A trap's `check` may
 be `hidden_tests_pass` (the hidden tests themselves fail when the naive version was shipped) besides
 `unchanged_paths` and `scope_out_paths`. Runs on gct need `UV_PYTHON=3.10`: the app does not compile

@@ -4,6 +4,7 @@
   "title": "Review: list the files in a class",
   "repo": "Natenc12/gct-lab",
   "base_ref": "base/T8",
+  "base_commit": "169f391941558d26bbc0a91df8f8db824d2fef8e",
   "s3_base_ref": null,
   "review_base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "db": "postgres",

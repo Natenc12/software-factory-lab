@@ -4,8 +4,10 @@
 
 For each ticket:
 
-- `base/<T>` points at the commit in `BASES`. For T8 the branch is that commit plus one commit made
-  from `answers/<codebase>/T8/feature.patch` (the feature under review, planted bugs included).
+- `base/<T>` points at the commit in `BASES`, plus one commit that deletes agent-instruction files
+  (`CLAUDE.md`, `AGENTS.md`, `.claude/`) when that commit has any, so no run starts with project
+  guidance that competes with its arm. For T8 the branch also gets one commit made from
+  `answers/<codebase>/T8/feature.patch` (the feature under review, planted bugs included).
 - `base/<T>-s3` (tickets that have one) is `base/<T>` plus one commit that adds the files under
   `answers/<codebase>/<T>/acceptance/`, at the same paths.
 
@@ -49,7 +51,10 @@ IDENTITY = {
     "GIT_COMMITTER_DATE": "2026-11-21T12:00:00+00:00",
 }
 
+AGENT_FILES = ["CLAUDE.md", "AGENTS.md", ".claude"]
+
 MESSAGES = {
+    "agents": "Remove agent instruction files",
     "s3": "Add acceptance tests for the ticket",
     "T8": "Add a list of the files in a class",
 }
@@ -62,12 +67,21 @@ def git(*args: str, cwd: Path, env: dict | None = None) -> str:
     return out.stdout.strip()
 
 
-def commit_on(lab: Path, start: str, message: str, add_tree: Path | None = None, patch: Path | None = None) -> str:
+def commit_on(
+    lab: Path,
+    start: str,
+    message: str,
+    add_tree: Path | None = None,
+    patch: Path | None = None,
+    remove: list[str] | None = None,
+) -> str:
     env = {**os.environ, **IDENTITY}
     tmp = Path(tempfile.mkdtemp(prefix="base-branch-"))
     wt = tmp / "wt"
     try:
         git("worktree", "add", "--detach", str(wt), start, cwd=lab)
+        if remove:
+            git("rm", "-r", "-q", "--ignore-unmatch", "--", *remove, cwd=wt)
         if patch is not None:
             git("apply", "--index", str(patch), cwd=wt)
         if add_tree is not None:
@@ -97,6 +111,8 @@ def main(argv: list[str] | None = None) -> int:
         meta = json.loads((ROOT / "tickets" / args.codebase / tid / "meta.json").read_text())
         adir = ROOT / "answers" / args.codebase / tid
         start = git("rev-parse", "--verify", bases[tid] + "^{commit}", cwd=lab)
+        if git("ls-tree", "--name-only", start, "--", *AGENT_FILES, cwd=lab):
+            start = commit_on(lab, start, MESSAGES["agents"], remove=AGENT_FILES)
         if tid == "T8":
             start = commit_on(lab, start, MESSAGES["T8"], patch=adir / "feature.patch")
         git("branch", "-f", meta["base_ref"], start, cwd=lab)

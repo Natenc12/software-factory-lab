@@ -3,18 +3,7 @@
   "review_base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "unchanged_paths": [],
   "scope_out_paths": [],
-  "traps": [
-    {
-      "id": "code-changed-in-review",
-      "check": "unchanged_paths",
-      "paths": [
-        "src/",
-        "tests/",
-        "migrations/",
-        "web/"
-      ]
-    }
-  ],
+  "traps": [],
   "planted_bugs": [
     {
       "id": 1,

@@ -3,30 +3,30 @@
   "codebase": "gct",
   "repo": "Natenc12/gct-lab",
   "base_ref": "base/T1",
-  "base_sha": "694a4c71c8fc108c1759658b11df2fc258481af9",
+  "base_sha": "5dc0d6429c6900a428b421e80ca7d97a0b118b83",
   "s3_base_ref": "base/T1-s3",
-  "s3_sha": "42c461e597cf767c04be2760f7322cfccf4ede0a",
-  "started": "2026-11-21T20:20:32+00:00",
-  "finished": "2026-11-21T20:21:19+00:00",
+  "s3_sha": "bd5a187dc173743985e0182ddfed5952ff952ab0",
+  "started": "2026-11-21T21:09:10+00:00",
+  "finished": "2026-11-21T21:09:56+00:00",
   "databases_dropped": [
-    "author_gct_t1_base_26820",
-    "author_gct_t1_ref_26820",
-    "author_gct_t1_naive_s3_26820",
-    "author_gct_t1_naive_26820",
-    "author_gct_t1_s3base_26820",
-    "author_gct_t1_s3ref_26820",
-    "author_gct_t1_s3naive_26820"
+    "author_gct_t1_base_65440",
+    "author_gct_t1_ref_65440",
+    "author_gct_t1_naive_s3_65440",
+    "author_gct_t1_naive_65440",
+    "author_gct_t1_s3base_65440",
+    "author_gct_t1_s3ref_65440",
+    "author_gct_t1_s3naive_65440"
   ],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "396 passed, 1 deselected in 7.23s",
+      "note": "396 passed, 1 deselected in 7.36s",
       "counts": {
         "passed": 396
       },
-      "seconds": 8.7,
+      "seconds": 8.9,
       "log_tail": ""
     },
     {
@@ -39,7 +39,7 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "9 failed in 0.82s",
+      "note": "9 failed in 0.73s",
       "outcomes": {
         "tests.hidden.test_hidden_t1::test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call": "failed",
         "tests.hidden.test_hidden_t1::test_each_scope_column_is_refreshed_on_its_own[filename]": "failed",
@@ -52,7 +52,7 @@
         "tests.hidden.test_hidden_t1::test_a_real_transient_failure_after_a_half_bury_leaves_processing_with_no_reason": "failed"
       },
       "not_failing": [],
-      "seconds": 1.5
+      "seconds": 1.4
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -85,12 +85,12 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "420 passed, 1 deselected in 4.75s",
+      "note": "420 passed, 1 deselected in 5.02s",
       "counts": {
         "passed": 420
       },
       "failing": [],
-      "seconds": 5.5,
+      "seconds": 5.8,
       "log_tail": ""
     },
     {
@@ -128,7 +128,7 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "1.3s"
+      "note": "1.2s"
     },
     {
       "name": "naive-s3.patch: at least one hidden test fails",
@@ -168,7 +168,7 @@
     {
       "name": "s3: acceptance tests fail on the S3 branch",
       "ok": true,
-      "note": "3 failed in 0.49s",
+      "note": "3 failed in 0.47s",
       "outcomes": {
         "tests.acceptance.test_files_row_tells_the_truth::test_example_1_reindex_takes_filename_owner_and_class_from_the_call": "failed",
         "tests.acceptance.test_files_row_tells_the_truth::test_example_3_a_transient_retry_shows_processing_and_no_reason": "failed",
@@ -178,7 +178,7 @@
     {
       "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
       "ok": true,
-      "note": "423 passed, 1 deselected in 4.70s",
+      "note": "423 passed, 1 deselected in 4.46s",
       "failing": [],
       "log_tail": ""
     },
