@@ -1,0 +1,204 @@
+diff --git a/migrations/0005_files_word_count.sql b/migrations/0005_files_word_count.sql
+new file mode 100644
+index 0000000..a89c8be
+--- /dev/null
++++ b/migrations/0005_files_word_count.sql
+@@ -0,0 +1,8 @@
++-- 0005: `files.word_count` - how many words a refused-as-too-long file had.
++--
++-- Written only when a file is refused as `too_long` (ADR 0029), so `GET /files/{file_id}` can tell
++-- the student how far over the limit their upload was. NULL everywhere else, including every row
++-- that existed before this migration. Re-runnable: `scripts/migrate.py` applies every file on
++-- every run.
++
++alter table files add column if not exists word_count integer;
+diff --git a/src/gct/api/routers/files.py b/src/gct/api/routers/files.py
+index 121907a..6d268c4 100644
+--- a/src/gct/api/routers/files.py
++++ b/src/gct/api/routers/files.py
+@@ -219,6 +219,15 @@ _UNKNOWN_FAILURE = (
+ )
+ 
+ 
++def _too_long_message(word_count: int) -> str:
++    """The `too_long` sentence with the file's own length, so the student knows what to cut."""
++    return (
++        f"This file has {word_count:,} words, more than the {MAX_INGEST_WORDS:,}-word limit for a "
++        "single upload. Split it up - one lecture, or a few chapters, per file - and upload the "
++        "parts."
++    )
++
++
+ class FileStatusResponse(BaseModel):
+     """What `GET /files/{file_id}` tells the student about one uploaded file.
+ 
+@@ -282,7 +291,9 @@ def file_status(conn: Conn, owner: OwnerId, file_id: str) -> FileStatusResponse:
+             "No such file. Check the file id returned when the file was uploaded.",
+         )
+ 
+-    if result.status == "failed":
++    if result.status == "failed" and result.failed_reason == "too_long" and result.word_count:
++        message = _too_long_message(result.word_count)
++    elif result.status == "failed":
+         message = _FAILED_MESSAGE.get(result.failed_reason, _UNKNOWN_FAILURE)
+     else:
+         message = _STATUS_MESSAGE[result.status]
+diff --git a/src/gct/files.py b/src/gct/files.py
+index d8f5115..d4b23ea 100644
+--- a/src/gct/files.py
++++ b/src/gct/files.py
+@@ -45,6 +45,8 @@ class FileStatus:
+     status: str
+     failed_reason: str | None
+     filename: str
++    # How many words the file had, recorded only when it was refused as `too_long`.
++    word_count: int | None = None
+ 
+ 
+ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) -> FileStatus | None:
+@@ -97,7 +99,7 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+ 
+     row = conn.execute(
+         """
+-        select status, failed_reason, filename
++        select status, failed_reason, filename, word_count
+         from files
+         where file_id = %(file_id)s::uuid
+           and owner_id = %(owner_id)s
+@@ -106,4 +108,4 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+     ).fetchone()
+     if row is None:
+         return None
+-    return FileStatus(status=row[0], failed_reason=row[1], filename=row[2])
++    return FileStatus(status=row[0], failed_reason=row[1], filename=row[2], word_count=row[3])
+diff --git a/src/gct/ingest/parse.py b/src/gct/ingest/parse.py
+index dcb149f..0642146 100644
+--- a/src/gct/ingest/parse.py
++++ b/src/gct/ingest/parse.py
+@@ -45,10 +45,12 @@ class ParseError(Exception):
+     `except ParseError` writes `exc.reason` into the column untranslated.
+     """
+ 
+-    def __init__(self, reason: str, message: str) -> None:
++    def __init__(self, reason: str, message: str, *, word_count: int | None = None) -> None:
+         assert reason in TERMINAL_REASONS, f"unknown terminal reason: {reason!r}"
+         super().__init__(message)
+         self.reason = reason
++        # Set only for `too_long`: the file's word count, so the student can be told it.
++        self.word_count = word_count
+ 
+ 
+ @dataclass(frozen=True)
+diff --git a/src/gct/ingest/pipeline.py b/src/gct/ingest/pipeline.py
+index 49e35a6..357e7a7 100644
+--- a/src/gct/ingest/pipeline.py
++++ b/src/gct/ingest/pipeline.py
+@@ -101,6 +101,7 @@ def compose(
+         raise ParseError(
+             "too_long",
+             f"{Path(path).name} has {total_words} words, over the {max_words}-word ingest ceiling",
++            word_count=total_words,
+         )
+     chunks = chunk_units(units, size=chunk_size, overlap=chunk_overlap)
+     vectors = embedder.embed([c.text for c in chunks])
+diff --git a/src/gct/jobs/worker.py b/src/gct/jobs/worker.py
+index 8c2c289..bc89870 100644
+--- a/src/gct/jobs/worker.py
++++ b/src/gct/jobs/worker.py
+@@ -52,15 +52,23 @@ def backoff_seconds(attempts: int) -> float:
+     return min(BACKOFF_BASE_SECONDS * 2 ** (attempts - 1), BACKOFF_MAX_SECONDS)
+ 
+ 
+-def _bury(conn: psycopg.Connection, job: Job, *, reason: str, error: str) -> None:
++def _bury(
++    conn: psycopg.Connection,
++    job: Job,
++    *,
++    reason: str,
++    error: str,
++    word_count: int | None = None,
++) -> None:
+     with conn.transaction():
+         conn.execute(
+             """
+             update files
+-            set status = 'failed', failed_reason = %(reason)s, updated_at = now()
++            set status = 'failed', failed_reason = %(reason)s, word_count = %(word_count)s,
++                updated_at = now()
+             where file_id = %(file_id)s::uuid and status <> 'ready'
+             """,
+-            {"reason": reason, "file_id": job.file_id},
++            {"reason": reason, "word_count": word_count, "file_id": job.file_id},
+         )
+     fail(conn, job_id=job.job_id, error=error)
+ 
+@@ -122,7 +130,13 @@ def process_one(
+         )
+     except ParseError as exc:
+         logger.warning("job %s: terminal failure (%s) - %s", job.job_id, exc.reason, exc)
+-        _bury(conn, job, reason=exc.reason, error=f"{exc.reason}: {exc}")
++        _bury(
++            conn,
++            job,
++            reason=exc.reason,
++            error=f"{exc.reason}: {exc}",
++            word_count=exc.word_count,
++        )
+         return True
+     except TransientEmbeddingError as exc:
+         delay = backoff_seconds(job.attempts) if job.attempts < max_attempts else 0.0
+diff --git a/tests/gct/ingest/test_too_long_word_count.py b/tests/gct/ingest/test_too_long_word_count.py
+new file mode 100644
+index 0000000..b72f454
+--- /dev/null
++++ b/tests/gct/ingest/test_too_long_word_count.py
+@@ -0,0 +1,49 @@
++"""A file refused as too long records its word count, and its status message says it."""
++
++from __future__ import annotations
++
++from pptx import Presentation
++from pptx.util import Inches
++
++from gct.config import MAX_INGEST_WORDS
++from gct.files import get_file_status
++from gct.ingest.chunk import CHUNK_OVERLAP_WORDS, CHUNK_SIZE_WORDS
++from gct.jobs.queue import enqueue
++from gct.jobs.worker import process_one
++
++
++class CountingEmbeddings:
++    model_id = "fake-embed-3"
++
++    def __init__(self) -> None:
++        self.calls = 0
++
++    def embed(self, texts):
++        self.calls += 1
++        return [[1.0] + [0.0] * 1535 for _ in texts]
++
++
++def _deck(path, words: int):
++    prs = Presentation()
++    slide = prs.slides.add_slide(prs.slide_layouts[6])
++    box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(5), Inches(1))
++    box.text_frame.text = " ".join(["w"] * words)
++    prs.save(path)
++    return path
++
++
++def test_a_too_long_file_records_its_word_count(worker_db, db_other, tmp_path):
++    conn, owner_id, class_id = worker_db
++    conn.autocommit = True
++    deck = _deck(tmp_path / "textbook.pptx", MAX_INGEST_WORDS + 1)
++    file_id = enqueue(conn, path=str(deck), owner_id=owner_id, class_id=class_id)
++    embedder = CountingEmbeddings()
++
++    assert process_one(
++        conn, embedder=embedder, chunk_size=CHUNK_SIZE_WORDS, chunk_overlap=CHUNK_OVERLAP_WORDS
++    )
++
++    status = get_file_status(db_other, file_id=file_id, owner_id=owner_id)
++    assert (status.status, status.failed_reason) == ("failed", "too_long")
++    assert status.word_count == MAX_INGEST_WORDS + 1
++    assert embedder.calls == 0
