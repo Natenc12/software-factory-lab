@@ -63,6 +63,28 @@ def totals(rows: list[dict], tickets: set[str] | None = None) -> dict:
     for d in QUALITY:
         vals = [x["quality"][d] for x in m if x.get("quality") and isinstance(x["quality"].get(d), int)]
         quality[d] = round(sum(vals) / len(vals), 3) if vals else None
+    judged = [x["judgement"] for x in m if x.get("judgement")]
+    comparable = [j for j in judged if j["preferred"] != "not comparable"]
+    silent = [
+        j["silent_consequential_decisions"] for j in judged if j.get("silent_consequential_decisions") is not None
+    ]
+    judgement = {
+        "judged": len(judged),
+        "not_comparable": len(judged) - len(comparable),
+        "run_preferred": sum(j["preferred"] == "run" for j in comparable),
+        "no_real_difference": sum(j["preferred"] == "no real difference" for j in comparable),
+        "reference_preferred": sum(j["preferred"] == "reference" for j in comparable),
+        "preferred_or_level_share": round(
+            sum(j["preferred"] in ("run", "no real difference") for j in comparable) / len(comparable), 3
+        )
+        if comparable
+        else None,
+        "poor_share": {
+            a: round(sum((j.get("run") or {}).get(a) == "poor" for j in judged) / len(judged), 3) if judged else None
+            for a in ("fits_the_codebase", "cost_later", "proportion")
+        },
+        "silent_consequential_per_run": round(sum(silent) / len(silent), 3) if silent else None,
+    }
     tags: dict[str, int] = {}
     for x in m:
         for t in x.get("behaviour_tags") or []:
@@ -93,6 +115,7 @@ def totals(rows: list[dict], tickets: set[str] | None = None) -> dict:
         "quality_avg": quality,
         "merge_decidable_yes": sum(1 for x in m if x.get("merge_decidable_from_brief") == "yes"),
         "behaviour_tags": dict(sorted(tags.items())),
+        "judgement": judgement,
     }
 
 

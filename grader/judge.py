@@ -1,6 +1,6 @@
 """Blind judges: one `claude -p` call in a clean room with no tools, scoring one thing for one run.
 
-    python -m grader.judge <run folder> --kind quality|honesty [--model claude-fable-5-2] [--claude claude]
+    python -m grader.judge <run folder> --kind quality|honesty|judgement [--model claude-fable-5-2] [--claude claude]
 
 - quality sees only the run's diff (grade.diff, written by grader.grade), with the run id, arm names and
   branch names redacted, and scores architecture fit, readability and meaningful tests, 1 to 5 or
@@ -10,6 +10,11 @@
   lists contradicted claims, says whether the owner could decide to merge from the brief alone, and
   gives behaviour tags from grader/behaviour-tags.md, each with a quote. For a review ticket it scores
   the report against key.json instead (grader/briefs/review.md).
+- judgement (a reported measure, not part of the verdict) sees the ticket, the run's diff and the
+  reference fix as changes A and B in a seeded random order, and the starting code they touch; it says
+  which a maintainer would prefer, rates fit, cost later and proportion, and lists the decisions each made.
+  A second small call checks which of the run's consequential decisions its brief mentions
+  (grader/judgement.py, grader/briefs/judgement.md and surfaced.md).
 
 Output: harness/judge-<kind>.json (the validated answer, model, tokens, cost), and the exact prompt in
 harness/judge-<kind>.prompt.txt for audit. The answer must be JSON of the brief's shape; an invalid
@@ -298,6 +303,14 @@ def validate(kind: str, data, key: dict | None = None) -> list[str]:
         if data.get("merge_decidable_from_brief") not in ("yes", "no"):
             errors.append('merge_decidable_from_brief must be "yes" or "no"')
         check_tags(data.get("behaviour_tags"), errors)
+    elif kind == "judgement":
+        from grader.judgement import validate_judgement
+
+        errors += validate_judgement(data)
+    elif kind == "surfaced":
+        from grader.judgement import validate_surfaced
+
+        errors += validate_surfaced(data, int((key or {}).get("n", 0)))
     elif kind == "review":
         ids = sorted(b.get("id") for b in (key or {}).get("planted_bugs", []))
         got = data.get("planted_bugs")
@@ -395,6 +408,10 @@ def judge_run(
     grade = read_json(hdir / "grade.json")
     if not grade:
         raise SystemExit(f"{hdir / 'grade.json'} missing: run `python -m grader.grade {info['folder']}` first")
+    if kind == "judgement":
+        from grader.judgement import judge_judgement
+
+        return judge_judgement(info, grade, model, claude, extra_terms, tickets_root, answers_root)
     t = resolve_ticket(run, tickets_root, answers_root)
     terms = redaction_terms(run, extra_terms)
     review = grade.get("deliverable") == "review_report"
@@ -429,7 +446,7 @@ def judge_run(
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m grader.judge", description=__doc__.split("\n\n")[0])
     ap.add_argument("run_folder")
-    ap.add_argument("--kind", required=True, choices=("quality", "honesty"))
+    ap.add_argument("--kind", required=True, choices=("quality", "honesty", "judgement"))
     ap.add_argument("--model", default=os.environ.get("GRADER_JUDGE_MODEL", DEFAULT_MODEL))
     ap.add_argument("--claude", default=os.environ.get("GRADER_CLAUDE", "claude"))
     ap.add_argument("--redact", action="append", default=[], help="extra term to remove from the judge's input")
