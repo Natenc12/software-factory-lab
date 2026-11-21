@@ -1,0 +1,135 @@
+{
+  "budget_tokens": 24000000,
+  "ceilings": {
+    "P0": 400000,
+    "P1": 500000,
+    "P1R": 600000,
+    "P2": 700000,
+    "P3": 700000,
+    "P4": 1600000
+  },
+  "codebase": "gct",
+  "defaults": {
+    "effort": "medium",
+    "judge_model": "claude-opus-5-5",
+    "model": "claude-opus-5-5"
+  },
+  "parallel": 4,
+  "parts": {
+    "meter": [
+      "p0-t1-1",
+      "p1-t1-1",
+      "p1r-t1-1",
+      "p3-t1-1",
+      "p2-t1-1",
+      "p4-t1-1"
+    ]
+  },
+  "problems": [],
+  "runs": [
+    {
+      "arm": "arms/P0",
+      "base": "base/T1",
+      "ceiling": 400000,
+      "db": "postgres",
+      "env": [
+        "UV_PYTHON=3.10"
+      ],
+      "redact": [
+        "P0",
+        "p0"
+      ],
+      "reply_sheet": "results/stage-1/sheets/gct-T1.md",
+      "repo": "Natenc12/gct-lab",
+      "run_id": "p0-t1-1",
+      "ticket": "tickets/gct/T1/S1.md"
+    },
+    {
+      "arm": "arms/P1",
+      "base": "base/T1",
+      "ceiling": 500000,
+      "db": "postgres",
+      "env": [
+        "UV_PYTHON=3.10"
+      ],
+      "redact": [
+        "P1",
+        "p1"
+      ],
+      "reply_sheet": "results/stage-1/sheets/gct-T1.md",
+      "repo": "Natenc12/gct-lab",
+      "run_id": "p1-t1-1",
+      "ticket": "tickets/gct/T1/S1.md"
+    },
+    {
+      "arm": "arms/P1R",
+      "base": "base/T1",
+      "ceiling": 600000,
+      "db": "postgres",
+      "env": [
+        "UV_PYTHON=3.10"
+      ],
+      "redact": [
+        "P1R",
+        "p1r"
+      ],
+      "reply_sheet": "results/stage-1/sheets/gct-T1.md",
+      "repo": "Natenc12/gct-lab",
+      "run_id": "p1r-t1-1",
+      "ticket": "tickets/gct/T1/S1.md"
+    },
+    {
+      "arm": "arms/P3",
+      "base": "base/T1",
+      "ceiling": 700000,
+      "db": "postgres",
+      "env": [
+        "UV_PYTHON=3.10"
+      ],
+      "redact": [
+        "P3",
+        "p3"
+      ],
+      "reply_sheet": "results/stage-1/sheets/gct-T1.md",
+      "repo": "Natenc12/gct-lab",
+      "run_id": "p3-t1-1",
+      "ticket": "tickets/gct/T1/S1.md"
+    },
+    {
+      "arm": "arms/P2",
+      "base": "base/T1",
+      "ceiling": 700000,
+      "db": "postgres",
+      "env": [
+        "UV_PYTHON=3.10"
+      ],
+      "redact": [
+        "P2",
+        "p2"
+      ],
+      "reply_sheet": "results/stage-1/sheets/gct-T1.md",
+      "repo": "Natenc12/gct-lab",
+      "run_id": "p2-t1-1",
+      "ticket": "tickets/gct/T1/S1.md"
+    },
+    {
+      "arm": "arms/P4",
+      "base": "base/T1",
+      "ceiling": 1600000,
+      "db": "postgres",
+      "env": [
+        "UV_PYTHON=3.10"
+      ],
+      "redact": [
+        "P4",
+        "p4"
+      ],
+      "reply_sheet": "results/stage-1/sheets/gct-T1.md",
+      "repo": "Natenc12/gct-lab",
+      "run_id": "p4-t1-1",
+      "ticket": "tickets/gct/T1/S1.md"
+    }
+  ],
+  "stage": "stage-1",
+  "written": "2026-11-21T22:43:14Z"
+}

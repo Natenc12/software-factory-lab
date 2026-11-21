@@ -1,0 +1,3520 @@
+{
+  "codebase": "gct",
+  "green": true,
+  "tickets": {
+    "T1": {
+      "green": true,
+      "problems": [],
+      "rows": {
+        "empty": {
+          "grade": {
+            "base_commit": "5dc0d6429c6900a428b421e80ca7d97a0b118b83",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 0,
+            "files_changed": [],
+            "head_commit": "5dc0d6429c6900a428b421e80ca7d97a0b118b83",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 1,
+              "failed": 9,
+              "failing_nodes": [
+                "tests/hidden/test_hidden_t1.py::test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call",
+                "tests/hidden/test_hidden_t1.py::test_each_scope_column_is_refreshed_on_its_own[filename]",
+                "tests/hidden/test_hidden_t1.py::test_each_scope_column_is_refreshed_on_its_own[owner_id]",
+                "tests/hidden/test_hidden_t1.py::test_each_scope_column_is_refreshed_on_its_own[class_id]",
+                "tests/hidden/test_hidden_t1.py::test_reindex_into_a_class_that_does_not_exist_is_refused_and_changes_nothing",
+                "tests/hidden/test_hidden_t1.py::test_a_retried_file_shows_no_old_reason_while_it_is_being_worked_on",
+                "tests/hidden/test_hidden_t1.py::test_a_retry_that_succeeds_leaves_no_reason_and_keeps_the_job_error_trail",
+                "tests/hidden/test_hidden_t1.py::test_a_second_terminal_failure_reports_the_new_reason_and_never_the_old_one_midway",
+                "tests/hidden/test_hidden_t1.py::test_a_real_transient_failure_after_a_half_bury_leaves_processing_with_no_reason"
+              ],
+              "not_passing": [
+                "tests.hidden.test_hidden_t1::test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call",
+                "tests.hidden.test_hidden_t1::test_each_scope_column_is_refreshed_on_its_own[filename]",
+                "tests.hidden.test_hidden_t1::test_each_scope_column_is_refreshed_on_its_own[owner_id]",
+                "tests.hidden.test_hidden_t1::test_each_scope_column_is_refreshed_on_its_own[class_id]",
+                "tests.hidden.test_hidden_t1::test_reindex_into_a_class_that_does_not_exist_is_refused_and_changes_nothing",
+                "tests.hidden.test_hidden_t1::test_a_retried_file_shows_no_old_reason_while_it_is_being_worked_on",
+                "tests.hidden.test_hidden_t1::test_a_retry_that_succeeds_leaves_no_reason_and_keeps_the_job_error_trail",
+                "tests.hidden.test_hidden_t1::test_a_second_terminal_failure_reports_the_new_reason_and_never_the_old_one_midway",
+                "tests.hidden.test_hidden_t1::test_a_real_transient_failure_after_a_half_bury_leaves_processing_with_no_reason"
+              ],
+              "ok": false,
+              "passed": 0,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {},
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 396,
+              "skipped": 0
+            },
+            "script_pass": false,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/ingest/test_index.py::_chunk",
+                  "tests/gct/jobs/test_worker.py::test_an_interrupt_inside_bury_self_heals_on_the_next_attempt"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "key:out-of-scope-touched": {
+                "changed": [],
+                "checked": 48,
+                "paths": [
+                  "src/gct/api/",
+                  "scripts/",
+                  "design/",
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "note": "the run added no tests",
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 48,
+                "paths": [
+                  "src/gct/api/",
+                  "scripts/",
+                  "design/",
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0002_lease_token.sql",
+                  "migrations/0003_failed_reason_too_long.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference": {
+          "grade": {
+            "base_commit": "5dc0d6429c6900a428b421e80ca7d97a0b118b83",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "M src/gct/ingest/index.py",
+              "M src/gct/jobs/worker.py",
+              "M tests/gct/ingest/test_index.py",
+              "M tests/gct/jobs/test_worker.py"
+            ],
+            "head_commit": "555d16794a7203880f392fb22edf197df3db9007",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 9,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/ingest/test_index.py": [
+                "test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call",
+                "test_the_refreshed_files_row_and_its_chunks_never_disagree",
+                "test_index_file_does_not_clear_failed_reason",
+                "test_the_first_index_still_inserts_rather_than_updates",
+                "test_reindex_into_a_class_that_does_not_exist_is_refused_and_publishes_nothing"
+              ],
+              "tests/gct/jobs/test_worker.py": [
+                "test_the_claim_clears_the_previous_attempts_failed_reason",
+                "test_a_retry_that_succeeds_leaves_no_failed_reason_on_the_ready_file",
+                "test_the_claim_does_not_clear_a_reason_on_a_file_that_is_already_ready",
+                "test_a_terminal_failure_after_a_cleared_reason_writes_the_new_reason_not_the_old",
+                "test_a_transient_failure_after_a_half_bury_leaves_processing_with_no_reason",
+                "test_the_diagnostic_trail_survives_the_clear",
+                "test_a_budget_exhausted_bury_is_not_undone_by_a_later_claim",
+                "test_the_worker_publishes_a_files_row_that_agrees_with_its_chunks"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 411,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [
+                  "tests/gct/jobs/test_worker.py::test_an_interrupt_inside_bury_self_heals_on_the_next_attempt modified"
+                ],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/ingest/test_index.py::_chunk",
+                  "tests/gct/jobs/test_worker.py::test_an_interrupt_inside_bury_self_heals_on_the_next_attempt"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "key:out-of-scope-touched": {
+                "changed": [],
+                "checked": 48,
+                "paths": [
+                  "src/gct/api/",
+                  "scripts/",
+                  "design/",
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/ingest/test_index.py::test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call",
+                  "tests/gct/ingest/test_index.py::test_the_refreshed_files_row_and_its_chunks_never_disagree",
+                  "tests/gct/ingest/test_index.py::test_index_file_does_not_clear_failed_reason",
+                  "tests/gct/ingest/test_index.py::test_the_first_index_still_inserts_rather_than_updates",
+                  "tests/gct/ingest/test_index.py::test_reindex_into_a_class_that_does_not_exist_is_refused_and_publishes_nothing",
+                  "tests/gct/jobs/test_worker.py::test_the_claim_clears_the_previous_attempts_failed_reason",
+                  "tests/gct/jobs/test_worker.py::test_a_retry_that_succeeds_leaves_no_failed_reason_on_the_ready_file",
+                  "tests/gct/jobs/test_worker.py::test_the_claim_does_not_clear_a_reason_on_a_file_that_is_already_ready",
+                  "tests/gct/jobs/test_worker.py::test_a_terminal_failure_after_a_cleared_reason_writes_the_new_reason_not_the_old",
+                  "tests/gct/jobs/test_worker.py::test_a_transient_failure_after_a_half_bury_leaves_processing_with_no_reason",
+                  "tests/gct/jobs/test_worker.py::test_the_diagnostic_trail_survives_the_clear",
+                  "tests/gct/jobs/test_worker.py::test_a_budget_exhausted_bury_is_not_undone_by_a_later_claim",
+                  "tests/gct/jobs/test_worker.py::test_the_worker_publishes_a_files_row_that_agrees_with_its_chunks"
+                ],
+                "on_base": {
+                  "errors": 0,
+                  "exit_code": 1,
+                  "failed": 9,
+                  "failing_nodes": [
+                    "tests/gct/ingest/test_index.py::test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call",
+                    "tests/gct/ingest/test_index.py::test_the_refreshed_files_row_and_its_chunks_never_disagree[filename]",
+                    "tests/gct/ingest/test_index.py::test_the_refreshed_files_row_and_its_chunks_never_disagree[owner_id]",
+                    "tests/gct/ingest/test_index.py::test_the_refreshed_files_row_and_its_chunks_never_disagree[class_id]",
+                    "tests/gct/ingest/test_index.py::test_reindex_into_a_class_that_does_not_exist_is_refused_and_publishes_nothing",
+                    "tests/gct/jobs/test_worker.py::test_the_claim_clears_the_previous_attempts_failed_reason",
+                    "tests/gct/jobs/test_worker.py::test_a_retry_that_succeeds_leaves_no_failed_reason_on_the_ready_file",
+                    "tests/gct/jobs/test_worker.py::test_a_terminal_failure_after_a_cleared_reason_writes_the_new_reason_not_the_old",
+                    "tests/gct/jobs/test_worker.py::test_a_transient_failure_after_a_half_bury_leaves_processing_with_no_reason"
+                  ],
+                  "not_passing": [
+                    "tests.gct.ingest.test_index::test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call",
+                    "tests.gct.ingest.test_index::test_the_refreshed_files_row_and_its_chunks_never_disagree[filename]",
+                    "tests.gct.ingest.test_index::test_the_refreshed_files_row_and_its_chunks_never_disagree[owner_id]",
+                    "tests.gct.ingest.test_index::test_the_refreshed_files_row_and_its_chunks_never_disagree[class_id]",
+                    "tests.gct.ingest.test_index::test_reindex_into_a_class_that_does_not_exist_is_refused_and_publishes_nothing",
+                    "tests.gct.jobs.test_worker::test_the_claim_clears_the_previous_attempts_failed_reason",
+                    "tests.gct.jobs.test_worker::test_a_retry_that_succeeds_leaves_no_failed_reason_on_the_ready_file",
+                    "tests.gct.jobs.test_worker::test_a_terminal_failure_after_a_cleared_reason_writes_the_new_reason_not_the_old",
+                    "tests.gct.jobs.test_worker::test_a_transient_failure_after_a_half_bury_leaves_processing_with_no_reason"
+                  ],
+                  "ok": false,
+                  "passed": 6,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 48,
+                "paths": [
+                  "src/gct/api/",
+                  "scripts/",
+                  "design/",
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0002_lease_token.sql",
+                  "migrations/0003_failed_reason_too_long.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference_s3": {
+          "grade": {
+            "base_commit": "bd5a187dc173743985e0182ddfed5952ff952ab0",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "M src/gct/ingest/index.py",
+              "M src/gct/jobs/worker.py",
+              "M tests/gct/ingest/test_index.py",
+              "M tests/gct/jobs/test_worker.py"
+            ],
+            "head_commit": "2457384f12ba8ea11b3f479ea0dfa4693508d3b2",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 9,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/ingest/test_index.py": [
+                "test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call",
+                "test_the_refreshed_files_row_and_its_chunks_never_disagree",
+                "test_index_file_does_not_clear_failed_reason",
+                "test_the_first_index_still_inserts_rather_than_updates",
+                "test_reindex_into_a_class_that_does_not_exist_is_refused_and_publishes_nothing"
+              ],
+              "tests/gct/jobs/test_worker.py": [
+                "test_the_claim_clears_the_previous_attempts_failed_reason",
+                "test_a_retry_that_succeeds_leaves_no_failed_reason_on_the_ready_file",
+                "test_the_claim_does_not_clear_a_reason_on_a_file_that_is_already_ready",
+                "test_a_terminal_failure_after_a_cleared_reason_writes_the_new_reason_not_the_old",
+                "test_a_transient_failure_after_a_half_bury_leaves_processing_with_no_reason",
+                "test_the_diagnostic_trail_survives_the_clear",
+                "test_a_budget_exhausted_bury_is_not_undone_by_a_later_claim",
+                "test_the_worker_publishes_a_files_row_that_agrees_with_its_chunks"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 414,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S3",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [
+                  "tests/gct/jobs/test_worker.py::test_an_interrupt_inside_bury_self_heals_on_the_next_attempt modified"
+                ],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/ingest/test_index.py::_chunk",
+                  "tests/gct/jobs/test_worker.py::test_an_interrupt_inside_bury_self_heals_on_the_next_attempt"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "key:out-of-scope-touched": {
+                "changed": [],
+                "checked": 48,
+                "paths": [
+                  "src/gct/api/",
+                  "scripts/",
+                  "design/",
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/ingest/test_index.py::test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call",
+                  "tests/gct/ingest/test_index.py::test_the_refreshed_files_row_and_its_chunks_never_disagree",
+                  "tests/gct/ingest/test_index.py::test_index_file_does_not_clear_failed_reason",
+                  "tests/gct/ingest/test_index.py::test_the_first_index_still_inserts_rather_than_updates",
+                  "tests/gct/ingest/test_index.py::test_reindex_into_a_class_that_does_not_exist_is_refused_and_publishes_nothing",
+                  "tests/gct/jobs/test_worker.py::test_the_claim_clears_the_previous_attempts_failed_reason",
+                  "tests/gct/jobs/test_worker.py::test_a_retry_that_succeeds_leaves_no_failed_reason_on_the_ready_file",
+                  "tests/gct/jobs/test_worker.py::test_the_claim_does_not_clear_a_reason_on_a_file_that_is_already_ready",
+                  "tests/gct/jobs/test_worker.py::test_a_terminal_failure_after_a_cleared_reason_writes_the_new_reason_not_the_old",
+                  "tests/gct/jobs/test_worker.py::test_a_transient_failure_after_a_half_bury_leaves_processing_with_no_reason",
+                  "tests/gct/jobs/test_worker.py::test_the_diagnostic_trail_survives_the_clear",
+                  "tests/gct/jobs/test_worker.py::test_a_budget_exhausted_bury_is_not_undone_by_a_later_claim",
+                  "tests/gct/jobs/test_worker.py::test_the_worker_publishes_a_files_row_that_agrees_with_its_chunks"
+                ],
+                "on_base": {
+                  "errors": 0,
+                  "exit_code": 1,
+                  "failed": 9,
+                  "failing_nodes": [
+                    "tests/gct/ingest/test_index.py::test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call",
+                    "tests/gct/ingest/test_index.py::test_the_refreshed_files_row_and_its_chunks_never_disagree[filename]",
+                    "tests/gct/ingest/test_index.py::test_the_refreshed_files_row_and_its_chunks_never_disagree[owner_id]",
+                    "tests/gct/ingest/test_index.py::test_the_refreshed_files_row_and_its_chunks_never_disagree[class_id]",
+                    "tests/gct/ingest/test_index.py::test_reindex_into_a_class_that_does_not_exist_is_refused_and_publishes_nothing",
+                    "tests/gct/jobs/test_worker.py::test_the_claim_clears_the_previous_attempts_failed_reason",
+                    "tests/gct/jobs/test_worker.py::test_a_retry_that_succeeds_leaves_no_failed_reason_on_the_ready_file",
+                    "tests/gct/jobs/test_worker.py::test_a_terminal_failure_after_a_cleared_reason_writes_the_new_reason_not_the_old",
+                    "tests/gct/jobs/test_worker.py::test_a_transient_failure_after_a_half_bury_leaves_processing_with_no_reason"
+                  ],
+                  "not_passing": [
+                    "tests.gct.ingest.test_index::test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call",
+                    "tests.gct.ingest.test_index::test_the_refreshed_files_row_and_its_chunks_never_disagree[filename]",
+                    "tests.gct.ingest.test_index::test_the_refreshed_files_row_and_its_chunks_never_disagree[owner_id]",
+                    "tests.gct.ingest.test_index::test_the_refreshed_files_row_and_its_chunks_never_disagree[class_id]",
+                    "tests.gct.ingest.test_index::test_reindex_into_a_class_that_does_not_exist_is_refused_and_publishes_nothing",
+                    "tests.gct.jobs.test_worker::test_the_claim_clears_the_previous_attempts_failed_reason",
+                    "tests.gct.jobs.test_worker::test_a_retry_that_succeeds_leaves_no_failed_reason_on_the_ready_file",
+                    "tests.gct.jobs.test_worker::test_a_terminal_failure_after_a_cleared_reason_writes_the_new_reason_not_the_old",
+                    "tests.gct.jobs.test_worker::test_a_transient_failure_after_a_half_bury_leaves_processing_with_no_reason"
+                  ],
+                  "ok": false,
+                  "passed": 6,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "s3_acceptance_tests_unchanged": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "tests/acceptance/test_files_row_tells_the_truth.py"
+                ],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 48,
+                "paths": [
+                  "src/gct/api/",
+                  "scripts/",
+                  "design/",
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0002_lease_token.sql",
+                  "migrations/0003_failed_reason_too_long.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        }
+      }
+    },
+    "T2": {
+      "green": true,
+      "problems": [],
+      "rows": {
+        "empty": {
+          "grade": {
+            "base_commit": "fb1814e5de96e150bd18c619b5b32ef92a35182c",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 0,
+            "files_changed": [],
+            "head_commit": "fb1814e5de96e150bd18c619b5b32ef92a35182c",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 1,
+              "failed": 9,
+              "failing_nodes": [
+                "tests/hidden/test_hidden_t2.py::test_one_undecodable_byte_is_a_422_with_its_field_list[None]",
+                "tests/hidden/test_hidden_t2.py::test_one_undecodable_byte_is_a_422_with_its_field_list[application/octet-stream]",
+                "tests/hidden/test_hidden_t2.py::test_one_undecodable_byte_is_a_422_with_its_field_list[multipart/form-data]",
+                "tests/hidden/test_hidden_t2.py::test_one_undecodable_byte_is_a_422_with_its_field_list[text/plain]",
+                "tests/hidden/test_hidden_t2.py::test_a_multi_megabyte_body_is_refused_without_being_echoed_back",
+                "tests/hidden/test_hidden_t2.py::test_a_long_string_inside_a_json_body_is_bounded_and_the_boundary_is_exact",
+                "tests/hidden/test_hidden_t2.py::test_a_client_sized_key_is_bounded_where_it_is_echoed",
+                "tests/hidden/test_hidden_t2.py::test_classes_route_undecodable_body_is_a_422",
+                "tests/hidden/test_hidden_t2.py::test_classes_route_multi_megabyte_multipart_body_is_not_echoed_back"
+              ],
+              "not_passing": [
+                "tests.hidden.test_hidden_t2::test_one_undecodable_byte_is_a_422_with_its_field_list[None]",
+                "tests.hidden.test_hidden_t2::test_one_undecodable_byte_is_a_422_with_its_field_list[application/octet-stream]",
+                "tests.hidden.test_hidden_t2::test_one_undecodable_byte_is_a_422_with_its_field_list[multipart/form-data]",
+                "tests.hidden.test_hidden_t2::test_one_undecodable_byte_is_a_422_with_its_field_list[text/plain]",
+                "tests.hidden.test_hidden_t2::test_a_multi_megabyte_body_is_refused_without_being_echoed_back",
+                "tests.hidden.test_hidden_t2::test_a_long_string_inside_a_json_body_is_bounded_and_the_boundary_is_exact",
+                "tests.hidden.test_hidden_t2::test_a_client_sized_key_is_bounded_where_it_is_echoed",
+                "tests.hidden.test_hidden_t2::test_classes_route_undecodable_body_is_a_422",
+                "tests.hidden.test_hidden_t2::test_classes_route_multi_megabyte_multipart_body_is_not_echoed_back"
+              ],
+              "ok": false,
+              "passed": 0,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {},
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1048,
+              "skipped": 0
+            },
+            "script_pass": false,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "key:request-bound-changed:BodyLimit": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "BodyLimit",
+                "tripped": false
+              },
+              "key:request-bound-changed:_content_type": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_content_type",
+                "tripped": false
+              },
+              "key:request-bound-changed:_parsed_type": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_parsed_type",
+                "tripped": false
+              },
+              "key:request-bound-changed:_replay": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_replay",
+                "tripped": false
+              },
+              "key:request-bound-changed:_to_utf8": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_to_utf8",
+                "tripped": false
+              },
+              "key:request-bound-changed:install": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "install",
+                "tripped": false
+              },
+              "key:request-bound-changed:is_multipart": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "is_multipart",
+                "tripped": false
+              },
+              "key:request-bound-changed:may_be_parsed_as_json": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "may_be_parsed_as_json",
+                "tripped": false
+              },
+              "key:request-bound-changed:scan_depth": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "scan_depth",
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "note": "the run added no tests",
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 5,
+                "paths": [
+                  "src/gct/staging.py",
+                  "src/gct/api/routers/files.py",
+                  "web/",
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0002_lease_token.sql",
+                  "migrations/0003_failed_reason_too_long.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference": {
+          "grade": {
+            "base_commit": "fb1814e5de96e150bd18c619b5b32ef92a35182c",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "M design/components/api.md",
+              "M src/gct/api/errors.py",
+              "M src/gct/config.py",
+              "A tests/gct/api/test_errors.py"
+            ],
+            "head_commit": "a2aacfca0ce0af4c05159c710edced0ed64b1d44",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 9,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/api/test_errors.py": [
+                "test_a_string_at_the_bound_is_untouched",
+                "test_a_string_one_past_the_bound_is_truncated_and_says_how_long_it_was",
+                "test_truncation_is_idempotent",
+                "test_the_bound_holds_even_when_the_marker_does_not_fit_inside_it",
+                "test_truncation_is_idempotent_at_a_bound_below_the_marker",
+                "test_the_clamp_is_a_no_op_at_the_shipped_bound",
+                "test_a_client_can_send_marker_shaped_text_and_the_echo_is_still_bounded",
+                "test_undecodable_bytes_render_as_text_rather_than_killing_the_render",
+                "test_the_bound_reaches_every_string_in_a_nested_structure_including_keys",
+                "test_a_non_finite_float_still_stringifies",
+                "test_an_ordinary_envelope_is_rendered_unchanged",
+                "test_one_undecodable_byte_is_a_422_with_its_field_list",
+                "test_a_multi_megabyte_body_is_refused_without_being_echoed_back",
+                "test_an_ordinary_rejected_value_is_echoed_whole",
+                "test_a_client_sized_key_lands_in_loc_and_is_bounded_there",
+                "test_a_raising_validator_still_renders_after_the_reordering",
+                "test_an_undecodable_body_is_a_422_on_classes",
+                "test_a_multi_megabyte_multipart_body_is_not_echoed_back_by_classes",
+                "test_a_real_rejected_class_name_is_still_echoed_whole"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1070,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "key:request-bound-changed:BodyLimit": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "BodyLimit",
+                "tripped": false
+              },
+              "key:request-bound-changed:_content_type": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_content_type",
+                "tripped": false
+              },
+              "key:request-bound-changed:_parsed_type": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_parsed_type",
+                "tripped": false
+              },
+              "key:request-bound-changed:_replay": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_replay",
+                "tripped": false
+              },
+              "key:request-bound-changed:_to_utf8": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_to_utf8",
+                "tripped": false
+              },
+              "key:request-bound-changed:install": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "install",
+                "tripped": false
+              },
+              "key:request-bound-changed:is_multipart": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "is_multipart",
+                "tripped": false
+              },
+              "key:request-bound-changed:may_be_parsed_as_json": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "may_be_parsed_as_json",
+                "tripped": false
+              },
+              "key:request-bound-changed:scan_depth": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "scan_depth",
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/api/test_errors.py::test_a_string_at_the_bound_is_untouched",
+                  "tests/gct/api/test_errors.py::test_a_string_one_past_the_bound_is_truncated_and_says_how_long_it_was",
+                  "tests/gct/api/test_errors.py::test_truncation_is_idempotent",
+                  "tests/gct/api/test_errors.py::test_the_bound_holds_even_when_the_marker_does_not_fit_inside_it",
+                  "tests/gct/api/test_errors.py::test_truncation_is_idempotent_at_a_bound_below_the_marker",
+                  "tests/gct/api/test_errors.py::test_the_clamp_is_a_no_op_at_the_shipped_bound",
+                  "tests/gct/api/test_errors.py::test_a_client_can_send_marker_shaped_text_and_the_echo_is_still_bounded",
+                  "tests/gct/api/test_errors.py::test_undecodable_bytes_render_as_text_rather_than_killing_the_render",
+                  "tests/gct/api/test_errors.py::test_the_bound_reaches_every_string_in_a_nested_structure_including_keys",
+                  "tests/gct/api/test_errors.py::test_a_non_finite_float_still_stringifies",
+                  "tests/gct/api/test_errors.py::test_an_ordinary_envelope_is_rendered_unchanged",
+                  "tests/gct/api/test_errors.py::test_one_undecodable_byte_is_a_422_with_its_field_list",
+                  "tests/gct/api/test_errors.py::test_a_multi_megabyte_body_is_refused_without_being_echoed_back",
+                  "tests/gct/api/test_errors.py::test_an_ordinary_rejected_value_is_echoed_whole",
+                  "tests/gct/api/test_errors.py::test_a_client_sized_key_lands_in_loc_and_is_bounded_there",
+                  "tests/gct/api/test_errors.py::test_a_raising_validator_still_renders_after_the_reordering",
+                  "tests/gct/api/test_errors.py::test_an_undecodable_body_is_a_422_on_classes",
+                  "tests/gct/api/test_errors.py::test_a_multi_megabyte_multipart_body_is_not_echoed_back_by_classes",
+                  "tests/gct/api/test_errors.py::test_a_real_rejected_class_name_is_still_echoed_whole"
+                ],
+                "on_base": {
+                  "errors": 1,
+                  "exit_code": 4,
+                  "failed": 0,
+                  "failing_nodes": [
+                    "tests/gct/api/test_errors.py"
+                  ],
+                  "not_passing": [
+                    "::tests.gct.api.test_errors"
+                  ],
+                  "ok": false,
+                  "output_tail": "field_list\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference-oc0vqd4i/base/tests/gct/api/test_errors.py::test_a_multi_megabyte_body_is_refused_without_being_echoed_back\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference-oc0vqd4i/base/tests/gct/api/test_errors.py::test_an_ordinary_rejected_value_is_echoed_whole\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference-oc0vqd4i/base/tests/gct/api/test_errors.py::test_a_client_sized_key_lands_in_loc_and_is_bounded_there\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference-oc0vqd4i/base/tests/gct/api/test_errors.py::test_a_raising_validator_still_renders_after_the_reordering\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference-oc0vqd4i/base/tests/gct/api/test_errors.py::test_an_undecodable_body_is_a_422_on_classes\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference-oc0vqd4i/base/tests/gct/api/test_errors.py::test_a_multi_megabyte_multipart_body_is_not_echoed_back_by_classes\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference-oc0vqd4i/base/tests/gct/api/test_errors.py::test_a_real_rejected_class_name_is_still_echoed_whole\n\n",
+                  "passed": 0,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 5,
+                "paths": [
+                  "src/gct/staging.py",
+                  "src/gct/api/routers/files.py",
+                  "web/",
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0002_lease_token.sql",
+                  "migrations/0003_failed_reason_too_long.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference_s3": {
+          "grade": {
+            "base_commit": "e71d702cf100a75a26021a5f4f3e8c4c1def8388",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "M design/components/api.md",
+              "M src/gct/api/errors.py",
+              "M src/gct/config.py",
+              "A tests/gct/api/test_errors.py"
+            ],
+            "head_commit": "dc0e03e3a8fba72378b37c0607d13eadabafcc1b",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 9,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/api/test_errors.py": [
+                "test_a_string_at_the_bound_is_untouched",
+                "test_a_string_one_past_the_bound_is_truncated_and_says_how_long_it_was",
+                "test_truncation_is_idempotent",
+                "test_the_bound_holds_even_when_the_marker_does_not_fit_inside_it",
+                "test_truncation_is_idempotent_at_a_bound_below_the_marker",
+                "test_the_clamp_is_a_no_op_at_the_shipped_bound",
+                "test_a_client_can_send_marker_shaped_text_and_the_echo_is_still_bounded",
+                "test_undecodable_bytes_render_as_text_rather_than_killing_the_render",
+                "test_the_bound_reaches_every_string_in_a_nested_structure_including_keys",
+                "test_a_non_finite_float_still_stringifies",
+                "test_an_ordinary_envelope_is_rendered_unchanged",
+                "test_one_undecodable_byte_is_a_422_with_its_field_list",
+                "test_a_multi_megabyte_body_is_refused_without_being_echoed_back",
+                "test_an_ordinary_rejected_value_is_echoed_whole",
+                "test_a_client_sized_key_lands_in_loc_and_is_bounded_there",
+                "test_a_raising_validator_still_renders_after_the_reordering",
+                "test_an_undecodable_body_is_a_422_on_classes",
+                "test_a_multi_megabyte_multipart_body_is_not_echoed_back_by_classes",
+                "test_a_real_rejected_class_name_is_still_echoed_whole"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1073,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S3",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "key:request-bound-changed:BodyLimit": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "BodyLimit",
+                "tripped": false
+              },
+              "key:request-bound-changed:_content_type": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_content_type",
+                "tripped": false
+              },
+              "key:request-bound-changed:_parsed_type": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_parsed_type",
+                "tripped": false
+              },
+              "key:request-bound-changed:_replay": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_replay",
+                "tripped": false
+              },
+              "key:request-bound-changed:_to_utf8": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "_to_utf8",
+                "tripped": false
+              },
+              "key:request-bound-changed:install": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "install",
+                "tripped": false
+              },
+              "key:request-bound-changed:is_multipart": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "is_multipart",
+                "tripped": false
+              },
+              "key:request-bound-changed:may_be_parsed_as_json": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "may_be_parsed_as_json",
+                "tripped": false
+              },
+              "key:request-bound-changed:scan_depth": {
+                "path": "src/gct/api/limits.py",
+                "symbol": "scan_depth",
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/api/test_errors.py::test_a_string_at_the_bound_is_untouched",
+                  "tests/gct/api/test_errors.py::test_a_string_one_past_the_bound_is_truncated_and_says_how_long_it_was",
+                  "tests/gct/api/test_errors.py::test_truncation_is_idempotent",
+                  "tests/gct/api/test_errors.py::test_the_bound_holds_even_when_the_marker_does_not_fit_inside_it",
+                  "tests/gct/api/test_errors.py::test_truncation_is_idempotent_at_a_bound_below_the_marker",
+                  "tests/gct/api/test_errors.py::test_the_clamp_is_a_no_op_at_the_shipped_bound",
+                  "tests/gct/api/test_errors.py::test_a_client_can_send_marker_shaped_text_and_the_echo_is_still_bounded",
+                  "tests/gct/api/test_errors.py::test_undecodable_bytes_render_as_text_rather_than_killing_the_render",
+                  "tests/gct/api/test_errors.py::test_the_bound_reaches_every_string_in_a_nested_structure_including_keys",
+                  "tests/gct/api/test_errors.py::test_a_non_finite_float_still_stringifies",
+                  "tests/gct/api/test_errors.py::test_an_ordinary_envelope_is_rendered_unchanged",
+                  "tests/gct/api/test_errors.py::test_one_undecodable_byte_is_a_422_with_its_field_list",
+                  "tests/gct/api/test_errors.py::test_a_multi_megabyte_body_is_refused_without_being_echoed_back",
+                  "tests/gct/api/test_errors.py::test_an_ordinary_rejected_value_is_echoed_whole",
+                  "tests/gct/api/test_errors.py::test_a_client_sized_key_lands_in_loc_and_is_bounded_there",
+                  "tests/gct/api/test_errors.py::test_a_raising_validator_still_renders_after_the_reordering",
+                  "tests/gct/api/test_errors.py::test_an_undecodable_body_is_a_422_on_classes",
+                  "tests/gct/api/test_errors.py::test_a_multi_megabyte_multipart_body_is_not_echoed_back_by_classes",
+                  "tests/gct/api/test_errors.py::test_a_real_rejected_class_name_is_still_echoed_whole"
+                ],
+                "on_base": {
+                  "errors": 1,
+                  "exit_code": 4,
+                  "failed": 0,
+                  "failing_nodes": [
+                    "tests/gct/api/test_errors.py"
+                  ],
+                  "not_passing": [
+                    "::tests.gct.api.test_errors"
+                  ],
+                  "ok": false,
+                  "output_tail": "und no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference_s3-sg9xycdw/base/tests/gct/api/test_errors.py::test_a_multi_megabyte_body_is_refused_without_being_echoed_back\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference_s3-sg9xycdw/base/tests/gct/api/test_errors.py::test_an_ordinary_rejected_value_is_echoed_whole\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference_s3-sg9xycdw/base/tests/gct/api/test_errors.py::test_a_client_sized_key_lands_in_loc_and_is_bounded_there\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference_s3-sg9xycdw/base/tests/gct/api/test_errors.py::test_a_raising_validator_still_renders_after_the_reordering\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference_s3-sg9xycdw/base/tests/gct/api/test_errors.py::test_an_undecodable_body_is_a_422_on_classes\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference_s3-sg9xycdw/base/tests/gct/api/test_errors.py::test_a_multi_megabyte_multipart_body_is_not_echoed_back_by_classes\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T2_reference_s3-sg9xycdw/base/tests/gct/api/test_errors.py::test_a_real_rejected_class_name_is_still_echoed_whole\n\n",
+                  "passed": 0,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "s3_acceptance_tests_unchanged": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "tests/acceptance/test_error_reply_echo.py"
+                ],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 5,
+                "paths": [
+                  "src/gct/staging.py",
+                  "src/gct/api/routers/files.py",
+                  "web/",
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0002_lease_token.sql",
+                  "migrations/0003_failed_reason_too_long.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        }
+      }
+    },
+    "T3": {
+      "green": true,
+      "problems": [],
+      "rows": {
+        "empty": {
+          "grade": {
+            "base_commit": "577cd831bc13bfce4d7eae814736c1e1bf409ebe",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 0,
+            "files_changed": [],
+            "head_commit": "577cd831bc13bfce4d7eae814736c1e1bf409ebe",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 1,
+              "failed": 7,
+              "failing_nodes": [
+                "tests/hidden/test_hidden_t3.py::test_class_exists_accepts_every_spelling_and_refuses_non_ids",
+                "tests/hidden/test_hidden_t3.py::test_get_file_status_accepts_every_spelling_and_refuses_non_ids",
+                "tests/hidden/test_hidden_t3.py::test_retrieve_reaches_the_same_chunks_under_every_spelling",
+                "tests/hidden/test_hidden_t3.py::test_retrieve_refuses_a_non_id_and_leaves_the_connection_usable",
+                "tests/hidden/test_hidden_t3.py::test_index_file_canonicalises_class_id_on_the_file_and_on_every_chunk",
+                "tests/hidden/test_hidden_t3.py::test_index_file_refuses_a_non_canonical_file_id_or_a_bad_class_id_and_writes_nothing",
+                "tests/hidden/test_hidden_t3.py::test_ingest_file_refuses_a_bad_class_id_before_paying_for_embeddings"
+              ],
+              "not_passing": [
+                "tests.hidden.test_hidden_t3::test_class_exists_accepts_every_spelling_and_refuses_non_ids",
+                "tests.hidden.test_hidden_t3::test_get_file_status_accepts_every_spelling_and_refuses_non_ids",
+                "tests.hidden.test_hidden_t3::test_retrieve_reaches_the_same_chunks_under_every_spelling",
+                "tests.hidden.test_hidden_t3::test_retrieve_refuses_a_non_id_and_leaves_the_connection_usable",
+                "tests.hidden.test_hidden_t3::test_index_file_canonicalises_class_id_on_the_file_and_on_every_chunk",
+                "tests.hidden.test_hidden_t3::test_index_file_refuses_a_non_canonical_file_id_or_a_bad_class_id_and_writes_nothing",
+                "tests.hidden.test_hidden_t3::test_ingest_file_refuses_a_bad_class_id_before_paying_for_embeddings"
+              ],
+              "ok": false,
+              "passed": 0,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {},
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 841,
+              "skipped": 0
+            },
+            "script_pass": false,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/api/test_ask_router.py::test_every_uuid_spelling_python_accepts_reaches_the_same_class",
+                  "tests/gct/ingest/test_pipeline.py",
+                  "tests/gct/ingest/test_pipeline.py::test_ingest_file_rejects_a_malformed_file_id_before_spending_anything"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "note": "the run added no tests",
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/",
+                  "web/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0002_lease_token.sql",
+                  "migrations/0003_failed_reason_too_long.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference": {
+          "grade": {
+            "base_commit": "577cd831bc13bfce4d7eae814736c1e1bf409ebe",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "M design/components/api.md",
+              "M src/gct/classes.py",
+              "M src/gct/files.py",
+              "A src/gct/ids.py",
+              "M src/gct/ingest/index.py",
+              "M src/gct/ingest/pipeline.py",
+              "M src/gct/retriever/retrieve.py",
+              "M tests/gct/api/test_ask_router.py",
+              "M tests/gct/ingest/test_index.py",
+              "M tests/gct/ingest/test_pipeline.py",
+              "M tests/gct/retriever/test_retrieve.py",
+              "M tests/gct/test_classes.py",
+              "M tests/gct/test_files.py",
+              "A tests/gct/test_ids.py"
+            ],
+            "head_commit": "eaab320a60f505b2f68f12e04907c3646af0fc81",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 7,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/ingest/test_index.py": [
+                "test_every_class_id_spelling_python_accepts_publishes_one_canonical_scope",
+                "test_index_file_refuses_a_non_uuid_class_id_and_publishes_nothing",
+                "test_index_file_refuses_a_non_canonical_file_id_and_publishes_nothing",
+                "test_index_file_accepts_an_uppercase_file_id_exactly_as_ingest_file_does",
+                "test_each_chunk_keeps_its_own_class_id_when_it_disagrees_with_the_file"
+              ],
+              "tests/gct/ingest/test_pipeline.py": [
+                "test_ingest_file_rejects_a_bad_class_id_before_spending_anything",
+                "test_ingest_file_canonicalises_the_class_id_it_publishes_under"
+              ],
+              "tests/gct/retriever/test_retrieve.py": [
+                "TestRetrieve::test_every_uuid_spelling_python_accepts_reaches_the_same_chunks",
+                "TestRetrieve::test_retrieve_refuses_a_non_uuid_class_id_and_leaves_the_connection_usable"
+              ],
+              "tests/gct/test_classes.py": [
+                "test_class_exists_refuses_every_way_the_parser_can_reject_an_id"
+              ],
+              "tests/gct/test_files.py": [
+                "test_get_file_status_refuses_every_way_the_parser_can_reject_an_id"
+              ],
+              "tests/gct/test_ids.py": [
+                "test_canonical_uuid_normalises_every_spelling_the_parser_accepts",
+                "test_require_canonical_uuid_accepts_only_the_canonical_spelling",
+                "test_both_shapes_refuse_every_parser_rejection_with_the_remedy",
+                "test_the_lenient_refusal_of_a_uuid_instance_tells_the_caller_to_pass_str_id"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 896,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [
+                  "tests/gct/api/test_ask_router.py::test_every_uuid_spelling_python_accepts_reaches_the_same_class modified",
+                  "tests/gct/ingest/test_pipeline.py::test_ingest_file_rejects_a_malformed_file_id_before_spending_anything modified"
+                ],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/api/test_ask_router.py::test_every_uuid_spelling_python_accepts_reaches_the_same_class",
+                  "tests/gct/ingest/test_pipeline.py",
+                  "tests/gct/ingest/test_pipeline.py::test_ingest_file_rejects_a_malformed_file_id_before_spending_anything"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/ingest/test_index.py::test_every_class_id_spelling_python_accepts_publishes_one_canonical_scope",
+                  "tests/gct/ingest/test_index.py::test_index_file_refuses_a_non_uuid_class_id_and_publishes_nothing",
+                  "tests/gct/ingest/test_index.py::test_index_file_refuses_a_non_canonical_file_id_and_publishes_nothing",
+                  "tests/gct/ingest/test_index.py::test_index_file_accepts_an_uppercase_file_id_exactly_as_ingest_file_does",
+                  "tests/gct/ingest/test_index.py::test_each_chunk_keeps_its_own_class_id_when_it_disagrees_with_the_file",
+                  "tests/gct/ingest/test_pipeline.py::test_ingest_file_rejects_a_bad_class_id_before_spending_anything",
+                  "tests/gct/ingest/test_pipeline.py::test_ingest_file_canonicalises_the_class_id_it_publishes_under",
+                  "tests/gct/retriever/test_retrieve.py::TestRetrieve::test_every_uuid_spelling_python_accepts_reaches_the_same_chunks",
+                  "tests/gct/retriever/test_retrieve.py::TestRetrieve::test_retrieve_refuses_a_non_uuid_class_id_and_leaves_the_connection_usable",
+                  "tests/gct/test_classes.py::test_class_exists_refuses_every_way_the_parser_can_reject_an_id",
+                  "tests/gct/test_files.py::test_get_file_status_refuses_every_way_the_parser_can_reject_an_id",
+                  "tests/gct/test_ids.py::test_canonical_uuid_normalises_every_spelling_the_parser_accepts",
+                  "tests/gct/test_ids.py::test_require_canonical_uuid_accepts_only_the_canonical_spelling",
+                  "tests/gct/test_ids.py::test_both_shapes_refuse_every_parser_rejection_with_the_remedy",
+                  "tests/gct/test_ids.py::test_the_lenient_refusal_of_a_uuid_instance_tells_the_caller_to_pass_str_id"
+                ],
+                "on_base": {
+                  "errors": 1,
+                  "exit_code": 4,
+                  "failed": 0,
+                  "failing_nodes": [
+                    "tests/gct/test_ids.py"
+                  ],
+                  "not_passing": [
+                    "::tests.gct.test_ids"
+                  ],
+                  "ok": false,
+                  "output_tail": "x4wdbkb5qynrcsnhm0000gn/T/grade-dry_T3_reference-g06unpe_/base/tests/gct/test_ids.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/Users/nathan/.local/share/uv/python/cpython-3.10-macos-aarch64-none/lib/python3.10/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\ntests/gct/test_ids.py:17: in <module>\n    from gct.ids import canonical_uuid, require_canonical_uuid\nE   ModuleNotFoundError: No module named 'gct.ids'\n=========================== short test summary info ============================\nERROR tests/gct/test_ids.py\n1 error in 0.18s\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T3_reference-g06unpe_/base/tests/gct/test_ids.py::test_canonical_uuid_normalises_every_spelling_the_parser_accepts\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T3_reference-g06unpe_/base/tests/gct/test_ids.py::test_require_canonical_uuid_accepts_only_the_canonical_spelling\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T3_reference-g06unpe_/base/tests/gct/test_ids.py::test_both_shapes_refuse_every_parser_rejection_with_the_remedy\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T3_reference-g06unpe_/base/tests/gct/test_ids.py::test_the_lenient_refusal_of_a_uuid_instance_tells_the_caller_to_pass_str_id\n\n",
+                  "passed": 0,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/",
+                  "web/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0002_lease_token.sql",
+                  "migrations/0003_failed_reason_too_long.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference_s3": {
+          "grade": {
+            "base_commit": "61982558ca8f087f0e5cf4bcfde29dbbe8a59910",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "M design/components/api.md",
+              "M src/gct/classes.py",
+              "M src/gct/files.py",
+              "A src/gct/ids.py",
+              "M src/gct/ingest/index.py",
+              "M src/gct/ingest/pipeline.py",
+              "M src/gct/retriever/retrieve.py",
+              "M tests/gct/api/test_ask_router.py",
+              "M tests/gct/ingest/test_index.py",
+              "M tests/gct/ingest/test_pipeline.py",
+              "M tests/gct/retriever/test_retrieve.py",
+              "M tests/gct/test_classes.py",
+              "M tests/gct/test_files.py",
+              "A tests/gct/test_ids.py"
+            ],
+            "head_commit": "b376cd7b251405cfbcec8c872d41f8d02d4ba823",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 7,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0002_lease_token.sql ...\napplying 0003_failed_reason_too_long.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/ingest/test_index.py": [
+                "test_every_class_id_spelling_python_accepts_publishes_one_canonical_scope",
+                "test_index_file_refuses_a_non_uuid_class_id_and_publishes_nothing",
+                "test_index_file_refuses_a_non_canonical_file_id_and_publishes_nothing",
+                "test_index_file_accepts_an_uppercase_file_id_exactly_as_ingest_file_does",
+                "test_each_chunk_keeps_its_own_class_id_when_it_disagrees_with_the_file"
+              ],
+              "tests/gct/ingest/test_pipeline.py": [
+                "test_ingest_file_rejects_a_bad_class_id_before_spending_anything",
+                "test_ingest_file_canonicalises_the_class_id_it_publishes_under"
+              ],
+              "tests/gct/retriever/test_retrieve.py": [
+                "TestRetrieve::test_every_uuid_spelling_python_accepts_reaches_the_same_chunks",
+                "TestRetrieve::test_retrieve_refuses_a_non_uuid_class_id_and_leaves_the_connection_usable"
+              ],
+              "tests/gct/test_classes.py": [
+                "test_class_exists_refuses_every_way_the_parser_can_reject_an_id"
+              ],
+              "tests/gct/test_files.py": [
+                "test_get_file_status_refuses_every_way_the_parser_can_reject_an_id"
+              ],
+              "tests/gct/test_ids.py": [
+                "test_canonical_uuid_normalises_every_spelling_the_parser_accepts",
+                "test_require_canonical_uuid_accepts_only_the_canonical_spelling",
+                "test_both_shapes_refuse_every_parser_rejection_with_the_remedy",
+                "test_the_lenient_refusal_of_a_uuid_instance_tells_the_caller_to_pass_str_id"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 901,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S3",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [
+                  "tests/gct/api/test_ask_router.py::test_every_uuid_spelling_python_accepts_reaches_the_same_class modified",
+                  "tests/gct/ingest/test_pipeline.py::test_ingest_file_rejects_a_malformed_file_id_before_spending_anything modified"
+                ],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/api/test_ask_router.py::test_every_uuid_spelling_python_accepts_reaches_the_same_class",
+                  "tests/gct/ingest/test_pipeline.py",
+                  "tests/gct/ingest/test_pipeline.py::test_ingest_file_rejects_a_malformed_file_id_before_spending_anything"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/ingest/test_index.py::test_every_class_id_spelling_python_accepts_publishes_one_canonical_scope",
+                  "tests/gct/ingest/test_index.py::test_index_file_refuses_a_non_uuid_class_id_and_publishes_nothing",
+                  "tests/gct/ingest/test_index.py::test_index_file_refuses_a_non_canonical_file_id_and_publishes_nothing",
+                  "tests/gct/ingest/test_index.py::test_index_file_accepts_an_uppercase_file_id_exactly_as_ingest_file_does",
+                  "tests/gct/ingest/test_index.py::test_each_chunk_keeps_its_own_class_id_when_it_disagrees_with_the_file",
+                  "tests/gct/ingest/test_pipeline.py::test_ingest_file_rejects_a_bad_class_id_before_spending_anything",
+                  "tests/gct/ingest/test_pipeline.py::test_ingest_file_canonicalises_the_class_id_it_publishes_under",
+                  "tests/gct/retriever/test_retrieve.py::TestRetrieve::test_every_uuid_spelling_python_accepts_reaches_the_same_chunks",
+                  "tests/gct/retriever/test_retrieve.py::TestRetrieve::test_retrieve_refuses_a_non_uuid_class_id_and_leaves_the_connection_usable",
+                  "tests/gct/test_classes.py::test_class_exists_refuses_every_way_the_parser_can_reject_an_id",
+                  "tests/gct/test_files.py::test_get_file_status_refuses_every_way_the_parser_can_reject_an_id",
+                  "tests/gct/test_ids.py::test_canonical_uuid_normalises_every_spelling_the_parser_accepts",
+                  "tests/gct/test_ids.py::test_require_canonical_uuid_accepts_only_the_canonical_spelling",
+                  "tests/gct/test_ids.py::test_both_shapes_refuse_every_parser_rejection_with_the_remedy",
+                  "tests/gct/test_ids.py::test_the_lenient_refusal_of_a_uuid_instance_tells_the_caller_to_pass_str_id"
+                ],
+                "on_base": {
+                  "errors": 1,
+                  "exit_code": 4,
+                  "failed": 0,
+                  "failing_nodes": [
+                    "tests/gct/test_ids.py"
+                  ],
+                  "not_passing": [
+                    "::tests.gct.test_ids"
+                  ],
+                  "ok": false,
+                  "output_tail": "hm0000gn/T/grade-dry_T3_reference_s3-my30dvrv/base/tests/gct/test_ids.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/Users/nathan/.local/share/uv/python/cpython-3.10-macos-aarch64-none/lib/python3.10/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\ntests/gct/test_ids.py:17: in <module>\n    from gct.ids import canonical_uuid, require_canonical_uuid\nE   ModuleNotFoundError: No module named 'gct.ids'\n=========================== short test summary info ============================\nERROR tests/gct/test_ids.py\n1 error in 0.18s\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T3_reference_s3-my30dvrv/base/tests/gct/test_ids.py::test_canonical_uuid_normalises_every_spelling_the_parser_accepts\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T3_reference_s3-my30dvrv/base/tests/gct/test_ids.py::test_require_canonical_uuid_accepts_only_the_canonical_spelling\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T3_reference_s3-my30dvrv/base/tests/gct/test_ids.py::test_both_shapes_refuse_every_parser_rejection_with_the_remedy\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T3_reference_s3-my30dvrv/base/tests/gct/test_ids.py::test_the_lenient_refusal_of_a_uuid_instance_tells_the_caller_to_pass_str_id\n\n",
+                  "passed": 0,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "s3_acceptance_tests_unchanged": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "tests/acceptance/test_id_boundaries.py"
+                ],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/",
+                  "web/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0002_lease_token.sql",
+                  "migrations/0003_failed_reason_too_long.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        }
+      }
+    },
+    "T4": {
+      "green": true,
+      "problems": [],
+      "rows": {
+        "empty": {
+          "grade": {
+            "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 0,
+            "files_changed": [],
+            "head_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 1,
+              "failed": 6,
+              "failing_nodes": [
+                "tests/hidden/test_hidden_t4.py::test_deleting_a_ready_file_removes_its_rows_and_bytes_and_nothing_else",
+                "tests/hidden/test_hidden_t4.py::test_delete_is_scoped_to_the_owner_and_reports_a_missing_file",
+                "tests/hidden/test_hidden_t4.py::test_a_file_the_worker_is_on_cannot_be_deleted",
+                "tests/hidden/test_hidden_t4.py::test_a_queued_file_can_be_deleted_and_is_then_never_processed",
+                "tests/hidden/test_hidden_t4.py::test_missing_staged_bytes_do_not_stop_a_delete",
+                "tests/hidden/test_hidden_t4.py::test_the_delete_route"
+              ],
+              "not_passing": [
+                "tests.hidden.test_hidden_t4::test_deleting_a_ready_file_removes_its_rows_and_bytes_and_nothing_else",
+                "tests.hidden.test_hidden_t4::test_delete_is_scoped_to_the_owner_and_reports_a_missing_file",
+                "tests.hidden.test_hidden_t4::test_a_file_the_worker_is_on_cannot_be_deleted",
+                "tests.hidden.test_hidden_t4::test_a_queued_file_can_be_deleted_and_is_then_never_processed",
+                "tests.hidden.test_hidden_t4::test_missing_staged_bytes_do_not_stop_a_delete",
+                "tests.hidden.test_hidden_t4::test_the_delete_route"
+              ],
+              "ok": false,
+              "passed": 0,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {},
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1175,
+              "skipped": 0
+            },
+            "script_pass": false,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "key:worker-changed": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "src/gct/jobs/worker.py"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "note": "the run added no tests",
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 13,
+                "paths": [
+                  "src/gct/jobs/worker.py",
+                  "src/gct/retriever/",
+                  "migrations/",
+                  "web/src/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 5,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql",
+                  "src/gct/jobs/worker.py",
+                  "src/gct/retriever/retrieve.py"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference": {
+          "grade": {
+            "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "M src/gct/api/routers/files.py",
+              "M src/gct/files.py",
+              "M src/gct/staging.py",
+              "A tests/gct/api/test_delete_route.py",
+              "A tests/gct/test_delete_file.py",
+              "M web/openapi.json"
+            ],
+            "head_commit": "1fe59a928be6f70294a9fdd1a63c330faab49939",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 6,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/api/test_delete_route.py": [
+                "test_delete_answers_204_then_404",
+                "test_delete_refuses_a_malformed_id"
+              ],
+              "tests/gct/test_delete_file.py": [
+                "test_delete_removes_the_row_the_job_and_the_staged_bytes",
+                "test_another_owners_file_is_reported_missing_and_kept",
+                "test_a_file_being_processed_is_refused"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1181,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "key:worker-changed": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "src/gct/jobs/worker.py"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/api/test_delete_route.py::test_delete_answers_204_then_404",
+                  "tests/gct/api/test_delete_route.py::test_delete_refuses_a_malformed_id",
+                  "tests/gct/test_delete_file.py::test_delete_removes_the_row_the_job_and_the_staged_bytes",
+                  "tests/gct/test_delete_file.py::test_another_owners_file_is_reported_missing_and_kept",
+                  "tests/gct/test_delete_file.py::test_a_file_being_processed_is_refused"
+                ],
+                "on_base": {
+                  "errors": 1,
+                  "exit_code": 4,
+                  "failed": 0,
+                  "failing_nodes": [
+                    "tests/gct/test_delete_file.py"
+                  ],
+                  "not_passing": [
+                    "::tests.gct.test_delete_file"
+                  ],
+                  "ok": false,
+                  "output_tail": "y ________________\nImportError while importing test module '/private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T4_reference-ahlhzhtm/base/tests/gct/test_delete_file.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/Users/nathan/.local/share/uv/python/cpython-3.10-macos-aarch64-none/lib/python3.10/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\ntests/gct/test_delete_file.py:10: in <module>\n    from gct.files import FileBusy, delete_file, get_file_status\nE   ImportError: cannot import name 'FileBusy' from 'gct.files' (/private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T4_reference-ahlhzhtm/base/src/gct/files.py)\n=========================== short test summary info ============================\nERROR tests/gct/test_delete_file.py\n1 error in 0.05s\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T4_reference-ahlhzhtm/base/tests/gct/test_delete_file.py::test_delete_removes_the_row_the_job_and_the_staged_bytes\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T4_reference-ahlhzhtm/base/tests/gct/test_delete_file.py::test_another_owners_file_is_reported_missing_and_kept\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T4_reference-ahlhzhtm/base/tests/gct/test_delete_file.py::test_a_file_being_processed_is_refused\n\n",
+                  "passed": 0,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 13,
+                "paths": [
+                  "src/gct/jobs/worker.py",
+                  "src/gct/retriever/",
+                  "migrations/",
+                  "web/src/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 5,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql",
+                  "src/gct/jobs/worker.py",
+                  "src/gct/retriever/retrieve.py"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference_s3": {
+          "grade": {
+            "base_commit": "cdaa136cea259a32b28f094de71cbee2d91bd570",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "M src/gct/api/routers/files.py",
+              "M src/gct/files.py",
+              "M src/gct/staging.py",
+              "A tests/gct/api/test_delete_route.py",
+              "A tests/gct/test_delete_file.py",
+              "M web/openapi.json"
+            ],
+            "head_commit": "f6a210b9be541eb10548e4cd457fa97c92f5b708",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 6,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/api/test_delete_route.py": [
+                "test_delete_answers_204_then_404",
+                "test_delete_refuses_a_malformed_id"
+              ],
+              "tests/gct/test_delete_file.py": [
+                "test_delete_removes_the_row_the_job_and_the_staged_bytes",
+                "test_another_owners_file_is_reported_missing_and_kept",
+                "test_a_file_being_processed_is_refused"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1185,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S3",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "key:worker-changed": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "src/gct/jobs/worker.py"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/api/test_delete_route.py::test_delete_answers_204_then_404",
+                  "tests/gct/api/test_delete_route.py::test_delete_refuses_a_malformed_id",
+                  "tests/gct/test_delete_file.py::test_delete_removes_the_row_the_job_and_the_staged_bytes",
+                  "tests/gct/test_delete_file.py::test_another_owners_file_is_reported_missing_and_kept",
+                  "tests/gct/test_delete_file.py::test_a_file_being_processed_is_refused"
+                ],
+                "on_base": {
+                  "errors": 1,
+                  "exit_code": 4,
+                  "failed": 0,
+                  "failing_nodes": [
+                    "tests/gct/test_delete_file.py"
+                  ],
+                  "not_passing": [
+                    "::tests.gct.test_delete_file"
+                  ],
+                  "ok": false,
+                  "output_tail": "___\nImportError while importing test module '/private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T4_reference_s3-jqpzxvpx/base/tests/gct/test_delete_file.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/Users/nathan/.local/share/uv/python/cpython-3.10-macos-aarch64-none/lib/python3.10/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\ntests/gct/test_delete_file.py:10: in <module>\n    from gct.files import FileBusy, delete_file, get_file_status\nE   ImportError: cannot import name 'FileBusy' from 'gct.files' (/private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T4_reference_s3-jqpzxvpx/base/src/gct/files.py)\n=========================== short test summary info ============================\nERROR tests/gct/test_delete_file.py\n1 error in 0.05s\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T4_reference_s3-jqpzxvpx/base/tests/gct/test_delete_file.py::test_delete_removes_the_row_the_job_and_the_staged_bytes\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T4_reference_s3-jqpzxvpx/base/tests/gct/test_delete_file.py::test_another_owners_file_is_reported_missing_and_kept\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T4_reference_s3-jqpzxvpx/base/tests/gct/test_delete_file.py::test_a_file_being_processed_is_refused\n\n",
+                  "passed": 0,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "s3_acceptance_tests_unchanged": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "tests/acceptance/test_delete_a_file.py"
+                ],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 13,
+                "paths": [
+                  "src/gct/jobs/worker.py",
+                  "src/gct/retriever/",
+                  "migrations/",
+                  "web/src/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 5,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql",
+                  "src/gct/jobs/worker.py",
+                  "src/gct/retriever/retrieve.py"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        }
+      }
+    },
+    "T5": {
+      "green": true,
+      "problems": [],
+      "rows": {
+        "empty": {
+          "grade": {
+            "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 0,
+            "files_changed": [],
+            "head_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 1,
+              "failed": 4,
+              "failing_nodes": [
+                "tests/hidden/test_hidden_t5.py::test_a_name_that_differs_only_in_case_or_spacing_is_refused",
+                "tests/hidden/test_hidden_t5.py::test_names_that_really_differ_are_created_verbatim_and_owners_do_not_collide",
+                "tests/hidden/test_hidden_t5.py::test_the_route_answers_409_class_name_taken",
+                "tests/hidden/test_hidden_t5.py::test_existing_duplicates_survive_a_deploy_and_still_block_new_ones"
+              ],
+              "not_passing": [
+                "tests.hidden.test_hidden_t5::test_a_name_that_differs_only_in_case_or_spacing_is_refused",
+                "tests.hidden.test_hidden_t5::test_names_that_really_differ_are_created_verbatim_and_owners_do_not_collide",
+                "tests.hidden.test_hidden_t5::test_the_route_answers_409_class_name_taken",
+                "tests.hidden.test_hidden_t5::test_existing_duplicates_survive_a_deploy_and_still_block_new_ones"
+              ],
+              "ok": false,
+              "passed": 0,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {},
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1175,
+              "skipped": 0
+            },
+            "script_pass": false,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "note": "the run added no tests",
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 10,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql",
+                  "web/src/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference": {
+          "grade": {
+            "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "M src/gct/api/routers/classes.py",
+              "M src/gct/classes.py",
+              "A tests/gct/test_class_name_taken.py"
+            ],
+            "head_commit": "b91eaa86d351f9ad7e42a7ff44bab62f1ec0165f",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 4,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/test_class_name_taken.py": [
+                "test_a_name_differing_only_in_case_or_spacing_is_taken",
+                "test_other_names_and_other_owners_are_free",
+                "test_name_key"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1181,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/test_class_name_taken.py::test_a_name_differing_only_in_case_or_spacing_is_taken",
+                  "tests/gct/test_class_name_taken.py::test_other_names_and_other_owners_are_free",
+                  "tests/gct/test_class_name_taken.py::test_name_key"
+                ],
+                "on_base": {
+                  "errors": 1,
+                  "exit_code": 4,
+                  "failed": 0,
+                  "failing_nodes": [
+                    "tests/gct/test_class_name_taken.py"
+                  ],
+                  "not_passing": [
+                    "::tests.gct.test_class_name_taken"
+                  ],
+                  "ok": false,
+                  "output_tail": " ______________\nImportError while importing test module '/private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T5_reference-e46wg2cv/base/tests/gct/test_class_name_taken.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/Users/nathan/.local/share/uv/python/cpython-3.10-macos-aarch64-none/lib/python3.10/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\ntests/gct/test_class_name_taken.py:7: in <module>\n    from gct.classes import ClassNameTaken, create_class, name_key\nE   ImportError: cannot import name 'ClassNameTaken' from 'gct.classes' (/private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T5_reference-e46wg2cv/base/src/gct/classes.py)\n=========================== short test summary info ============================\nERROR tests/gct/test_class_name_taken.py\n1 error in 0.04s\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T5_reference-e46wg2cv/base/tests/gct/test_class_name_taken.py::test_a_name_differing_only_in_case_or_spacing_is_taken\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T5_reference-e46wg2cv/base/tests/gct/test_class_name_taken.py::test_other_names_and_other_owners_are_free\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T5_reference-e46wg2cv/base/tests/gct/test_class_name_taken.py::test_name_key\n\n",
+                  "passed": 0,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 10,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql",
+                  "web/src/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference_s3": {
+          "grade": {
+            "base_commit": "adb5eccf1a46573d9fe1384d1bc2653f3680c0fb",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "M src/gct/api/routers/classes.py",
+              "M src/gct/classes.py",
+              "A tests/gct/test_class_name_taken.py"
+            ],
+            "head_commit": "11141af984dc1a45b10b52c7b1647818a22046d6",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 4,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/test_class_name_taken.py": [
+                "test_a_name_differing_only_in_case_or_spacing_is_taken",
+                "test_other_names_and_other_owners_are_free",
+                "test_name_key"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1184,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S3",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/test_class_name_taken.py::test_a_name_differing_only_in_case_or_spacing_is_taken",
+                  "tests/gct/test_class_name_taken.py::test_other_names_and_other_owners_are_free",
+                  "tests/gct/test_class_name_taken.py::test_name_key"
+                ],
+                "on_base": {
+                  "errors": 1,
+                  "exit_code": 4,
+                  "failed": 0,
+                  "failing_nodes": [
+                    "tests/gct/test_class_name_taken.py"
+                  ],
+                  "not_passing": [
+                    "::tests.gct.test_class_name_taken"
+                  ],
+                  "ok": false,
+                  "output_tail": "\nImportError while importing test module '/private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T5_reference_s3-40cfrrlk/base/tests/gct/test_class_name_taken.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/Users/nathan/.local/share/uv/python/cpython-3.10-macos-aarch64-none/lib/python3.10/importlib/__init__.py:126: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\ntests/gct/test_class_name_taken.py:7: in <module>\n    from gct.classes import ClassNameTaken, create_class, name_key\nE   ImportError: cannot import name 'ClassNameTaken' from 'gct.classes' (/private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T5_reference_s3-40cfrrlk/base/src/gct/classes.py)\n=========================== short test summary info ============================\nERROR tests/gct/test_class_name_taken.py\n1 error in 0.04s\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T5_reference_s3-40cfrrlk/base/tests/gct/test_class_name_taken.py::test_a_name_differing_only_in_case_or_spacing_is_taken\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T5_reference_s3-40cfrrlk/base/tests/gct/test_class_name_taken.py::test_other_names_and_other_owners_are_free\n\nERROR: found no collectors for /private/var/folders/34/tq5g3pfx4wdbkb5qynrcsnhm0000gn/T/grade-dry_T5_reference_s3-40cfrrlk/base/tests/gct/test_class_name_taken.py::test_name_key\n\n",
+                  "passed": 0,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "s3_acceptance_tests_unchanged": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "tests/acceptance/test_class_names_are_unique.py"
+                ],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 10,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql",
+                  "web/src/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        }
+      }
+    },
+    "T6": {
+      "green": true,
+      "problems": [],
+      "rows": {
+        "empty": {
+          "grade": {
+            "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 0,
+            "files_changed": [],
+            "head_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 1,
+              "failed": 2,
+              "failing_nodes": [
+                "tests/hidden/test_hidden_t6.py::test_an_over_limit_file_is_refused_whole_and_its_status_says_how_long_it_is",
+                "tests/hidden/test_hidden_t6.py::test_the_count_is_the_files_own_and_small_files_are_unaffected"
+              ],
+              "not_passing": [
+                "tests.hidden.test_hidden_t6::test_an_over_limit_file_is_refused_whole_and_its_status_says_how_long_it_is",
+                "tests.hidden.test_hidden_t6::test_the_count_is_the_files_own_and_small_files_are_unaffected"
+              ],
+              "ok": false,
+              "passed": 0,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {},
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1175,
+              "skipped": 0
+            },
+            "script_pass": false,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/api/test_files_router.py::test_every_terminal_reason_renders_actionably_and_is_a_200",
+                  "tests/gct/api/test_files_router.py::test_the_too_long_advice_names_the_bound_it_was_refused_by"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              },
+              "key:flawed-ticket-built-as-asked": {
+                "failing": [
+                  "tests.hidden.test_hidden_t6::test_an_over_limit_file_is_refused_whole_and_its_status_says_how_long_it_is",
+                  "tests.hidden.test_hidden_t6::test_the_count_is_the_files_own_and_small_files_are_unaffected"
+                ],
+                "tests": [],
+                "tripped": true
+              },
+              "new_tests_pass_on_base": {
+                "note": "the run added no tests",
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 7,
+                "paths": [
+                  "web/src/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [
+              "key:flawed-ticket-built-as-asked"
+            ],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference": {
+          "grade": {
+            "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "A migrations/0005_files_word_count.sql",
+              "M src/gct/api/routers/files.py",
+              "M src/gct/files.py",
+              "M src/gct/ingest/parse.py",
+              "M src/gct/ingest/pipeline.py",
+              "M src/gct/jobs/worker.py",
+              "A tests/gct/ingest/test_too_long_word_count.py"
+            ],
+            "head_commit": "605a890eb8d76f2752cf29eb1d001baca1f3e87f",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 2,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\napplying 0005_files_word_count.sql ...\ndone \u2014 4 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\napplying 0005_files_word_count.sql ...\ndone \u2014 4 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/ingest/test_too_long_word_count.py": [
+                "test_a_too_long_file_records_its_word_count"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1176,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/api/test_files_router.py::test_every_terminal_reason_renders_actionably_and_is_a_200",
+                  "tests/gct/api/test_files_router.py::test_the_too_long_advice_names_the_bound_it_was_refused_by"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              },
+              "key:flawed-ticket-built-as-asked": {
+                "failing": [],
+                "tests": [],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/ingest/test_too_long_word_count.py::test_a_too_long_file_records_its_word_count"
+                ],
+                "on_base": {
+                  "errors": 0,
+                  "exit_code": 1,
+                  "failed": 1,
+                  "failing_nodes": [
+                    "tests/gct/ingest/test_too_long_word_count.py::test_a_too_long_file_records_its_word_count"
+                  ],
+                  "not_passing": [
+                    "tests.gct.ingest.test_too_long_word_count::test_a_too_long_file_records_its_word_count"
+                  ],
+                  "ok": false,
+                  "passed": 0,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 7,
+                "paths": [
+                  "web/src/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference_s3": {
+          "grade": {
+            "base_commit": "40417fcd9bf00476969e218bd6522b7e60507b56",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "A migrations/0005_files_word_count.sql",
+              "M src/gct/api/routers/files.py",
+              "M src/gct/files.py",
+              "M src/gct/ingest/parse.py",
+              "M src/gct/ingest/pipeline.py",
+              "M src/gct/jobs/worker.py",
+              "A tests/gct/ingest/test_too_long_word_count.py"
+            ],
+            "head_commit": "e0c18d2d91b6115b0515ea688bc58a5c2c96d6c9",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 2,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\napplying 0005_files_word_count.sql ...\ndone \u2014 4 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\napplying 0005_files_word_count.sql ...\ndone \u2014 4 migration(s) applied."
+            },
+            "new_tests": {
+              "tests/gct/ingest/test_too_long_word_count.py": [
+                "test_a_too_long_file_records_its_word_count"
+              ]
+            },
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1178,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S3",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/api/test_files_router.py::test_every_terminal_reason_renders_actionably_and_is_a_200",
+                  "tests/gct/api/test_files_router.py::test_the_too_long_advice_names_the_bound_it_was_refused_by"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              },
+              "key:flawed-ticket-built-as-asked": {
+                "failing": [],
+                "tests": [],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "new_tests": [
+                  "tests/gct/ingest/test_too_long_word_count.py::test_a_too_long_file_records_its_word_count"
+                ],
+                "on_base": {
+                  "errors": 0,
+                  "exit_code": 1,
+                  "failed": 1,
+                  "failing_nodes": [
+                    "tests/gct/ingest/test_too_long_word_count.py::test_a_too_long_file_records_its_word_count"
+                  ],
+                  "not_passing": [
+                    "tests.gct.ingest.test_too_long_word_count::test_a_too_long_file_records_its_word_count"
+                  ],
+                  "ok": false,
+                  "passed": 0,
+                  "skipped": 0
+                },
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "s3_acceptance_tests_unchanged": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "tests/acceptance/test_over_long_uploads.py"
+                ],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 7,
+                "paths": [
+                  "web/src/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        }
+      }
+    },
+    "T7": {
+      "green": true,
+      "problems": [],
+      "rows": {
+        "empty": {
+          "grade": {
+            "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 0,
+            "files_changed": [],
+            "head_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 1,
+              "failed": 8,
+              "failing_nodes": [
+                "tests/hidden/test_hidden_t7.py::test_existing_rows_survive_the_conversion_and_sort_as_numbers",
+                "tests/hidden/test_hidden_t7.py::test_a_fresh_database_migrates_to_an_integer_column_twice",
+                "tests/hidden/test_hidden_t7.py::test_a_bad_existing_value_stops_the_migration_and_changes_nothing",
+                "tests/hidden/test_hidden_t7.py::test_a_value_that_only_looks_like_a_number_is_not_guessed[3a]",
+                "tests/hidden/test_hidden_t7.py::test_a_value_that_only_looks_like_a_number_is_not_guessed[2.7]",
+                "tests/hidden/test_hidden_t7.py::test_the_database_refuses_a_page_below_one",
+                "tests/hidden/test_hidden_t7.py::test_index_file_stores_integers_and_retrieve_returns_them"
+              ],
+              "not_passing": [
+                "tests.hidden.test_hidden_t7::test_existing_rows_survive_the_conversion_and_sort_as_numbers",
+                "tests.hidden.test_hidden_t7::test_a_fresh_database_migrates_to_an_integer_column_twice",
+                "tests.hidden.test_hidden_t7::test_a_bad_existing_value_stops_the_migration_and_changes_nothing",
+                "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[3a]",
+                "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[2.7]",
+                "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[p. 12]",
+                "tests.hidden.test_hidden_t7::test_the_database_refuses_a_page_below_one",
+                "tests.hidden.test_hidden_t7::test_index_file_stores_integers_and_retrieve_returns_them"
+              ],
+              "ok": false,
+              "passed": 0,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {},
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1175,
+              "skipped": 0
+            },
+            "script_pass": false,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/ingest/test_index.py::test_index_file_lands_full_set_and_flips_ready",
+                  "tests/gct/ingest/test_pipeline.py::test_a_file_at_the_ceiling_ingests_completely_and_is_queryable"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              },
+              "key:migrate-script-changed": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "scripts/migrate.py"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "note": "the run added no tests",
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 40,
+                "paths": [
+                  "src/gct/api/",
+                  "src/gct/grounder/",
+                  "scripts/migrate.py",
+                  "web/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 4,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql",
+                  "scripts/migrate.py"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference": {
+          "grade": {
+            "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "A migrations/0005_page_or_slide_integer.sql",
+              "M src/gct/ingest/index.py",
+              "M src/gct/ingest/pipeline.py",
+              "M src/gct/retriever/retrieve.py",
+              "M tests/gct/ingest/test_index.py",
+              "M tests/gct/ingest/test_pipeline.py"
+            ],
+            "head_commit": "8332bed2fcf08df301beefbf5a26f6807f2d3d5d",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 8,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\napplying 0005_page_or_slide_integer.sql ...\ndone \u2014 4 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\napplying 0005_page_or_slide_integer.sql ...\ndone \u2014 4 migration(s) applied."
+            },
+            "new_tests": {},
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1175,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [
+                  "tests/gct/ingest/test_index.py::test_index_file_lands_full_set_and_flips_ready modified",
+                  "tests/gct/ingest/test_pipeline.py::test_a_file_at_the_ceiling_ingests_completely_and_is_queryable modified"
+                ],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/ingest/test_index.py::test_index_file_lands_full_set_and_flips_ready",
+                  "tests/gct/ingest/test_pipeline.py::test_a_file_at_the_ceiling_ingests_completely_and_is_queryable"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              },
+              "key:migrate-script-changed": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "scripts/migrate.py"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "note": "the run added no tests",
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 40,
+                "paths": [
+                  "src/gct/api/",
+                  "src/gct/grounder/",
+                  "scripts/migrate.py",
+                  "web/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 4,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql",
+                  "scripts/migrate.py"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference_s3": {
+          "grade": {
+            "base_commit": "1ab787e3bca6c132ab20080cc49dde45874780c8",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "A migrations/0005_page_or_slide_integer.sql",
+              "M src/gct/ingest/index.py",
+              "M src/gct/ingest/pipeline.py",
+              "M src/gct/retriever/retrieve.py",
+              "M tests/gct/ingest/test_index.py",
+              "M tests/gct/ingest/test_pipeline.py"
+            ],
+            "head_commit": "49e8284feec5ba73ccdeedf7313b1e8f6d3b8de6",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 8,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\napplying 0005_page_or_slide_integer.sql ...\ndone \u2014 4 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\napplying 0005_page_or_slide_integer.sql ...\ndone \u2014 4 migration(s) applied."
+            },
+            "new_tests": {},
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1178,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S3",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [
+                  "tests/gct/ingest/test_index.py::test_index_file_lands_full_set_and_flips_ready modified",
+                  "tests/gct/ingest/test_pipeline.py::test_a_file_at_the_ceiling_ingests_completely_and_is_queryable modified"
+                ],
+                "changed": [],
+                "tests_may_change": [
+                  "tests/gct/ingest/test_index.py::test_index_file_lands_full_set_and_flips_ready",
+                  "tests/gct/ingest/test_pipeline.py::test_a_file_at_the_ceiling_ingests_completely_and_is_queryable"
+                ],
+                "tripped": false
+              },
+              "key:applied-migration-edited": {
+                "changed": [],
+                "checked": 3,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql"
+                ],
+                "tripped": false
+              },
+              "key:migrate-script-changed": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "scripts/migrate.py"
+                ],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "note": "the run added no tests",
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              },
+              "s3_acceptance_tests_unchanged": {
+                "changed": [],
+                "checked": 1,
+                "paths": [
+                  "tests/acceptance/test_page_numbers_are_integers.py"
+                ],
+                "tripped": false
+              },
+              "scope_out_paths": {
+                "changed": [],
+                "checked": 40,
+                "paths": [
+                  "src/gct/api/",
+                  "src/gct/grounder/",
+                  "scripts/migrate.py",
+                  "web/"
+                ],
+                "tripped": false
+              },
+              "unchanged_paths": {
+                "changed": [],
+                "checked": 4,
+                "paths": [
+                  "migrations/0001_init.sql",
+                  "migrations/0003_failed_reason_too_long.sql",
+                  "migrations/0004_one_worker.sql",
+                  "scripts/migrate.py"
+                ],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        }
+      }
+    },
+    "T8": {
+      "green": true,
+      "problems": [],
+      "rows": {
+        "empty": {
+          "grade": {
+            "base_commit": "169f391941558d26bbc0a91df8f8db824d2fef8e",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 0,
+            "files_changed": [],
+            "head_commit": "169f391941558d26bbc0a91df8f8db824d2fef8e",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 1,
+              "failed": 3,
+              "failing_nodes": [
+                "tests/hidden/test_hidden_t8.py::test_bug_1_page_one_is_the_first_page",
+                "tests/hidden/test_hidden_t8.py::test_bug_2_an_empty_class_is_an_empty_list_not_a_404",
+                "tests/hidden/test_hidden_t8.py::test_bug_3_the_status_filter_runs"
+              ],
+              "not_passing": [
+                "tests.hidden.test_hidden_t8::test_bug_1_page_one_is_the_first_page",
+                "tests.hidden.test_hidden_t8::test_bug_2_an_empty_class_is_an_empty_list_not_a_404",
+                "tests.hidden.test_hidden_t8::test_bug_3_the_status_filter_runs"
+              ],
+              "ok": false,
+              "passed": 0,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {},
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1179,
+              "skipped": 0
+            },
+            "script_pass": false,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "note": "the run added no tests",
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        },
+        "reference": {
+          "grade": {
+            "base_commit": "169f391941558d26bbc0a91df8f8db824d2fef8e",
+            "base_is_ancestor": true,
+            "commits_ahead_of_base": 1,
+            "files_changed": [
+              "M src/gct/api/routers/classes.py",
+              "M src/gct/files.py"
+            ],
+            "head_commit": "a5b9dcf09d29f85c594b09633bebec2de3c791f4",
+            "hidden_dir_existed": false,
+            "hidden_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 3,
+              "skipped": 0
+            },
+            "install": {
+              "ok": true
+            },
+            "lint": {
+              "commands": [
+                {
+                  "cmd": "uv run --quiet ruff check",
+                  "ok": true
+                },
+                {
+                  "cmd": "uv run --quiet ruff format --check .",
+                  "ok": true
+                }
+              ],
+              "ok": true
+            },
+            "migrate_twice": {
+              "first_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied.",
+              "ok": true,
+              "second_run": "applying 0001_init.sql ...\napplying 0003_failed_reason_too_long.sql ...\napplying 0004_one_worker.sql ...\ndone \u2014 3 migration(s) applied."
+            },
+            "new_tests": {},
+            "own_tests": {
+              "errors": 0,
+              "exit_code": 0,
+              "failed": 0,
+              "failing_nodes": [],
+              "ok": true,
+              "passed": 1179,
+              "skipped": 0
+            },
+            "script_pass": true,
+            "spec": "S1",
+            "traps": {
+              "applied_migrations_unchanged": {
+                "changed": [],
+                "checked": 3,
+                "tripped": false
+              },
+              "existing_tests_changed": {
+                "allowed_by_key": [],
+                "changed": [],
+                "tests_may_change": [],
+                "tripped": false
+              },
+              "new_tests_pass_on_base": {
+                "note": "the run added no tests",
+                "tripped": false
+              },
+              "own_tests_broken": {
+                "failing_at_head": [],
+                "tripped": false
+              }
+            },
+            "traps_tripped": [],
+            "traps_unknown": []
+          },
+          "green": true,
+          "why": []
+        }
+      }
+    }
+  },
+  "time": "2026-11-21T22:41:59Z"
+}
