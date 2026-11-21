@@ -15,7 +15,7 @@ The harness loads only top-level `.md` files other than `README.md` from an arm 
 | Skill front matter (`name`, `description` with trigger phrases) | removed | It is skill metadata, not instructions; the text is appended to the system prompt |
 | `gh issue view <n>` | read `TICKET.md` | The ticket is a file; there are no issues |
 | `gh pr create --draft`, then "mark the PR ready" | open the pull request early, not as a draft | `lab pr open --draft` exists, but nothing can mark a draft ready |
-| `gh pr update-branch` before the brief | push the last commit, then read the checks, waiting until they report | No fetch in the sandbox; the base is frozen. Reading the checks is the shared ending every arm except P0 and P1 has |
+| `gh pr update-branch` before the brief | push the last commit, then read the checks, waiting until they report | No fetch in the sandbox; the base is frozen. Reading the checks before the merge brief is the ending P3, P2 and P4 share |
 | `gh pr checks`, or `pr-facts.py` (P2) | the checks as reported; P2 adds `git diff --stat` for size by area | Only `lab pr checks` reaches GitHub; `pr-facts.py` lives in the owner's skill and calls `gh` |
 | `gh issue edit --add-label in-progress`, `owner-ok`, risk-gate label rules | removed | No labels are touched; `lab` cannot |
 | "Merge only on the owner's word" / step 8 merge and close | "Never merge"; after Stop 2 the PR stays open, a requested change is made and the run stops again | Nothing is ever merged |
@@ -40,15 +40,14 @@ No instruction files, as defined. `README.md` is for people only.
 No source text beyond the table row. One page, 145 words: read first and run the tests, work only in
 the checkout and scratch folder, change only what the ticket asks, add tests that fail without the
 change, open a PR with a short summary, ask when unsure. It does not read checks or stop at the end;
-that difference from the other arms is intended.
+that difference from P3, P2 and P4 is intended, and P1R shares it.
 
 ## P1R Loose + reviewer
 
 - `GUIDE.md` is P1 word for word, then the reviewer rule from the table and from
   `research/arms/p1r-loose-plus-reviewer.md`.
-- **Added beyond "one rule":** a closing section (read the checks, write a merge brief, end on a
-  `STOP:` line). Reason: every arm except P0 and P1 ends that way; the table gives P1R "then the merge
-  brief".
+- Nothing else is added: no check reading, no merge brief and no closing `STOP:`. The approved table
+  gives P1R the same owner stops as P1 ("when it chooses"), so P1 against P1R isolates the reviewer.
 - The rule tells the builder how to get the diff (`git diff <the commit your branch started from>`),
   because the sandbox has no `origin/main`.
 - Reviewer brief: race 1 shape B's brief, adapted as the research proposal says: the contract checks
@@ -135,10 +134,14 @@ definition was silent:
   - architect: Read, Glob, Grep, Write; writes only `scratch/team/design.md`.
   - builder: Read, Glob, Grep, Edit, Write, Bash; may not change the tester's file, the contract, the
     design note or the review folder.
-  - tester: Read, Glob, Grep, Write, Edit (no Bash, no Agent); may not read `src/`, `.git/`, any file
-    in `tests/` except its own and `conftest.py` files, or anything in `scratch/` except the contract
-    and the design note; may write only its own file. Searches (Grep) over a folder that holds any of
-    those are refused. File-name listing (Glob) is allowed: names, not contents.
+  - tester: Read, Glob, Grep, Write, Edit (no Bash, no Agent). Inside the checkout it reads only an
+    allow-list: its own file, `conftest.py` files under `tests/`, `pyproject.toml`, top-level `.md`
+    files, and anything under `design/` or `docs/`. Everything else there is refused, because code
+    does not live only in `src/` (gct-lab also has `web/`, `scripts/`, `migrations/` and `eval/`).
+    In `scratch/` it reads only the contract and the design note. It writes only its own file.
+    Searches (Grep) follow the same rule: a folder is searchable only if everything in it is readable
+    (so `design/` and `docs/`, never the checkout's top level or `tests/`). File-name listing (Glob)
+    is allowed: names, not contents.
   - reviewer: Read, Glob, Grep, Bash; changes nothing outside `scratch/team/review/` (Bash git writes,
     redirects and file commands checked, best effort); may not read `scratch/` beyond the contract,
     the test results and its own folder, so it never sees the design note or anyone's notes.

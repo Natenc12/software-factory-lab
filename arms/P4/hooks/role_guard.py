@@ -9,8 +9,9 @@ on stdin; a refused call gets a deny decision on stdout. Roles:
     planner    writes only scratch/team/contract.md
     architect  writes only scratch/team/design.md
     builder    may not change the tester's file, the contract, the design note or the review folder
-    tester     writes only tests/test_ticket_acceptance.py; may not read src/, other tests (conftest.py
-               aside), .git/ or scratch/ (the contract and design note aside)
+    tester     writes only tests/test_ticket_acceptance.py; in the checkout reads only its own file,
+               conftest.py files in tests/, pyproject.toml, top-level .md files, design/ and docs/;
+               in scratch/ reads only the contract and the design note
     reviewer   changes nothing outside scratch/team/review/; may not read scratch/ beyond the contract,
                the test results and its own folder
 """
@@ -53,14 +54,22 @@ class Run:
 
 
 def tester_read(run: Run, p: str) -> str | None:
-    if under(p, os.path.join(run.repo, "src")):
-        return "the tester may not read product code in src/"
-    if under(p, os.path.join(run.repo, "tests")):
-        if p == run.tester_file or os.path.basename(p) == "conftest.py":
+    """Inside the checkout the tester reads only an allow-list; in scratch/, only the contract and design note."""
+    if under(p, run.repo):
+        rel = os.path.relpath(p, run.repo)
+        allowed = (
+            p == run.tester_file
+            or (rel.startswith("tests/") and os.path.basename(p) == "conftest.py")
+            or rel == "pyproject.toml"
+            or ("/" not in rel and rel.endswith(".md"))
+            or rel.startswith(("design/", "docs/"))
+        )
+        if allowed:
             return None
-        return f"the tester may read only its own file ({TESTER_FILE}) and conftest.py files in tests/"
-    if under(p, os.path.join(run.repo, ".git")):
-        return "the tester may not read git's records"
+        return (
+            f"in the checkout the tester may read only its own file ({TESTER_FILE}), conftest.py files in "
+            "tests/, pyproject.toml, top-level .md files, design/ and docs/"
+        )
     if under(p, run.scratch) and p not in (run.contract, run.design):
         return "the tester may read only the contract and the design note in scratch/"
     return None
@@ -173,8 +182,7 @@ def check(role: str, tool: str, inp: dict, cwd: str, run: Run) -> str | None:
             return tester_read(run, target)
         if tool == "Grep":
             scope = real(str(inp.get("path") or cwd), cwd)
-            blocked = [os.path.join(run.repo, d) for d in ("src", "tests", ".git")] + [run.scratch]
-            return scope_reason(run, scope, tester_read, blocked)
+            return scope_reason(run, scope, tester_read, [run.repo, run.scratch])
         if tool == "Glob":
             return None  # file names only, no contents
         return f"the tester has no {tool} tool"

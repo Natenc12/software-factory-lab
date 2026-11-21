@@ -16,11 +16,3 @@ Start the `reviewer` subagent. Give it only three things: the ticket text, the d
 shows it, `git diff <the commit your branch started from>`), and the command that runs the tests. Do
 not give it your plan, notes or reasoning. Fix what it marks as blocking, or say in the pull request
 summary why you did not. Run at most two review rounds.
-
-## When the pull request is open
-
-Read its checks, waiting until they report. Then write a merge brief for the owner in your scratch
-folder: what the ticket asked, what you changed, each reviewer finding and what you did about it, the
-checks as reported, and what you did not check. End your turn with a `STOP:` line asking whether to
-merge, pointing to the brief. If the owner asks for a change, make it, update the pull request and
-the brief, and stop again.

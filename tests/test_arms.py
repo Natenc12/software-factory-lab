@@ -64,6 +64,10 @@ def test_p1r_is_p1_word_for_word_plus_its_rule():
     p1 = (ARMS / "P1" / "GUIDE.md").read_text()
     p1r = (ARMS / "P1R" / "GUIDE.md").read_text()
     assert p1r.startswith(p1) and len(p1.split()) < 250
+    rule = p1r[len(p1) :]
+    assert rule.count("\n## ") == 1 and "reviewer" in rule
+    for later in ("STOP", "merge brief", "checks"):
+        assert later not in p1r
 
 
 @pytest.mark.parametrize("name", ["P1R", "P3", "P2", "P4"])
@@ -77,7 +81,7 @@ def test_every_agent_is_opus_and_every_reviewer_is_read_only(name):
             assert sorted(spec["tools"]) == ["Bash", "Glob", "Grep", "Read"]
 
 
-@pytest.mark.parametrize("name", ["P1R", "P3", "P2", "P4"])
+@pytest.mark.parametrize("name", ["P3", "P2", "P4"])
 def test_arms_with_a_brief_end_on_a_stop(name):
     text = "\n".join(t for f, t in run_texts(name).items() if "/agents/" not in f)
     assert "`STOP:` line" in text and "brief" in text
@@ -127,6 +131,21 @@ def test_tester_cannot_read_code_or_other_tests(team):
         ("Edit", {"file_path": "tests/test_app.py"}),
         ("Bash", {"command": "cat src/app.py"}),
         ("Agent", {"prompt": "read src for me"}),
+        # gct-lab keeps code outside src/ too, and other files the tester has no use for
+        ("Read", {"file_path": "web/app.js"}),
+        ("Read", {"file_path": "scripts/migrate.py"}),
+        ("Read", {"file_path": "migrations/0001_init.sql"}),
+        ("Read", {"file_path": "eval/run.py"}),
+        ("Read", {"file_path": "data/sample.json"}),
+        ("Read", {"file_path": "uv.lock"}),
+        ("Read", {"file_path": ".env.example"}),
+        ("Read", {"file_path": ".github/workflows/ci.yml"}),
+        ("Read", {"file_path": "web/README.md"}),
+        ("Read", {"file_path": "tests/unit/test_x.py"}),
+        ("Grep", {"pattern": "def", "path": "."}),
+        ("Grep", {"pattern": "def", "path": "web"}),
+        ("Grep", {"pattern": "def", "path": "scripts"}),
+        ("Grep", {"pattern": "def", "path": "tests"}),
     ]
     for tool, inp in denied:
         assert ask(team, "tester", tool, **inp), (tool, inp)
@@ -136,6 +155,12 @@ def test_tester_cannot_read_code_or_other_tests(team):
         ("Read", {"file_path": "tests/conftest.py"}),
         ("Read", {"file_path": "tests/test_ticket_acceptance.py"}),
         ("Read", {"file_path": "README.md"}),
+        ("Read", {"file_path": "CONTRIBUTING.md"}),
+        ("Read", {"file_path": "pyproject.toml"}),
+        ("Read", {"file_path": "tests/unit/conftest.py"}),
+        ("Read", {"file_path": "design/overview.md"}),
+        ("Read", {"file_path": "docs/guide/setup.md"}),
+        ("Grep", {"pattern": "def", "path": "design"}),
         ("Read", {"file_path": "../TICKET.md"}),
         ("Grep", {"pattern": "def", "path": "docs"}),
         ("Glob", {"pattern": "**/*.py"}),
@@ -203,7 +228,7 @@ def test_hook_prints_a_deny_decision(team, capsys, monkeypatch):
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(data)))
     assert rg.main() == 0
     out = json.loads(capsys.readouterr().out)["hookSpecificOutput"]
-    assert out["permissionDecision"] == "deny" and "src/" in out["permissionDecisionReason"]
+    assert out["permissionDecision"] == "deny" and "in the checkout" in out["permissionDecisionReason"]
 
 
 # ---- the harness wires the hooks; the fake claude runs them ----
@@ -259,4 +284,4 @@ def test_tester_is_blind_end_to_end_with_fake_claude(lab_env, practice):
     assert len(results) == 7
     # src/app.py, tests/test_app.py, Grep over the checkout, and writing src/app.py are refused
     assert denied == {"toolu_probe_0", "toolu_probe_1", "toolu_probe_2", "toolu_probe_6"}
-    assert "may not read product code in src/" in results["toolu_probe_0"]["content"]
+    assert "in the checkout the tester may read only" in results["toolu_probe_0"]["content"]

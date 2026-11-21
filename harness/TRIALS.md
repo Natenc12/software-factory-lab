@@ -135,3 +135,10 @@ rules (git writes, redirects, `rm`/`mv`/`sed -i` and similar outside its folder)
 tests (`tests/test_arms.py`) only, and they are best effort: a program the reviewer runs can still write
 files, which the hook cannot see. The lead (the main session) has the run's full tool list; "the lead
 writes no product code" is an instruction, visible afterwards as main-thread edits in the transcript.
+
+Later the same day the tester's rule inside the checkout became an allow-list (its own file,
+`conftest.py` files under `tests/`, `pyproject.toml`, top-level `.md` files, `design/`, `docs/`), so
+code outside `src/` (gct-lab's `web/`, `scripts/`, `migrations/`, `eval/`) is refused too. The
+refusal text quoted in trial 6 is from the earlier rule. The allow-list is covered by unit tests and
+the fake-`claude` test only, with no new real trial; the hook wiring it relies on is the one trial 6
+proved.
