@@ -77,3 +77,14 @@ So the run settings now allow local ports, and `grader/codebases/gct.json` carri
 `run_env: {"UV_PYTHON": "3.10"}`, which `grader.make_plan` passes to every gct run through the new
 `--env KEY=VALUE` option of `harness.run` (the app does not compile on Python 3.13+). Not checked: the
 same on Linux.
+
+## SIGINT check on gct-lab (2026-11-21)
+
+Stage runs start in the background, so the harness inherits SIGINT ignored, and before this fix every
+`claude` it started did too; gct-lab's `test_both_signals_leave_the_job_in_the_same_state[sigint]`
+then fails in an untouched tree. The harness now resets SIGINT and SIGQUIT to their defaults in each
+`claude` process (sessions and the reply judge). Check: a sandbox on `Natenc12/gct-lab` at `base/T1`
+(`--db postgres --env UV_PYTHON=3.10`, `claude-haiku-5-5`, a prompt that only ran `uv sync --extra dev`,
+`uv run python scripts/migrate.py`, `uv run pytest -q -m "not live"`), started as
+`(trap '' INT; python3 -m harness.run ...) &`: **396 passed, 1 deselected**, the `[sigint]` case included.
+About 10k counted tokens; the scan was clean and the sandbox and database were torn down.

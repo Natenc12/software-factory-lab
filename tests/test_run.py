@@ -187,3 +187,20 @@ def test_scan_flags_tokens_and_gh_auth_from_programs(lab_env, practice):
     reasons = [(o["tool"], o["reason"]) for o in read_json(folder / "harness" / "scan.json")["offences"]]
     assert ("Bash", "asks gh or git for GitHub credentials") in reasons
     assert reasons.count(("Bash", "tool output contains a GitHub token")) == 2
+
+
+def test_claude_gets_default_sigint_even_when_the_harness_inherited_it_ignored(lab_env, practice):
+    """A stage started in the background inherits SIGINT ignored; runs must not (gct-lab tests send SIGINT)."""
+    import signal
+
+    scenario(lab_env, p1_t1_1=["stop", "finish"])
+    saved = {sig: signal.signal(sig, signal.SIG_IGN) for sig in (signal.SIGINT, signal.SIGQUIT)}
+    try:
+        assert run.main(run_args(lab_env, practice, "p1-t1-1")) == 0
+        assert signal.getsignal(signal.SIGINT) == signal.SIG_IGN, "the harness's own handling must not change"
+    finally:
+        for sig, old in saved.items():
+            signal.signal(sig, old)
+    seen = calls(lab_env)
+    assert len(seen) == 3  # session, reply judge, resumed session
+    assert all(c["signals"] == {"SIGINT": "default", "SIGQUIT": "default"} for c in seen), seen

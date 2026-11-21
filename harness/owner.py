@@ -18,6 +18,7 @@ import re
 import subprocess
 from pathlib import Path
 
+from harness.common import default_signals
 from harness.stream import Usage
 
 JUDGE_FLAGS = [
@@ -124,6 +125,7 @@ def ask_judge(claude: str, model: str, prompt: str, ids: list[str], workdir: Pat
             cwd=workdir,
             env=env,
             timeout=600,
+            preexec_fn=default_signals,
         )
         try:
             rec = json.loads(out.stdout.strip().splitlines()[-1]) if out.stdout.strip() else {}

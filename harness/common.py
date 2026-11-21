@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import signal
 import subprocess
 import time
 from pathlib import Path
@@ -16,6 +17,18 @@ STATUSES = ("running", "finished", "ceiling_hit", "harness_fault", "plan_limit")
 
 # A spec-level row puts the level in the arm part: `p0s2` is P0 on spec level S2, `p1rs3` is P1R on S3.
 ARM_SPEC_RE = re.compile(r"^(?P<process>[a-z]+[0-9]+r?)s(?P<spec>[0-3])$")
+
+
+def default_signals() -> None:
+    """`preexec_fn` for the `claude` processes the harness starts.
+
+    A job started in the background from a non-interactive shell inherits SIGINT (and sometimes SIGQUIT)
+    as ignored, and an ignored signal stays ignored across exec. Code under test in a run (for example
+    a test that sends itself SIGINT) would then behave differently from a normal terminal. This gives
+    the child the default disposition; the harness's own handling is unchanged.
+    """
+    for sig in (signal.SIGINT, signal.SIGQUIT):
+        signal.signal(sig, signal.SIG_DFL)
 
 
 def parse_run_id(run_id: str) -> dict:
