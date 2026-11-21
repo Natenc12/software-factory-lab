@@ -5,6 +5,7 @@
   "db": "postgres",
   "pg_extensions": ["vector"],
   "env": {"DATABASE_URL": "{db_url}", "CI": "1", "UV_PYTHON": "3.10"},
+  "run_env": {"UV_PYTHON": "3.10"},
   "install": ["uv", "sync", "--quiet", "--extra", "dev"],
   "lint": [
     ["uv", "run", "--quiet", "ruff", "check"],
