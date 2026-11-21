@@ -26,6 +26,7 @@ from harness.common import (
     LAB_ROOT,
     append_jsonl,
     check_stage,
+    default_signals,
     git_head,
     lab_commit,
     now_iso,
@@ -93,6 +94,7 @@ def invoke(cmd, prompt, cwd, env, root: Path, budget_left: int, wall_left: float
             stderr=err,
             text=True,
             start_new_session=True,
+            preexec_fn=default_signals,
         )
 
         def stop(why: str):

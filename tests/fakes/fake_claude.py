@@ -12,6 +12,7 @@ Every call is logged to FAKE_LOG as JSON: argv, stdin, env keys, cwd.
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -92,7 +93,18 @@ def main() -> int:
     log = os.environ.get("FAKE_LOG")
     if log:
         with open(log, "a") as f:
-            f.write(json.dumps({"argv": argv, "stdin": stdin, "env": sorted(os.environ), "cwd": os.getcwd()}) + "\n")
+            disposition = {
+                name: "ignored" if signal.getsignal(getattr(signal, name)) == signal.SIG_IGN else "default"
+                for name in ("SIGINT", "SIGQUIT")
+            }
+            record = {
+                "argv": argv,
+                "stdin": stdin,
+                "env": sorted(os.environ),
+                "cwd": os.getcwd(),
+                "signals": disposition,
+            }
+            f.write(json.dumps(record) + "\n")
     fmt = argv[argv.index("--output-format") + 1] if "--output-format" in argv else "text"
     if fmt == "json":
         answer = os.environ.get("FAKE_JUDGE", "default")
