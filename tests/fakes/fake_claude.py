@@ -3,7 +3,8 @@
 Session calls (`-p --output-format stream-json`) play one step per invocation from a scenario:
 FAKE_SCENARIO_FILE maps a run id (found from the working folder, <run-id>/repo) to a list of steps.
 Steps: finish, stop, limit, big, crash, leak. Record shapes copy a real 2.1.302 trial (2026-11-21).
-Judge calls (`--output-format json`) answer FAKE_JUDGE (default "default").
+Judge calls (`--output-format json`) answer FAKE_JUDGE (default "default"), or play the answers listed in
+the JSON file FAKE_JUDGE_SEQ, one per call.
 Every call is logged to FAKE_LOG as JSON: argv, stdin, env keys, cwd.
 """
 
@@ -64,6 +65,13 @@ def main() -> int:
     fmt = argv[argv.index("--output-format") + 1] if "--output-format" in argv else "text"
     if fmt == "json":
         answer = os.environ.get("FAKE_JUDGE", "default")
+        seq = os.environ.get("FAKE_JUDGE_SEQ")
+        if seq:  # a JSON list of answers, one per call, the last one repeated
+            answers = json.loads(Path(seq).read_text())
+            counter = Path(seq + ".count")
+            n = int(counter.read_text()) if counter.exists() else 0
+            counter.write_text(str(n + 1))
+            answer = answers[min(n, len(answers) - 1)]
         print(json.dumps(result("judge", answer, 900, 3, 0, 0, cost=0.002)))
         return 0
 

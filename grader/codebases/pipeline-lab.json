@@ -1,0 +1,19 @@
+{
+  "name": "pipeline-lab",
+  "repo": "Natenc12/pipeline-lab",
+  "local_clone": "~/repos/pipeline-lab",
+  "db": "sqlite",
+  "env": {"LAB_DB": "{db_path}", "DATABASE_URL": "sqlite:///{db_path}", "UV_PYTHON": "3.10"},
+  "install": ["uv", "sync", "--quiet", "--extra", "dev"],
+  "lint": [
+    ["uv", "run", "--quiet", "ruff", "check", "."],
+    ["uv", "run", "--quiet", "ruff", "format", "--check", "."]
+  ],
+  "migrate": {"cmd": ["uv", "run", "--quiet", "python", "scripts/migrate.py"], "second_run_must_match": "nothing to apply"},
+  "migrations_dir": "migrations",
+  "test": ["uv", "run", "--quiet", "pytest", "-q"],
+  "test_dirs": ["tests"],
+  "hidden_dir": "tests/hidden",
+  "hidden_test_cmd": "uv run --quiet pytest -q tests/hidden",
+  "timeout_seconds": 900
+}

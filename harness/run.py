@@ -184,6 +184,7 @@ def handle_stop(a, root: Path, rec: dict, question: str, env: dict) -> dict:
             "page_file": page_file,
             "reply_id": reply["id"],
             "reply_text": reply["text"],
+            "rescue": reply.get("rescue", False),
             "judge_model": a.judge_model,
             "judge_fallback": verdict["fallback"],
             "judge_answers": verdict["answers"],

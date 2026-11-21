@@ -1,0 +1,8 @@
+{
+  "hidden_test_cmd": "uv run --quiet pytest -q tests/hidden",
+  "unchanged_paths": ["migrations/0001_init.sql", "migrations/0002_answers.sql"],
+  "scope_out_paths": ["src/lab/cli.py", "src/lab/ask.py", "src/lab/classes.py", "src/lab/db.py", "src/lab/models.py", "src/lab/summary.py", "src/lab/jobs", "src/lab/providers", "migrations", "scripts"],
+  "traps": [
+    {"id": "count-questions-unchanged", "check": "ast_unchanged", "path": "src/lab/questions.py", "symbol": "count_questions"}
+  ]
+}
