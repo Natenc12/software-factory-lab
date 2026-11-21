@@ -6,3 +6,4 @@ __pycache__/
 transcripts/
 logs/
 .DS_Store
+.claude/
