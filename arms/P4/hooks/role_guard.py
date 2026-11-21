@@ -191,8 +191,10 @@ def check(role: str, tool: str, inp: dict, cwd: str, run: Run) -> str | None:
             written, paths, git = bash_effects(str(inp.get("command") or ""), cwd)
             if git:
                 return f"the reviewer changes nothing: git {sorted(git)[0]} is not allowed"
-            okw = (run.review, run.scratch + "/tmp", "/dev/null", "/tmp", "/private/tmp")
-            bad = [w for w in written if not any(under(w, d) for d in okw)]
+            inside = (run.review, run.scratch + "/tmp")
+            outside = ("/dev/null", "/tmp", "/private/tmp")
+            # Inside the work folder only its own places count, even when the folder itself sits under /tmp.
+            bad = [w for w in written if not any(under(w, d) for d in (inside if under(w, run.root) else outside))]
             if bad:
                 return f"the reviewer changes nothing outside {os.path.relpath(run.review, run.root)}/"
             for p in paths:

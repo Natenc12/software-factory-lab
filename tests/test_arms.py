@@ -3,6 +3,8 @@
 import importlib.util
 import json
 import re
+import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -91,8 +93,12 @@ def test_sizes_note_matches_the_files():
 # ---- the team's role limits (arms/P4/hooks/role_guard.py) ----
 
 
-@pytest.fixture
-def team(tmp_path):
+@pytest.fixture(params=["any", "tmp"])
+def team(request, tmp_path):
+    """A work folder wherever pytest puts it, and one under /tmp, as on Linux."""
+    if request.param == "tmp":
+        tmp_path = Path(tempfile.mkdtemp(dir="/tmp"))
+        request.addfinalizer(lambda: shutil.rmtree(tmp_path, ignore_errors=True))
     (tmp_path / "repo" / "src").mkdir(parents=True)
     (tmp_path / "repo" / "tests").mkdir()
     (tmp_path / "scratch" / "team" / "review").mkdir(parents=True)
