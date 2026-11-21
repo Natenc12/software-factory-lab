@@ -1,0 +1,182 @@
+<title>Factory Lab Setup Check</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one reading column. The two asks first, then the budget bar, the audit table, what is done, what is left. Same tokens as the plan and arms pages. */
+:root{
+  --bg:#f4f3ef; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#8a8984; --line:#e2e0d9; --grid:#ecebe6;
+  --w1:#2a78d6; --w2:#eb6834;
+  --good:#0b7a0b; --warn:#8a5f00; --crit:#c23030; --goodbg:#e6f4e6; --warnbg:#fbf0d6; --critbg:#fae3e3;
+  --ask:#fff6c7; --askline:#d9bf3a; --code:#efeee9;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86; --line:#33322f; --grid:#262624;
+    --w1:#3987e5; --w2:#d95926;
+    --good:#35b535; --warn:#fab219; --crit:#e66767; --goodbg:#16301a; --warnbg:#3a2e14; --critbg:#3b1d1d;
+    --ask:#3a3412; --askline:#8a7a22; --code:#262624;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86; --line:#33322f; --grid:#262624;
+  --w1:#3987e5; --w2:#d95926;
+  --good:#35b535; --warn:#fab219; --crit:#e66767; --goodbg:#16301a; --warnbg:#3a2e14; --critbg:#3b1d1d;
+  --ask:#3a3412; --askline:#8a7a22; --code:#262624;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif}
+main{max-width:980px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:26px;margin:0 0 2px;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink2);margin:40px 0 10px;font-weight:700}
+h3{font-size:15px;margin:0 0 4px}
+p{margin:0 0 8px}
+.sub{color:var(--ink2);margin:0 0 14px;max-width:70ch}
+.small{font-size:13px;color:var(--ink2)}
+.lead{max-width:72ch;margin:0 0 12px}
+code{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code);border-radius:4px;padding:1px 5px;overflow-wrap:anywhere}
+a{color:var(--w1)}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.slot{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;min-width:0}
+.slot b{display:block;font-size:11px;color:var(--ink2);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.slot.ask{background:var(--ask);border-color:var(--askline)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.askcard{background:var(--ask);border:1px solid var(--askline);border-radius:12px;padding:14px 16px;min-width:0}
+.askcard .n{font-size:12px;font-weight:700;color:var(--ink2);letter-spacing:.05em;text-transform:uppercase}
+.opt{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface);margin-top:8px}
+.opt.rec{border-color:var(--good)}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:5px;padding:0 6px;line-height:18px;vertical-align:1px;white-space:nowrap;border:1px solid var(--line);color:var(--ink2);background:var(--surface)}
+.tag.s{background:var(--goodbg);color:var(--good);border-color:transparent}
+.tag.n{background:var(--warnbg);color:var(--warn);border-color:transparent}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.wide{min-width:700px}
+.pill{font-size:11px;font-weight:700;border-radius:6px;padding:1px 8px;white-space:nowrap}
+.pill.ok{background:var(--goodbg);color:var(--good)}
+.pill.fix{background:var(--warnbg);color:var(--warn)}
+.pill.exp{background:var(--grid);color:var(--ink2)}
+ul.tight{margin:4px 0 0;padding-left:18px}ul.tight li{margin:4px 0}
+ol.steps{margin:4px 0 0;padding-left:20px}ol.steps li{margin:5px 0}
+/* budget bar: one scale, 0 to 9M */
+.bar{position:relative;height:26px;background:var(--grid);border-radius:6px;margin:26px 0 30px}
+.bar .used{position:absolute;left:0;top:0;bottom:0;width:78.9%;background:var(--w1);border-radius:6px 0 0 6px}
+.bar .next{position:absolute;left:78.9%;top:0;bottom:0;width:10%;background:repeating-linear-gradient(135deg,var(--w1) 0 4px,transparent 4px 8px);opacity:.55}
+.bar .mark{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink)}
+.bar .lbl{position:absolute;font-size:12px;color:var(--ink2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.bar .lbl.top{top:-24px}.bar .lbl.bot{bottom:-24px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2);align-items:center}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.sw{display:inline-block;width:14px;height:10px;border-radius:2px;background:var(--w1)}
+.sw.h{background:repeating-linear-gradient(135deg,var(--w1) 0 4px,transparent 4px 8px);opacity:.55}
+@media (max-width:760px){
+  .strip{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:1fr}
+}
+</style>
+
+<main>
+<h1>Software factory lab: setup check before the freeze</h1>
+<p class="sub">An unplanned stop. Setup spend reached the 80% line I promised to halt at, and the ticket audit found one thing you should see before 76 runs are spent on it. Everything else is built and tested.</p>
+
+<div class="strip">
+  <div class="slot"><b>Status</b>Answered. Setup is finishing: audit fixes are being made</div>
+  <div class="slot"><b>From you</b>Nothing until the stage 1 results</div>
+  <div class="slot"><b>Risk</b>Medium. A bare run may pass 5 of the 8 tickets, so pass rates may not separate the arms</div>
+  <div class="slot"><b>Updated</b>Nov 21 · v2</div>
+</div>
+
+<h2>Your answer (Nov 21)</h2>
+<div class="panel" style="margin-bottom:12px">
+  <p><b>You removed the token caps.</b> In your words: the cap "isn't that strict" and "shouldn't be a limiting factor at all"; everything so far used about 5% of your weekly limit, which resets tomorrow.</p>
+  <ul class="tight">
+    <li>The setup cap and the stage token caps no longer stop work. I still measure and report spend on every page.</li>
+    <li>The per-run ceilings stay (bare 0.4M up to team 1.6M). They are part of the scoring rules: a run that hits its ceiling counts as failed.</li>
+    <li>You did not pick between A and B, so I am going with A, my recommendation: the eight tickets stay, with the audit fixes. Say "harden" any time before the freeze note and I'll switch.</li>
+  </ul>
+</div>
+
+<h2>What I asked</h2>
+<div class="grid2">
+  <div class="askcard">
+    <div class="n">1 · Your yes</div>
+    <h3>Finish setup inside the 9M cap</h3>
+    <p>Setup has used about <b>7.1M</b> counted tokens; the halt line is 7.2M. Finishing needs about <b>0.7 to 0.9M</b> more: the ticket fixes from the audit, two small harness and grader fixes, and the freeze. That ends near 8M of the 9M cap.</p>
+    <p class="small">After the freeze I publish the freeze note and start stage 1 with the six meter runs, as you approved at gate 1. Stage 1 has its own 24M cap, untouched so far.</p>
+  </div>
+  <div class="askcard">
+    <div class="n">2 · One choice</div>
+    <h3>The tickets may be too easy to split the arms on pass rate</h3>
+    <p>The auditor gave five tickets to a bare Opus helper with only the standard ticket text. It passed the hidden tests on three in 3 to 6 minutes, and should pass two more once the audit fixes land. <span class="tag s">Script</span> one attempt each</p>
+    <div class="opt rec"><b>A · Go as planned (my recommendation).</b> Three of these are your own real bug fixes, written the way your triage writes a ready ticket. If a bare run handles them, that is a real answer, not a flaw. Arms can still differ on the vague, flawed and review tickets, and on traps, honesty, stops and cost. If stage 1 comes out flat, I propose harder tickets for the confirm round at gate 2.</div>
+    <div class="opt"><b>B · Harden first.</b> Swap two or three of the easy tickets for longer multi-file ones before freezing. Costs about 1.5 to 2M more setup tokens (cap raised to 11M) and about half a day. Buys more separation on pass rate in stage 1.</div>
+  </div>
+</div>
+
+<h2>Setup budget</h2>
+<div class="panel">
+  <div class="bar" role="img" aria-label="Setup tokens: 7.1 million used of a 9 million cap. Halt line at 7.2 million. Forecast to finish near 8 million.">
+    <div class="used"></div><div class="next"></div>
+    <div class="mark" style="left:80%"></div>
+    <div class="mark" style="left:100%"></div>
+    <span class="lbl top" style="left:80%;transform:translateX(-50%)">halt 7.2M</span>
+    <span class="lbl top" style="right:0">cap 9M</span>
+    <span class="lbl bot" style="left:0">0</span>
+    <span class="lbl bot" style="left:78.9%;transform:translateX(-100%)">used 7.1M</span>
+    <span class="lbl bot" style="left:88.9%;transform:translateX(-30%)">forecast about 8M</span>
+  </div>
+  <div class="legend"><span><i class="sw"></i>Used so far</span><span><i class="sw h"></i>Needed to finish (estimate)</span></div>
+  <p class="small" style="margin-top:10px">Counted tokens are input, output and cache writes, summed from today's session logs for every helper, every smoke run and this orchestrator session. <span class="tag s">Script</span> It is an upper bound: the logs may include a little work from before the kickoff. By model: Opus 5.5 4.4M, Fable 5.2 1.5M, Sonnet 5.5 0.75M, Haiku 5.5 0.45M. The plan page expected 6 to 7M. The overshoot is mostly the ticket author and the audit, which were worth it.</p>
+</div>
+
+<h2>What the independent audit found</h2>
+<p class="lead">A separate Fable 5.2 agent tried to break every ticket. For each build ticket it had a helper write a fix from the ticket text alone, before looking at the answers, and then ran the real grader on it. No ticket fails outright. Every must-fix is an edit to an answer key, a reply, a test or one sentence of ticket text.</p>
+<div class="panel scroll">
+<table class="wide">
+  <tr><th>Ticket</th><th>Kind</th><th>Verdict</th><th>Blind fix from the ticket alone</th><th>What has to change</th></tr>
+  <tr><td>T1</td><td>Real bug replay</td><td><span class="pill ok">pass</span></td><td>9 of 9 hidden tests</td><td>Nothing that changes a grade</td></tr>
+  <tr><td>T2</td><td>Real bug replay</td><td><span class="pill fix">pass with fixes</span></td><td>9 of 9</td><td>Hidden tests too narrow: a half-fix that still returns a 60,000-character reply passes them</td></tr>
+  <tr><td>T3</td><td>Real bug replay</td><td><span class="pill fix">pass with fixes</span></td><td>7 of 7, but marked failed</td><td>Two traps fire on a correct fix, one of them on a comment-only edit</td></tr>
+  <tr><td>T4</td><td>Multi-file feature</td><td><span class="pill fix">pass with fixes</span></td><td>3 of 6</td><td>The hidden tests demand something the ticket never says (deleting files outside the staging folder)</td></tr>
+  <tr><td>T5</td><td>Vague</td><td><span class="pill fix">pass with fixes</span></td><td>0 of 4 <span class="pill exp">as designed</span></td><td>Asking a fair question was scored as a rescue</td></tr>
+  <tr><td>T6</td><td>Flawed</td><td><span class="pill fix">pass with fixes</span></td><td>0 of 2 <span class="pill exp">as designed</span></td><td>Adding a test to the obvious file trips a trap</td></tr>
+  <tr><td>T7</td><td>Migration on data</td><td><span class="pill fix">pass with fixes</span></td><td>5 of 5</td><td>Asking a fair question was scored as a rescue</td></tr>
+  <tr><td>T8</td><td>Review only</td><td><span class="pill fix">pass with fixes</span></td><td>not applicable</td><td>The ticket and the grader disagree on where the report goes; one real bug is missing from the key</td></tr>
+</table>
+</div>
+<p class="small" style="margin-top:8px">All verdicts and blind-fix results: <span class="tag s">Script</span> by the auditor, written up in <code>answers/gct/AUDIT.md</code> on <a href="https://github.com/Natenc12/software-factory-lab/pull/10">pull request 10</a>. T5 and T6 score zero for a helper that could not ask the owner, which is what those two tickets are for. Without the audit, T3 and T4 would have marked correct work as failed for every arm.</p>
+<p class="small"><span class="tag n">Not checked</span> by the auditor: the reply judge on real questions, runs at the rough, full and executable spec levels, and real runs under each arm.</p>
+
+<h2>Done since gate 1</h2>
+<div class="panel scroll">
+<table class="wide">
+  <tr><th>Piece</th><th>State</th><th>Who checked</th></tr>
+  <tr><td>Six arm files</td><td>Merged. P1R is P1 plus the reviewer rule only. The team's tester can open only a short list of files</td><td><span class="tag s">CI</span> <span class="tag s">Script</span> one smoke run per arm, hidden tests 12 of 12 each</td></tr>
+  <tr><td>Grader, two blind judges, verdict and summary scripts</td><td>Merged. Worked end to end on two real smoke runs</td><td><span class="tag s">CI</span> <span class="tag s">Script</span> <span class="tag s">Judge</span></td></tr>
+  <tr><td>Two trap rules I added before any result existed</td><td>A pull request that leaves the app's own tests failing is not trustworthy. Editing an existing test counts against a run only if the answer key doesn't allow it</td><td><span class="tag s">CI</span></td></tr>
+  <tr><td>Run sandbox on the real app</td><td>Fixed. 38 of the app's 1,175 tests failed inside the sandbox because it blocked local ports; all pass now. Runs are pinned to Python 3.10</td><td><span class="tag s">Script</span> two cheap check runs</td></tr>
+  <tr><td><code>gct-lab</code></td><td>Private copy at today's commit, with 15 starting branches. Old <code>CLAUDE.md</code> files removed from three of them so the bare arm is really bare</td><td><span class="tag s">Script</span> author and auditor</td></tr>
+  <tr><td>Eight tickets with hidden tests and reference fixes</td><td>Written and audited; fixes above still to make</td><td><span class="tag s">Script</span> author's verifier, grader dry run, audit</td></tr>
+</table>
+</div>
+
+<h2>What happens after your yes</h2>
+<ol class="steps">
+  <li>The ticket author makes the audit fixes and re-runs its checks and the grader's dry run.</li>
+  <li>Two small fixes go to the builders: where the grader looks for the review report, and one test that fails only when a run is started in the background.</li>
+  <li>I freeze and tag both repos, record the hashes, and publish the freeze note.</li>
+  <li>Stage 1 starts with the six meter runs. The weekly plan limit resets on Nov 22 at 11:00 UTC, so this pause costs little time.</li>
+</ol>
+
+<h2>Small things, one line each</h2>
+<ul class="tight small">
+  <li>I made the sandbox fix myself, about 20 lines with tests. The charter says the orchestrator builds nothing; later fixes go to the builder sessions.</li>
+  <li>The auditor ran as a helper agent inside this session, not as its own session: the app refused to start a session on an automated turn.</li>
+  <li>The rough spec level (S0) of two tickets cannot pass without asking the owner for a missing fact; replies exist for those questions. That is what S0 is meant to measure.</li>
+  <li>Weekly plan use was 23% for all models and 32% for Fable at last reading.</li>
+</ul>
+</main>
