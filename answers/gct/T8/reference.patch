@@ -1,0 +1,35 @@
+diff --git a/src/gct/api/routers/classes.py b/src/gct/api/routers/classes.py
+index af36e25..0ea7993 100644
+--- a/src/gct/api/routers/classes.py
++++ b/src/gct/api/routers/classes.py
+@@ -214,7 +214,7 @@ def class_files(
+             class_id=class_id,
+             owner_id=owner,
+             limit=per_page,
+-            offset=page * per_page,
++            offset=(page - 1) * per_page,
+             status=status,
+         )
+     except ValueError as exc:
+@@ -223,7 +223,7 @@ def class_files(
+             "bad_class_id",
+             "class_id must be a uuid. Use the id returned when the class was created.",
+         ) from exc
+-    if not files:
++    if files is None:
+         raise ApiError(
+             404,
+             "class_not_found",
+diff --git a/src/gct/files.py b/src/gct/files.py
+index 8e2a2f2..0614b18 100644
+--- a/src/gct/files.py
++++ b/src/gct/files.py
+@@ -145,7 +145,7 @@ def list_class_files(
+     )
+     if not class_exists(conn, class_id=canonical, owner_id=owner_id):
+         return None
+-    status_filter = "and f.status = %(status)s::file_status" if status is not None else ""
++    status_filter = "and f.status = %(status)s" if status is not None else ""
+     rows = conn.execute(
+         f"""
+         select f.file_id::text, f.filename, f.status, f.failed_reason, f.created_at

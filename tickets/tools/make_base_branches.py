@@ -51,7 +51,7 @@ IDENTITY = {
 
 MESSAGES = {
     "s3": "Add acceptance tests for the ticket",
-    "T8": "Add per-class question export",
+    "T8": "Add a list of the files in a class",
 }
 
 

@@ -7,5 +7,10 @@
   "s3_base_ref": "base/T2-s3",
   "db": "postgres",
   "deliverable": "pull_request",
-  "spec_words": {"S0": 0, "S1": 0, "S2": 0, "S3": 0}
+  "spec_words": {
+    "S0": 123,
+    "S1": 673,
+    "S2": 1007,
+    "S3": 1040
+  }
 }
