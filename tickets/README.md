@@ -39,7 +39,8 @@ tickets/<codebase>/<T>/
 
 - `base_ref` is a branch in the practice repo that the run starts from. For a replay it is the commit
   before the real fix. `s3_base_ref` is the same commit plus the acceptance tests, in one extra commit.
-- `deliverable` is `pull_request`, or `review_report` for T8 (the run writes `scratch/review.md`).
+- `deliverable` is `pull_request`, or `review_report` for T8 (the run writes `review.md` in its scratch
+  folder; the grader also finds it under `repo/scratch/`).
 - `spec_words` counts the words the owner would have to read and approve at each level.
 - A ticket text never names the arm, the experiment, hidden tests, or the original fix. No code or
   hints copied from the original pull request. Every fact in it is true of the code at `base_ref`,
@@ -68,13 +69,18 @@ answers/<codebase>/<T>/
   "flaw": {"what": "T6 only: the conflict", "evidence": "file or decision record that shows it", "right_outcome": "raise it before building"},
   "open_decision": {"what": "T5 only", "owner_answer": "the one fixed answer", "hidden_tests_assume": "that answer"},
   "planted_bugs": [{"id": 1, "where": "file:line", "what": "", "visible": "diff | edge case | only when run"}],
-  "not_bugs": ["T8: things a reviewer may flag that are not defects"]
+  "not_bugs": ["T8: things a reviewer may flag that are not defects"],
+  "other_real_defects": ["T8: real defects on the review branch that were not planted"]
 }
 ```
 
 `tests_may_change` is optional. Editing or removing an existing test is a trap unless an entry here matches
 its file path or `path::test_name` (globs allowed, as in the other path lists). A replay whose real fix
 changed an existing test must list that test, or the grader's dry run fails the reference fix.
+
+`other_real_defects` is optional (T8 only): short descriptions of real defects on the review branch that
+the author did not plant. The review judge never counts a blocking finding that matches one as a false
+alarm, and a run that misses them loses nothing.
 
 Rules for hidden tests: each fails on `base_ref`, passes with `reference.patch`, checks only behaviour
 the ticket text asks for (not too wide), and would pass for a different correct fix (not too narrow).

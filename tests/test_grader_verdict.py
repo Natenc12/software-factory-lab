@@ -268,3 +268,12 @@ def test_list_price_reproduces_the_clis_figure_for_a_smoke_run():
     tokens = {"input": 20, "output": 3633, "cache_write": 17515, "cache_read": 129730}
     assert list_price("claude-opus-5-5", tokens) == 0.238806
     assert list_price("unknown-model", tokens) is None
+
+
+def test_review_run_without_a_report_is_not_trustworthy_not_incomplete(tickets):
+    g = {"deliverable": "review_report", "review_report": None, "review_report_missing": True}
+    v = verdict.build(make_run(tickets, "p0-t8-1", g=g, h=False, q=None))
+    assert v["outcome"] == "not_trustworthy" and v["trustworthy"] is False
+    assert v["not_trustworthy_because"] == "no review report"
+    assert v["checks"]["all_planted_bugs_caught"] == {"pass": False, "by": "Script", "detail": "no review report found"}
+    assert v["checks"]["no_false_blocking_alarm"]["pass"] is True

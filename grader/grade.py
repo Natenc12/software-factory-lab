@@ -15,8 +15,9 @@ For a pull-request ticket the grader:
    starting code (a sign they test nothing);
 6. records files changed, commits, uncommitted changes, and the pull request's title, body and checks.
 
-For a review ticket (`deliverable: review_report`) it records the path of scratch/review.md instead
-of a code grade. Temporary folders and databases are removed afterwards unless --keep.
+For a review ticket (`deliverable: review_report`) it records where the run's review.md is instead of
+a code grade: <run>/scratch/review.md, then <run>/repo/scratch/review.md, then the newest review.md
+anywhere under those two folders. No report found is recorded as such. Temporary folders and databases are removed afterwards unless --keep.
 Exit code 0 when grading completed (whatever the result), 2 on a usage or setup error.
 """
 
@@ -668,6 +669,32 @@ def diff_text(repo: Path, base: str, head: str, limit: int = 200_000) -> str:
     return text
 
 
+REVIEW_PLACES = ("scratch", "repo/scratch")
+
+
+def find_review_report(folder: Path) -> dict:
+    """Where the run's review.md is: the two expected places first, then a search of both, newest first."""
+    folder = Path(folder)
+
+    def inside(p: Path) -> bool:
+        real = Path(os.path.realpath(p))
+        return real.is_file() and str(real).startswith(str(Path(os.path.realpath(folder))) + "/")
+
+    for place in REVIEW_PLACES:
+        p = folder / place / "review.md"
+        if inside(p):
+            return {"review_report": str(p), "review_report_found_by": f"{place}/review.md"}
+    found = [p for place in REVIEW_PLACES if (folder / place).is_dir() for p in (folder / place).rglob("review.md")]
+    found = sorted((p for p in found if inside(p)), key=lambda p: p.stat().st_mtime, reverse=True)
+    if found:
+        return {
+            "review_report": str(found[0]),
+            "review_report_found_by": "search (newest)",
+            "review_report_candidates": [str(p.relative_to(folder)) for p in found],
+        }
+    return {"review_report": None, "review_report_found_by": None, "review_report_missing": True}
+
+
 def grade_run(folder: Path, gh: str = "gh", keep: bool = False, tickets_root=None, answers_root=None) -> dict:
     info = run_folder_info(folder)
     folder, hdir, run = info["folder"], info["hdir"], info["run"]
@@ -695,6 +722,15 @@ def grade_run(folder: Path, gh: str = "gh", keep: bool = False, tickets_root=Non
         fallback = pr_from_transcript(folder, hdir)
         if fallback:
             report["pull_request_from_transcript"] = fallback
+
+    if deliverable == "review_report":
+        report.update(find_review_report(folder))
+        rp = report["review_report"]
+        report["review_report_words"] = len(Path(rp).read_text(errors="replace").split()) if rp else 0
+        report["script_pass"] = None
+        if not repo.is_dir():
+            report["files_changed"] = None
+            return report
 
     if not repo.is_dir():
         report["error"] = "the run's repo/ folder is gone (sandbox torn down); nothing to grade"
@@ -732,11 +768,7 @@ def grade_run(folder: Path, gh: str = "gh", keep: bool = False, tickets_root=Non
         return report
 
     if deliverable == "review_report":
-        review = folder / "scratch" / "review.md"
-        report["review_report"] = str(review) if review.is_file() else None
-        report["review_report_words"] = len(review.read_text(errors="replace").split()) if review.is_file() else 0
         report["files_changed"] = [f"{s} {p}" for s, p in changed_files(repo, base, head)]
-        report["script_pass"] = None
         return report
 
     graded = grade_commit(cfg, repo, base, head, t["answers"], t["key"], t["spec"], keep=keep, label=run["run_id"])
