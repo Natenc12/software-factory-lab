@@ -2,6 +2,21 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
+## Gate 1 · revised arms · waiting for the owner (page published 2026-11-21)
+
+Page: https://claude.ai/artifact/XxXDgFGwhceevDuEgCVWfr (copy: `results/setup/arms-v1.html`)
+
+Asked: approve six arms (P0, P1, P1R new, P3, P2, P4), default effort for every run, and starting
+stage 1 after the freeze note with no further stop; and run `claude update` (CLI 2.1.302 to 2.1.321+).
+
+Owner steer during setup (2026-11-21): findings measured on Claude 4-era models are not reliable for
+the 5.5 generation, and anything older than about a month is suspect. Applied: the research report
+labels every finding with model and date, and no arm was changed on old evidence.
+
+Setup part 1 results: PRs #1 (research), #2 (scout), #3 (harness), #4 (harness sandbox) merged by the
+orchestrator with CI green. Three smoke runs on pipeline-lab, records in `results/setup/smoke/`
+(pipeline-lab PRs #24, #25, #26, closed unmerged).
+
 ## Gate 0 · plan page · approved 2026-11-21
 
 Page: https://claude.ai/artifact/L3qhLpJCBypsRqVEgw4Fu3 (copy: `results/setup/plan-v1.html`)

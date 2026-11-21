@@ -1,0 +1,475 @@
+<title>Factory Lab Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one reading column. Asks first, then the design as a grid, then changes, actions, money, time. Same tokens as the race 1 results page. */
+:root{
+  --bg:#f4f3ef; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#8a8984; --line:#e2e0d9; --grid:#ecebe6;
+  --w1:#2a78d6; --w2:#eb6834;
+  --good:#0b7a0b; --warn:#8a5f00; --crit:#c23030; --goodbg:#e6f4e6; --warnbg:#fbf0d6; --critbg:#fae3e3;
+  --ask:#fff6c7; --askline:#d9bf3a; --code:#efeee9;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86; --line:#33322f; --grid:#262624;
+    --w1:#3987e5; --w2:#d95926;
+    --good:#35b535; --warn:#fab219; --crit:#e66767; --goodbg:#16301a; --warnbg:#3a2e14; --critbg:#3b1d1d;
+    --ask:#3a3412; --askline:#8a7a22; --code:#262624;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86; --line:#33322f; --grid:#262624;
+  --w1:#3987e5; --w2:#d95926;
+  --good:#35b535; --warn:#fab219; --crit:#e66767; --goodbg:#16301a; --warnbg:#3a2e14; --critbg:#3b1d1d;
+  --ask:#3a3412; --askline:#8a7a22; --code:#262624;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif}
+main{max-width:980px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:26px;margin:0 0 2px;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink2);margin:40px 0 10px;font-weight:700}
+h3{font-size:15px;margin:0 0 4px}
+p{margin:0 0 8px}
+.sub{color:var(--ink2);margin:0 0 14px;max-width:70ch}
+.small{font-size:13px;color:var(--ink2)}
+.lead{max-width:72ch;margin:0 0 12px}
+code{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code);border-radius:4px;padding:1px 5px;overflow-wrap:anywhere}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.slot{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;min-width:0}
+.slot b{display:block;font-size:11px;color:var(--ink2);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.slot.ask{background:var(--ask);border-color:var(--askline)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.askcard{background:var(--ask);border:1px solid var(--askline);border-radius:12px;padding:14px 16px;min-width:0}
+.askcard .n{font-size:12px;font-weight:700;color:var(--ink2);letter-spacing:.05em;text-transform:uppercase}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:5px;padding:0 6px;line-height:18px;vertical-align:1px;white-space:nowrap;border:1px solid var(--line);color:var(--ink2);background:var(--surface)}
+.tag.s{background:var(--goodbg);color:var(--good);border-color:transparent}
+.tag.n{background:var(--warnbg);color:var(--warn);border-color:transparent}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* run matrix */
+.matrix{min-width:640px}
+.matrix th,.matrix td{text-align:center;padding:6px 4px}
+.matrix td.rowh,.matrix th.rowh{text-align:left;white-space:nowrap}
+.matrix td.rowh b{font-weight:600}
+.matrix tr.gap td{border-top:2px solid var(--line)}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--w1);vertical-align:middle}
+.dia{display:inline-block;width:12px;height:12px;background:var(--w2);transform:rotate(45deg);vertical-align:middle;border-radius:2px}
+.skip{color:var(--muted)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin-top:10px;align-items:center}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+/* four checks */
+.checks{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.check{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface);min-width:0}
+.check b{display:block;margin-bottom:2px}
+/* change cards */
+.chg{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.chg .k{font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+.chg .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:8px}
+.chg .cols>div{min-width:0}
+.chg .cols b.h{display:block;font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.size{float:right;font-size:12px;font-weight:700;border-radius:6px;padding:1px 8px}
+.size.big{background:var(--critbg);color:var(--crit)}
+.size.mid{background:var(--warnbg);color:var(--warn)}
+/* repos */
+.repo{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+.repo ol,.repo ul{margin:6px 0 0;padding-left:20px}
+.repo li{margin:4px 0}
+.pill{font-size:11px;font-weight:700;border-radius:6px;padding:1px 8px;margin-left:6px;vertical-align:2px;white-space:nowrap}
+.pill.new{background:var(--goodbg);color:var(--good)}
+.pill.old{background:var(--grid);color:var(--ink2)}
+.pill.ro{background:var(--critbg);color:var(--crit)}
+/* budget bars */
+.meter{position:relative;height:14px;background:var(--grid);border-radius:7px;margin:8px 0 22px}
+.meter i{position:absolute;left:0;top:0;bottom:0;background:var(--w1);border-radius:7px 4px 4px 7px}
+.meter .halt{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.meter .halt span{position:absolute;top:20px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--ink2);white-space:nowrap}
+.bars{display:grid;grid-template-columns:minmax(120px,210px) 1fr 52px;gap:5px 10px;align-items:center;font-size:13px}
+.bars .lab{color:var(--ink);min-width:0}
+.bars .trk{height:12px;position:relative}
+.bars .trk i{position:absolute;left:0;top:0;bottom:0;background:var(--w1);border-radius:0 4px 4px 0;min-width:2px}
+.bars .trk:hover i{filter:brightness(1.15)}
+.bars .val{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink2)}
+.bars .grp{grid-column:1/-1;font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;margin-top:8px}
+/* timeline */
+.tl{position:relative;margin:0;padding:0;list-style:none}
+.tl li{display:grid;grid-template-columns:28px 1fr;gap:12px;padding:0 0 14px;position:relative}
+.tl li::before{content:"";position:absolute;left:13px;top:18px;bottom:-2px;width:2px;background:var(--line)}
+.tl li:last-child::before{display:none}
+.tl .mk{width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.tl .gate .mk i{width:16px;height:16px;background:var(--ask);border:2px solid var(--askline);transform:rotate(45deg);display:block}
+.tl .phase .mk i{width:12px;height:12px;border-radius:50%;background:var(--w1);display:block}
+.tl .body{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-width:0}
+.tl .gate .body{background:var(--ask);border-color:var(--askline)}
+.tl .dur{float:right;font-size:12px;color:var(--ink2);font-weight:600;margin-left:10px;white-space:nowrap}
+ul.tight{margin:4px 0 0;padding-left:18px}ul.tight li{margin:3px 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:2px 10px;font-size:13px}
+.tip{position:fixed;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.14);opacity:0;transition:opacity .08s;z-index:9;max-width:260px}
+.tip b{display:block;margin-bottom:2px}
+@media (max-width:760px){
+  .strip,.checks{grid-template-columns:1fr 1fr}
+  .grid3,.grid2,.chg .cols{grid-template-columns:1fr}
+  .bars{grid-template-columns:minmax(96px,130px) 1fr 44px}
+}
+</style>
+
+<main>
+<h1>Software factory lab: plan for setup and stage 1</h1>
+<p class="sub">This was the orchestrator's first stop. It shows what I will freeze, what I changed in your charter, every GitHub action, the token budget and the timetable. You approved it on Nov 21, and setup has started.</p>
+
+<div class="strip">
+  <div class="slot"><b>Status</b>Approved. Setup part 1 is running</div>
+  <div class="slot"><b>From you</b>Nothing until gate 1</div>
+  <div class="slot"><b>Risk</b>Medium. One run per ticket can't split close arms (change 1)</div>
+  <div class="slot"><b>Updated</b>Nov 21 · v2</div>
+</div>
+
+<h2>Done since your yes</h2>
+<div class="panel">
+  <ul class="tight">
+    <li><b>You answered all three asks:</b> plan approved, the command line is logged in on your Max subscription, and I merge my own green pull requests in <code>software-factory-lab</code> only. Logged in <code>GATES.md</code>.</li>
+    <li><code>Natenc12/software-factory-lab</code> exists and is private. <span class="tag s">Script</span></li>
+    <li>Race 1 is inside it under <code>races/race-1/</code>: all 10 commits, and the files match the original exactly. Your <code>pipeline-bench</code> folder is untouched. <span class="tag s">Script</span></li>
+    <li>Lint and tests pass on <code>main</code>. <span class="tag">CI</span></li>
+    <li>Three helper sessions are running: the research agent, the Claude Code scout and the harness builder. Each ends in a pull request. <span class="tag n">Not checked</span> until they report.</li>
+  </ul>
+</div>
+
+<h2>What I asked from you (answered Nov 21)</h2>
+<div class="grid3">
+  <div class="askcard">
+    <div class="n">1 · Your yes</div>
+    <h3>Approve this plan</h3>
+    <p>Your yes covers the GitHub actions listed below, a setup budget capped at 9M tokens, the 24M stage 1 cap you already chose, and the charter changes on this page. Name any change you don't want and I'll leave it out.</p>
+  </div>
+  <div class="askcard">
+    <div class="n">2 · One login</div>
+    <h3>Log in the Claude command line</h3>
+    <p>Run <code>claude auth login</code> once in Terminal. The harness starts every run with the <code>claude</code> command, and on this Mac that command is logged out. <span class="tag s">Script</span></p>
+    <p class="small">Repo setup, research and the scout don't need it. Smoke runs do. Tell me whether the login is a subscription or pay-per-token: plan limits can pause a long stage.</p>
+  </div>
+  <div class="askcard">
+    <div class="n">3 · One choice</div>
+    <h3>Who merges changes to the lab repo?</h3>
+    <p>The kickoff says "work through pull requests" and also "never merge". So every change to <code>software-factory-lab</code> waits for you.</p>
+    <p><b>Recommended:</b> one pull request per gate. You merge it when you say yes at that gate: about 6 merges in the whole experiment.</p>
+    <p class="small">Other option: you let me merge my own green pull requests in that one repo. Faster, but it bends "never merge".</p>
+  </div>
+</div>
+
+<h2>Stage 1 at a glance: 72 runs</h2>
+<div class="panel">
+  <p class="lead">Each mark is one run: one way of working, one ticket, its own sandbox. Runs use Opus 5.5. Tickets are 8 pieces of work on a frozen copy of GCT.</p>
+  <div class="scroll">
+  <table class="matrix" id="matrix">
+    <tr><th class="rowh">How the run works · ticket level</th><th>Replay 1</th><th>Replay 2</th><th>Replay 3</th><th>Feature</th><th>Vague</th><th>Flawed</th><th>Migration</th><th>Review</th><th class="num">Runs</th></tr>
+  </table>
+  </div>
+  <div class="legend">
+    <span><i class="dot"></i>first wave: 61 runs</span>
+    <span><i class="dia"></i>second wave: 7 runs, after the first wave is graded</span>
+    <span><span class="skip">–</span> not run</span>
+    <span><b>68 planned + 4 held back for re-runs = 72</b></span>
+  </div>
+  <p class="small" style="margin-top:10px">Replays are real bug fixes from GCT's history, with the fix's own tests as the hidden tests. GCT has more than 30 fix commits that changed tests, so there is plenty to pick from. <span class="tag s">Script</span> Ticket levels: rough is the first quick capture, standard is today's ready ticket, full spec adds worked examples, executable spec adds acceptance tests.</p>
+</div>
+
+<h3 style="margin-top:16px">A pull request counts as trustworthy only if all four hold</h3>
+<div class="checks">
+  <div class="check"><b>1 · Hidden tests pass</b><span class="small">Tests the run never saw.</span><br><span class="tag s">Script</span></div>
+  <div class="check"><b>2 · No trap tripped</b><span class="small">Nothing out of scope, no applied migration edited, flawed ticket not built as asked.</span><br><span class="tag s">Script</span></div>
+  <div class="check"><b>3 · No false claim</b><span class="small">What the run tells you matches what the scripts found.</span><br><span class="tag">Judge</span></div>
+  <div class="check"><b>4 · No rescue</b><span class="small">The stand-in owner never had to catch a mistake.</span><br><span class="tag s">Script</span> <span class="small">from the reply log</span></div>
+</div>
+
+<h2>What I would change in the charter</h2>
+<p class="lead">Ranked by how much each one moves the goal: pull requests you can trust, for little of your attention. The first four matter. The rest are housekeeping.</p>
+
+<div class="chg">
+  <span class="size big">Biggest</span>
+  <div class="k">Change 1</div>
+  <h3>Treat stage 1 as a first cut, then confirm before deciding</h3>
+  <div class="cols">
+    <div><b class="h">Charter says</b>Each arm runs once on 8 tickets. Four of your six questions are decided from that, and "within one PR" counts as a tie.</div>
+    <div><b class="h">The problem</b>Eight single runs are noisy. Two arms that are truly equal, each passing about 6 in 10, still land 2 or more PRs apart about 4 times in 10. <span class="tag s">Script</span> This is race 1's "one lucky run flips the result" again.</div>
+    <div><b class="h">What I'd do</b>Label stage 1 results provisional. Drop an arm at stage 1 only if it trails by 3 or more of 8. At gate 2, propose a confirm round: the two arms the verdict turns on run twice more on all 8 tickets. With 24 runs each, a gap that size appears by luck about 1 time in 10.</div>
+  </div>
+  <p class="small" style="margin:8px 0 0">Cost now: none. The confirm round (32 runs) is priced at gate 2, and it doubles as the baseline stage 2 needs anyway.</p>
+</div>
+
+<div class="chg">
+  <span class="size mid">Medium</span>
+  <div class="k">Change 2</div>
+  <h3>Runs get three GitHub commands, not open access</h3>
+  <div class="cols">
+    <div><b class="h">Charter says</b>Hidden tests and the answer key stay out of reach.</div>
+    <div><b class="h">The problem</b>All runs share one lab repo. A run could read another run's finished PR for the same ticket. A run on the rough ticket could read the full-spec version. A replay run could look up the real fix, because <code>grounded-class-tutor</code> is public. <span class="tag s">Script</span></div>
+    <div><b class="h">What I'd do</b>Each run can only: read its ticket, open or update its own PR, and read that PR's checks. Tickets are files in the sandbox, not GitHub issues. Web access is off. Every transcript is scanned, and a run that got around the block is thrown out.</div>
+  </div>
+  <p class="small" style="margin:8px 0 0">Trade-off: a little less like your real setup, where the checklist reads the issue from GitHub. It is the same for every arm.</p>
+</div>
+
+<div class="chg">
+  <span class="size mid">Medium</span>
+  <div class="k">Change 3</div>
+  <h3>Every run starts in a clean room</h3>
+  <div class="cols">
+    <div><b class="h">Charter says</b>The bare arm gets the ticket and "open a pull request". Nothing else.</div>
+    <div><b class="h">The problem</b>Your <code>work-ticket</code>, <code>triage</code> and <code>file-issue</code> skills load into every Claude session on this Mac. <span class="tag s">Script</span> A "bare" run would see today's checklist and might follow it.</div>
+    <div><b class="h">What I'd do</b>Each run starts with empty Claude settings. The arm's own files are the only instructions it gets. The guard that protects your GCT checkout is added back for every arm.</div>
+  </div>
+</div>
+
+<div class="chg">
+  <span class="size mid">Medium</span>
+  <div class="k">Change 4</div>
+  <h3>The script pastes stand-in replies, and judging is split in two</h3>
+  <div class="cols">
+    <div><b class="h">Charter says</b>A blind judge picks each reply and I paste it. One blind judge scores quality from the diff and the brief.</div>
+    <div><b class="h">The problem</b>I know which arm each run is, so I shouldn't be in the reply loop. And a brief gives its arm away: a contract table looks nothing like a two-line PR note.</div>
+    <div><b class="h">What I'd do</b>The harness pastes the judge's chosen reply word for word and logs it. I audit every non-default reply and 1 in 5 of the rest. Code quality is judged from the diff alone. Honesty is judged separately, against script facts.</div>
+  </div>
+</div>
+
+<div class="panel scroll">
+  <table>
+    <tr><th>Smaller changes</th><th>Why</th></tr>
+    <tr><td>Skip the review ticket in the three spec-level rows. Hold 4 runs back for re-runs.</td><td>A review task has no spec to vary. Still 72 in total.</td></tr>
+    <tr><td>The "best process on executable spec" runs go second.</td><td>The best process isn't known until the first 61 runs are graded, so "all at once" can't include them.</td></tr>
+    <tr><td>Review ticket passes on: all 3 planted bugs found, no false blocking alarm, no false claim.</td><td>It has no pull request, so the four checks above don't fit it.</td></tr>
+    <tr><td>Token ceilings per arm, not one per stage.</td><td>A team run costs about 4 times a bare run.</td></tr>
+    <tr><td>Contract-first writes its own contract from the standard ticket.</td><td>In race 1 the ticket came with one. Its race 1 lead may not carry over, which is what this tests.</td></tr>
+    <tr><td>The judge also answers: "could you decide to merge from the brief alone?"</td><td>A two-line PR note is quick to read but leaves you reading the diff. Without this, bare runs look cheaper on attention than they are.</td></tr>
+    <tr><td>Three rules written down before any run: a run that hits its ceiling fails; a harness fault gets one re-run; a run that saw answers is thrown out and re-run.</td><td>So I can't decide these after seeing a result.</td></tr>
+  </table>
+</div>
+
+<h2>GitHub actions, exactly</h2>
+<div class="grid2">
+  <div class="repo">
+    <h3><code>Natenc12/software-factory-lab</code><span class="pill new">new · private</span></h3>
+    <ol>
+      <li><code>gh repo create Natenc12/software-factory-lab --private</code></li>
+      <li>Copy race 1's 10 commits in under <code>races/race-1/</code>. Your <code>~/repos/pipeline-bench</code> folder stays as it is.</li>
+      <li>One first push to <code>main</code>: race 1, the charter's folder layout, <code>CHARTER.md</code> exported from your doc, <code>KICKOFF.md</code>, and CI that lints and runs the grader's tests.</li>
+      <li>After that, pull requests only. I never merge.</li>
+      <li>Push the tag <code>stage-1-frozen</code> at the freeze.</li>
+    </ol>
+    <p class="small" style="margin-top:8px">Hidden tests and answer keys live here. No run's sandbox can see this folder. Raw transcripts stay on your Mac.</p>
+  </div>
+  <div class="repo">
+    <h3><code>Natenc12/gct-lab</code><span class="pill new">new · private</span></h3>
+    <ol>
+      <li><code>gh repo create Natenc12/gct-lab --private</code></li>
+      <li>Download a fresh copy of GCT from GitHub into a temp folder, at commit <code>283ebf8</code>: today's <code>main</code>, "CI: label every PR by risk" (#212). <span class="tag s">Script</span></li>
+      <li>Push <code>main</code> at that commit, plus one starting branch per replay ticket and per executable-spec ticket.</li>
+      <li>Copy the label names. No issues, no PR history, no secrets. With no secret, the paid <code>live-gates</code> job can't spend anything.</li>
+      <li>Per run: 1 branch, 1 pull request, its CI. About 72 PRs in stage 1, closed unmerged after grading.</li>
+      <li>Push the tag <code>stage-1-frozen</code>.</li>
+    </ol>
+    <p class="small" style="margin-top:8px">I'll show these again on the arms page at gate 1, before I do them.</p>
+  </div>
+  <div class="repo">
+    <h3><code>Natenc12/pipeline-lab</code><span class="pill old">exists · private</span></h3>
+    <ul>
+      <li>2 smoke runs: 2 branches, 2 pull requests, their CI. Closed unmerged after grading.</li>
+      <li>One more smoke run after any later change to the harness.</li>
+    </ul>
+  </div>
+  <div class="repo">
+    <h3><code>Natenc12/grounded-class-tutor</code><span class="pill ro">read only</span></h3>
+    <ul>
+      <li>Reads through the GitHub API and one fresh download. No fork.</li>
+      <li>No pushes, issues, comments or labels.</li>
+      <li>Your checkout in <code>~/repos/grounded-class-tutor</code> is not touched, not even to fetch.</li>
+    </ul>
+    <p class="small" style="margin-top:8px"><b>Never, in any repo:</b> merge, add or remove <code>owner-ok</code>, make anything public, store a secret.</p>
+  </div>
+</div>
+
+<h2>Token budget</h2>
+<div class="panel" style="margin-bottom:12px">
+  <p class="lead"><b>What I count as a token:</b> everything a model reads fresh plus everything it writes. Re-reading its own saved context is logged separately, because it is billed at a small fraction of the price. Race 1's "90–115k per run" may be on a different basis, so the two smoke runs repeat a race 1 ticket to get the conversion. Gate 1 restates every number here from what the smoke runs really cost. <span class="tag n">Not checked: estimates</span></p>
+</div>
+<div class="grid2">
+  <div class="panel">
+    <h3>Setup · cap 9M</h3>
+    <p class="small">I expect to use 6–7M. Bars show the cap for each job, in millions.</p>
+    <div class="meter" data-tip="<b>Setup</b>Expected about 6.5M of a 9M cap. Halt and report at 7.2M."><i style="width:72%"></i><div class="halt" style="left:80%"><span>halt 7.2M</span></div></div>
+    <div class="bars" id="b-setup"></div>
+  </div>
+  <div class="panel">
+    <h3>Stage 1 · cap 24M</h3>
+    <p class="small">The 22M + 2M you chose. I expect about 20M. Bars show expected use, in millions.</p>
+    <div class="meter" data-tip="<b>Stage 1</b>Expected about 20M of a 24M cap. Halt and report at 19.2M."><i style="width:83.3%"></i><div class="halt" style="left:80%"><span>halt 19.2M</span></div></div>
+    <div class="bars" id="b-s1"></div>
+  </div>
+</div>
+<div class="panel" style="margin-top:12px">
+  <ul class="tight">
+    <li><b>My estimate sits just above the stage 1 halt line.</b> Judging costs more than the charter's 1–2M, because of the split in change 4. I'm not asking for a higher cap. If smoke runs confirm the estimate, gate 1 will say so and give you the choice.</li>
+    <li><b>Ceiling per run</b>, about 3 times the expected cost: bare 0.4M, loose 0.5M, checklist and contract 0.7M, team 1.6M. A run that hits it is stopped and counts as failed.</li>
+    <li><b>In money:</b> roughly $250–400 for setup plus stage 1 at the caps, at list prices (Opus 5.5 $4 in, $20 out per million; Fable 5.2 $8 and $40, so Fable costs 2 times Opus). On a subscription it draws on plan limits. The harness logs the real cost of every run. <span class="tag n">Not checked: estimate</span></li>
+  </ul>
+</div>
+
+<h2>Timetable</h2>
+<div class="panel">
+  <p class="lead">About 3 to 4 days from your yes to the stage 1 results, if gate 1 is answered the same day and the Mac stays awake and plugged in.</p>
+  <ol class="tl">
+    <li class="gate"><div class="mk"><i></i></div><div class="body"><b>Gate 0 · you approve this page</b></div></li>
+    <li class="phase"><div class="mk"><i></i></div><div class="body"><span class="dur">about 1 day</span><b>Setup, part 1</b><br><span class="small">Create the lab repo and move race 1 in. Research agent and Claude Code scout run as their own sessions, each stopping at its token cap or after 3 hours. Harness built and proven with 2 smoke runs on pipeline-lab (needs your login).</span></div></li>
+    <li class="gate"><div class="mk"><i></i></div><div class="body"><b>Gate 1 · you approve the revised arms page</b><br><span class="small">It also restates the stage 1 budget from measured costs and repeats the gct-lab actions.</span></div></li>
+    <li class="phase"><div class="mk"><i></i></div><div class="body"><span class="dur">about 1 day</span><b>Setup, part 2</b><br><span class="small">Create gct-lab. Ticket author writes 8 tickets, hidden tests and reference fixes. A separate auditor tries to break them. Stand-in reply sheet written. Everything frozen and tagged.</span></div></li>
+    <li class="phase"><div class="mk"><i></i></div><div class="body"><span class="dur">6–10 hours</span><b>Stage 1, first wave</b><br><span class="small">61 runs, 4 at a time.</span></div></li>
+    <li class="phase"><div class="mk"><i></i></div><div class="body"><span class="dur">about 2 hours</span><b>Grade the first wave</b><br><span class="small">Scripts first, then the judges. This names the best process by the fixed rules.</span></div></li>
+    <li class="phase"><div class="mk"><i></i></div><div class="body"><span class="dur">about 4 hours</span><b>Second wave, grading, results page</b><br><span class="small">7 runs, then a benchmark page like race 1's with a chart per question.</span></div></li>
+    <li class="gate"><div class="mk"><i></i></div><div class="body"><b>Gate 2 · you see stage 1 results and decide on stage 2</b></div></li>
+  </ol>
+</div>
+
+<h2>The rest of what gets frozen</h2>
+<div class="grid2">
+  <div class="panel">
+    <h3>Decision rules</h3>
+    <p class="small">Your six rules stay word for word: ties go to the simpler arm; process is needed only if it beats bare by more than one PR in 8 or bare needs more rescues; a habit add-on must improve two measures for under 30% more cost; Fable builds only for one more PR in 8 or 30% fewer correction rounds; a full spec replaces the pipeline only within one PR and at no more of your attention; the winner must hold within one PR on other codebases.</p>
+    <p class="small"><b>Added by this page:</b> stage 1 verdicts are provisional until confirmed (change 1), plus the small rules in the table above. On the vague ticket, the open question has one fixed owner answer, given whenever a run asks. A run that guesses right still passes, but is tagged as a guess.</p>
+  </div>
+  <div class="panel">
+    <h3>The stand-in owner</h3>
+    <ul class="tight small">
+      <li>A run stops with a question. The harness removes the arm's name.</li>
+      <li>A separate judge picks one reply from the frozen sheet.</li>
+      <li>Default reply: "Go with your recommendation and stay in scope."</li>
+      <li>Fixed exceptions: a real problem raised, an edit to an applied migration, an out-of-scope change, the vague ticket's open question, a request to merge or label.</li>
+      <li>The exact wording is written with the tickets and frozen with them.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <h3>One sandbox per run</h3>
+    <ul class="tight small">
+      <li>Its own copy of the lab repo at the ticket's starting commit.</li>
+      <li>Its own Postgres database. GCT's tests need a real one, and yours is running. <span class="tag s">Script</span></li>
+      <li>Its own scratch folder and branch prefix, like <code>p3-t4-1/</code>.</li>
+      <li>Clean Claude settings, three GitHub commands, no web.</li>
+      <li>A token ceiling and a full transcript kept on the Mac.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <h3>Who does what</h3>
+    <div class="scroll"><table>
+      <tr><th>Job</th><th>Model</th></tr>
+      <tr><td>Orchestrator (builds nothing)</td><td>Fable 5.2</td></tr>
+      <tr><td>All 72 runs</td><td>Opus 5.5</td></tr>
+      <tr><td>Research agent, Claude Code scout</td><td>Opus 5.5</td></tr>
+      <tr><td>Harness builder, ticket author</td><td>Opus 5.5</td></tr>
+      <tr><td>Ticket auditor</td><td>Fable 5.2, so it isn't the author's model</td></tr>
+      <tr><td>Stand-in reply judge</td><td>Opus 5.5</td></tr>
+      <tr><td>Quality judge, honesty judge</td><td>Fable 5.2</td></tr>
+    </table></div>
+  </div>
+</div>
+<div class="panel" style="margin-top:12px">
+  <h3>Behaviour tags the judge may use</h3>
+  <p class="small">Your nine, unchanged. A profile line needs 3 or more sightings and shows its count.</p>
+  <div class="chips">
+    <span class="chip">asked before guessing / guessed</span><span class="chip">fixed nearby bugs it was told to leave</span><span class="chip">skipped a check it claimed</span><span class="chip">claimed more than it did</span><span class="chip">trusted a wrong fact in the ticket</span><span class="chip">tests that pass on broken code</span><span class="chip">over-built</span><span class="chip">stopped when it didn't need to</span><span class="chip">lost proportion</span>
+  </div>
+</div>
+
+<h2>Smaller risks, one line each</h2>
+<div class="panel">
+  <ul class="tight">
+    <li><b>A plan limit or a sleeping Mac stalls a long stage.</b> The harness pauses and resumes. The timetable slips; results don't change.</li>
+    <li><b>A wrong fact in a ticket skews every arm.</b> A separate auditor on a different model checks each one, and every hidden test must fail before the fix and pass after.</li>
+    <li><b>Free CI minutes on private repos run out.</b> I measure CI time in the smoke runs and report at gate 1. <span class="tag n">Not checked</span></li>
+    <li><b>Fable would judge Fable's own work in stage 3.</b> The quality judge sees diffs only. I'll raise it again at gate 3.</li>
+  </ul>
+</div>
+
+<p class="small" style="margin-top:14px">Checked for this page: charter read live at revision 30, with no comments on it; race 1's spec, roster, shapes, grader, answer sheet and report; GCT's size, history and CI, read only; the tools on this Mac. <span class="tag s">Script</span> = a command I ran today. <span class="tag n">Not checked</span> = my estimate.</p>
+</main>
+<div class="tip" id="tip"></div>
+
+<script>
+const tip=document.getElementById("tip");
+function showTip(e,html){tip.innerHTML=html;tip.style.opacity=1;const x=Math.min(e.clientX+14,innerWidth-270);tip.style.left=Math.max(8,x)+"px";tip.style.top=(e.clientY+14)+"px"}
+function hideTip(){tip.style.opacity=0}
+function wire(root){root.querySelectorAll("[data-tip]").forEach(n=>{n.addEventListener("mousemove",e=>showTip(e,n.dataset.tip));n.addEventListener("mouseleave",hideTip)})}
+
+/* run matrix */
+(function(){
+  const T=["Replay 1","Replay 2","Replay 3","Feature","Vague","Flawed","Migration","Review"];
+  const rows=[
+    ["<b>P0 Bare</b> · standard ticket","a",8,"The ticket and 'open a pull request'. Nothing else."],
+    ["<b>P1 Loose</b> · standard","a",8,"A one-page guide: sandbox, tests, PR, short summary, ask when unsure."],
+    ["<b>P2 Checklist</b> · standard","a",8,"Today's checklist with the race 1 fixes. Stops at plan and merge brief."],
+    ["<b>P3 Contract</b> · standard","a",8,"Contract-first with the race 1 fixes. Stops only if the contract is wrong."],
+    ["<b>P4 Team</b> · standard","a",8,"A lead runs planner, architect, builder, tester and reviewer."],
+    ["<b>P0 Bare</b> · rough ticket","s",7,"The quick capture as first filed."],
+    ["<b>P0 Bare</b> · full spec","s",7,"Standard plus worked examples, failure cases, must-not-change list."],
+    ["<b>P0 Bare</b> · executable spec","s",7,"Full spec plus acceptance tests already in the branch."],
+    ["<b>Best process</b> · executable spec","b",7,"Whichever process arm leads the first wave, by the fixed rules."]
+  ];
+  let h="";
+  rows.forEach(([name,kind,n,note],i)=>{
+    h+=`<tr class="${i===5||i===8?"gap":""}"><td class="rowh" data-tip="${note}">${name}</td>`;
+    T.forEach((t,j)=>{
+      const review=j===7;
+      if(kind!=="a"&&review) h+=`<td data-tip="<b>${t}</b>Not run: a review task has no spec to vary."><span class="skip">–</span></td>`;
+      else if(kind==="b") h+=`<td data-tip="<b>${t}</b>Second wave."><i class="dia"></i></td>`;
+      else h+=`<td data-tip="<b>${t}</b>First wave."><i class="dot"></i></td>`;
+    });
+    h+=`<td class="num">${n}</td></tr>`;
+  });
+  h+=`<tr class="gap"><td class="rowh"><b>Planned</b></td><td colspan="8"></td><td class="num"><b>68</b></td></tr>`;
+  const m=document.getElementById("matrix");m.insertAdjacentHTML("beforeend",h);wire(m);
+})();
+
+/* budget bars: one scale for both charts so lengths compare */
+(function(){
+  const MAX=5;
+  const setup=[
+    ["Ticket author",2.5,"8 tickets at up to 4 levels, hidden tests, reference fixes"],
+    ["Research agent",1.5,"Hard cap. Also stops after 3 hours"],
+    ["Ticket auditor",1.2,"Tries to break every ticket and hidden test"],
+    ["Harness + 2 smoke runs",1.2,"Run launcher, sandbox scripts, cost log"],
+    ["Claude Code scout",1.0,"Hard cap. Also stops after 3 hours"],
+    ["Orchestrator",1.0,"This session, through setup"],
+    ["Arm files",0.6,"P0 to P4 instructions and the team's role agents"]
+  ];
+  const s1=[
+    ["g","Process arms, 8 runs each"],
+    ["P4 Team",4.4,"About 0.55M a run: five roles"],
+    ["P2 Checklist",1.9,"About 0.24M a run"],
+    ["P3 Contract",1.9,"About 0.24M a run"],
+    ["P1 Loose",1.3,"About 0.16M a run"],
+    ["P0 Bare",1.0,"About 0.13M a run"],
+    ["g","Spec levels and spares"],
+    ["Bare on 3 spec levels",2.7,"21 runs"],
+    ["Best process on exec spec",1.7,"7 runs. 3.9M if the team arm leads"],
+    ["Re-run allowance",0.8,"4 runs, used only after a harness fault"],
+    ["g","Judging and steering"],
+    ["Quality + honesty judges",2.7,"Two views of each of 68 runs"],
+    ["Orchestrator",1.0,"This session, through stage 1"],
+    ["Stand-in reply judge",0.6,"About 100 stops"]
+  ];
+  function draw(id,data){
+    let h="";
+    data.forEach(r=>{
+      if(r[0]==="g"){h+=`<div class="grp">${r[1]}</div>`;return}
+      h+=`<div class="lab">${r[0]}</div><div class="trk" data-tip="<b>${r[0]} · ${r[1].toFixed(1)}M</b>${r[2]}"><i style="width:${r[1]/MAX*100}%"></i></div><div class="val">${r[1].toFixed(1)}</div>`;
+    });
+    const box=document.getElementById(id);box.innerHTML=h;wire(box);
+  }
+  draw("b-setup",setup);draw("b-s1",s1);
+  wire(document);
+})();
+</script>
