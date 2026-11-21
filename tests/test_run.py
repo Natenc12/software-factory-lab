@@ -26,6 +26,7 @@ def test_stop_reply_resume_and_records(lab_env, practice):
     assert rec["judge_tokens"]["counted"] == 903 and rec["judge_model"] == "fake-judge"
     assert rec["branch"] == "p1-t1-1/work" and rec["practice_base_commit"] == practice["main"]
     assert rec["lab_commit"] and rec["session_id"] and rec["model"] == "fake-model"
+    assert rec["claude_code_version"] == "0.0.0-fake"
 
     first, second = sessions(lab_env)
     assert first["argv"][first["argv"].index("--session-id") + 1] == rec["session_id"]

@@ -23,7 +23,9 @@ from pathlib import Path
 from harness.common import LAB_ROOT, append_jsonl, git, now_iso, parse_run_id, read_json, write_json
 
 HERE = Path(__file__).resolve().parent
-ALLOWED_TOOLS = "Task Bash Edit Read Write NotebookEdit"
+# Built-in tools a run is offered. Leaves out web tools and the app's messaging, scheduling and remote
+# tools. The subagent tool is called Task in 2.1.302's init record and Agent in the docs; both are named.
+ALLOWED_TOOLS = "Task Agent Bash Read Edit Write NotebookEdit Glob Grep"
 SHA_RE = re.compile(r"^[0-9a-f]{7,40}$")
 
 
@@ -117,10 +119,10 @@ def settings(root: Path, cfg: dict) -> dict:
     deny = [
         "WebFetch",
         "WebSearch",
-        "Bash(gh:*)",
-        "Bash(curl:*)",
-        "Bash(wget:*)",
-        *(f"Bash(git {s}:*)" for s in ("fetch", "pull", "clone", "ls-remote", "remote", "push")),
+        "Bash(gh *)",
+        "Bash(curl *)",
+        "Bash(wget *)",
+        *(f"Bash(git {s} *)" for s in ("fetch", "pull", "clone", "ls-remote", "remote", "push")),
         f"Read(/{hdir}/**)",
         f"Edit(/{hdir}/**)",
     ]
@@ -164,7 +166,9 @@ def create(
         branch = f"{run_id}/work"
         rdir = root / "repo"
         git("init", "-q", str(rdir))
-        git("fetch", "-q", "--no-tags", repo_url, base, cwd=rdir)
+        # Private repos over https authenticate through gh, as `lab` does when it pushes.
+        cred = ["-c", "credential.helper=", "-c", f"credential.helper=!{gh_bin} auth git-credential"]
+        git(*(cred if repo_url.startswith("https://") else []), "fetch", "-q", "--no-tags", repo_url, base, cwd=rdir)
         base_commit = git("rev-parse", "FETCH_HEAD", cwd=rdir)
         git("checkout", "-q", "-b", branch, "FETCH_HEAD", cwd=rdir)
         if not SHA_RE.match(base) and base != branch:

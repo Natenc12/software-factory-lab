@@ -21,6 +21,14 @@ def test_usage_counts_each_message_once_and_prefers_result_totals():
     assert s.cost_usd == 0.5
 
 
+def test_turns_add_up_over_every_result_in_one_call():
+    # A background subagent makes the CLI write a second result in the same call (real trial, 2026-11-21).
+    s = StreamState()
+    s.feed(json.dumps({"type": "result", "is_error": False, "num_turns": 7, "result": "waiting for the agent"}))
+    s.feed(json.dumps({"type": "result", "is_error": False, "num_turns": 1, "result": "STOP: continue?"}))
+    assert s.turns == 8 and find_stop(s.text) == "STOP: continue?"
+
+
 def test_bad_lines_are_skipped():
     s = StreamState()
     s.feed("not json")
@@ -59,6 +67,11 @@ def test_plan_limit_detection():
     ok.feed(json.dumps({"type": "rate_limit_event", "rate_limit_info": {"status": "allowed"}}))
     ok.feed(json.dumps({"type": "result", "is_error": False, "result": "fine"}))
     assert not ok.plan_limited()
+    session = StreamState()
+    session.feed(
+        json.dumps({"type": "result", "is_error": True, "result": "You've hit your session limit · resets 3:45pm"})
+    )
+    assert session.plan_limited()
     other = StreamState()
     other.feed(json.dumps({"type": "result", "is_error": True, "subtype": "error_during_execution", "result": ""}))
     assert not other.plan_limited()

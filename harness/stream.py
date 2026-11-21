@@ -4,8 +4,10 @@ Facts this relies on (recorded trial with claude 2.1.302, 2026-11-21):
 - one `system/init` record carries `session_id`, `skills`, `plugins`, `tools`, `agents`;
 - `assistant` records carry `message.id` and `message.usage`; one API message can arrive as several
   records with the same id and usage, so usage is counted once per message id;
-- the closing `result` record carries `usage`, `modelUsage` (per model, subagents included),
-  `total_cost_usd`, `num_turns`, `is_error`, `subtype` and the final text in `result`;
+- the closing `result` record carries `usage` (this call, main loop only), `modelUsage` (per model,
+  subagents included) and `total_cost_usd`, which are running totals for the whole session across
+  resumes, plus `num_turns` (this call), `is_error`, `subtype` and the final text in `result`; a process
+  can write more than one `result`, and the last one counts;
 - `rate_limit_event` records carry `rate_limit_info.status` ("allowed" or "rejected") and `resetsAt`.
 """
 
@@ -14,7 +16,8 @@ import re
 from dataclasses import asdict, dataclass
 
 LIMIT_RE = re.compile(
-    r"usage limit|rate.?limit|hit your limit|limit reached|limit will reset|too many requests|\b429\b|overloaded",
+    r"usage limit|rate.?limit|hit your (\w+ )?limit|limit reached|limit will reset|temporarily limiting"
+    r"|too many requests|\b429\b|\b529\b|overloaded",
     re.I,
 )
 STOP_RE = re.compile(r"^[ \t>*_`]*STOP\b[^:\n]{0,40}:[ \t]*(?P<q>.*)$", re.M)
@@ -35,6 +38,9 @@ class Usage:
 
     def __add__(self, other: "Usage") -> "Usage":
         return Usage(*(a + b for a, b in zip(self.as_tuple(), other.as_tuple(), strict=True)))
+
+    def __sub__(self, other: "Usage") -> "Usage":
+        return Usage(*(max(a - b, 0) for a, b in zip(self.as_tuple(), other.as_tuple(), strict=True)))
 
     def as_tuple(self) -> tuple:
         return (self.input, self.output, self.cache_write, self.cache_read)
@@ -80,6 +86,7 @@ class StreamState:
         self.result: dict | None = None
         self.limit_info: dict | None = None
         self.tool_uses: list[dict] = []
+        self.turns = 0
         self.bad_lines = 0
 
     def feed(self, line: str) -> dict | None:
@@ -115,6 +122,7 @@ class StreamState:
                 self.limit_info = info
         elif kind == "result":
             self.result = rec
+            self.turns += int(rec.get("num_turns") or 0)
         return rec
 
     def live_usage(self) -> Usage:
@@ -124,7 +132,7 @@ class StreamState:
         return total
 
     def final_usage(self) -> Usage:
-        """The result record's totals when the invocation finished, else what was seen so far."""
+        """The session's running totals from the last result record, else what this call was seen to use."""
         live = self.live_usage()
         if self.result:
             if self.result.get("modelUsage"):
@@ -149,7 +157,8 @@ class StreamState:
             return True
         if self.result is not None and not self.result.get("is_error"):
             return False
-        hay = self.text + " " + str((self.result or {}).get("api_error_status") or "") + " " + stderr_tail
+        errors = " ".join(map(str, (self.result or {}).get("errors") or []))
+        hay = " ".join([self.text, errors, str((self.result or {}).get("api_error_status") or ""), stderr_tail])
         return bool(LIMIT_RE.search(hay))
 
     def resets_at(self) -> int | None:

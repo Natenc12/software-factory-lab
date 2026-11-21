@@ -125,6 +125,9 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 attention.append(f"{rid}: {st or 'no record'} ({rec.get('reason') or f'exit {proc.returncode}'})")
                 print(attention[-1])
+                if "not logged in" in str(rec.get("reason")):
+                    halted = True
+                    print("HALT: the claude command is not logged in. No new runs will start.")
         total = counted(stage, ids, a.runs_root)
         if not halted and total >= HALT_AT * budget:
             halted = True

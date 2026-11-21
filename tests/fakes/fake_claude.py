@@ -28,6 +28,12 @@ def assistant(sid: str, mid: str, content: list, u: dict) -> dict:
 
 
 def result(sid: str, text: str, i: int, o: int, cw: int, cr: int, is_error: bool = False, cost: float = 0.01) -> dict:
+    """`usage` covers this call; `modelUsage` and `total_cost_usd` are session totals, as in the real CLI."""
+    totals = Path(os.environ.get("FAKE_STATE", "/nonexistent")) / f"session-{sid}.json"
+    prev = json.loads(totals.read_text()) if totals.exists() else [0, 0, 0, 0, 0.0]
+    cum = [prev[0] + i, prev[1] + o, prev[2] + cw, prev[3] + cr, prev[4] + cost]
+    if totals.parent.is_dir():
+        totals.write_text(json.dumps(cum))
     return {
         "type": "result",
         "subtype": "success",
@@ -35,14 +41,14 @@ def result(sid: str, text: str, i: int, o: int, cw: int, cr: int, is_error: bool
         "session_id": sid,
         "result": text,
         "num_turns": 2,
-        "total_cost_usd": cost,
+        "total_cost_usd": cum[4],
         "usage": usage(i, o, cw, cr),
         "modelUsage": {
             "fake-model": {
-                "inputTokens": i,
-                "outputTokens": o,
-                "cacheCreationInputTokens": cw,
-                "cacheReadInputTokens": cr,
+                "inputTokens": cum[0],
+                "outputTokens": cum[1],
+                "cacheCreationInputTokens": cum[2],
+                "cacheReadInputTokens": cum[3],
             }
         },
     }
@@ -69,7 +75,17 @@ def main() -> int:
     counter.write_text(str(n + 1))
     step = steps[min(n, len(steps) - 1)]
 
-    emit({"type": "system", "subtype": "init", "session_id": sid, "skills": [], "plugins": [], "tools": ["Bash"]})
+    emit(
+        {
+            "type": "system",
+            "subtype": "init",
+            "session_id": sid,
+            "claude_code_version": "0.0.0-fake",
+            "skills": [],
+            "plugins": [],
+            "tools": ["Bash"],
+        }
+    )
     if step == "crash":
         sys.stderr.write("fake crash\n")
         return 1

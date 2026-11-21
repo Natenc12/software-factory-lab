@@ -54,6 +54,7 @@ def clean_env(root: Path, extra: dict) -> dict:
     env["TMPDIR"] = str(root / "scratch" / "tmp")
     env["TERM"] = "dumb"
     env["DISABLE_AUTOUPDATER"] = "1"
+    env["CLAUDE_CODE_DISABLE_AUTO_MEMORY"] = "1"
     env.update(extra)
     return env
 
@@ -353,21 +354,37 @@ def loop(a, root: Path, rec: dict, env: dict) -> int:
 
         wall_left = a.max_wall_min * 60 - rec["wall_seconds"]
         state, how = invoke(cmd, prompt, root / "repo", env, root, a.ceiling - before.counted, wall_left, tick)
-        used = state.final_usage()
         if state.init or state.result:
             rec["session_started"] = True
+        if state.init and state.init.get("claude_code_version"):
+            rec["claude_code_version"] = state.init["claude_code_version"]
         rec["session_id"] = state.session_id or rec["session_id"]
+        # Result totals are running totals for the session, so this call's share is the difference
+        # from the last result of the same session. A call killed before its result counts what it logged.
+        base = rec.get("session_base") or {}
+        same = base.get("session_id") == rec["session_id"]
+        if state.result:
+            now_tokens, now_cost = state.final_usage(), state.cost_usd
+            used = now_tokens - Usage.from_dict(base.get("tokens")) if same else now_tokens
+            cost = max(now_cost - base.get("cost_usd", 0.0), 0.0) if same else now_cost
+            rec["session_base"] = {
+                "session_id": rec["session_id"],
+                "tokens": now_tokens.as_dict(),
+                "cost_usd": now_cost,
+            }
+        else:
+            used, cost = state.live_usage(), 0.0
         rec["tokens"] = (before + used).as_dict()
-        rec["cost_usd"] = round(rec["cost_usd"] + state.cost_usd, 6)
+        rec["cost_usd"] = round(rec["cost_usd"] + cost, 6)
         rec["wall_seconds"] = round(rec["wall_seconds"] + time.monotonic() - t0, 1)
-        rec["turns"] += int((state.result or {}).get("num_turns") or 0)
+        rec["turns"] += state.turns
         rec["invocations"].append(
             {
                 "n": n,
                 "ended": how,
                 "subtype": (state.result or {}).get("subtype"),
                 "tokens": used.as_dict(),
-                "cost_usd": state.cost_usd,
+                "cost_usd": round(cost, 6),
                 "time": now_iso(),
             }
         )
@@ -375,6 +392,8 @@ def loop(a, root: Path, rec: dict, env: dict) -> int:
         status = None
         if how == "ceiling" or rec["tokens"]["counted"] > a.ceiling:
             status, reason = "ceiling_hit", f"counted tokens {rec['tokens']['counted']} passed {a.ceiling}"
+        elif "not logged in" in (state.text + stderr_tail(root)).lower():
+            status, reason = "harness_fault", "not logged in: run `claude auth login`, then re-run with --fresh"
         elif state.plan_limited(stderr_tail(root)):
             status, reason = "plan_limit", (state.text or "rate or plan limit")[:300]
             rec["resets_at"] = state.resets_at()
