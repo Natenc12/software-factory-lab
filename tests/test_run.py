@@ -38,7 +38,7 @@ def test_stop_reply_resume_and_records(lab_env, practice):
         assert argv[argv.index("--setting-sources") + 1] == ""
         assert {"--disable-slash-commands", "--strict-mcp-config", "--no-chrome"} <= set(argv)
         assert argv[argv.index("--permission-mode") + 1] == "dontAsk"
-        assert argv[argv.index("--settings") + 1].endswith("harness/settings.json")
+        assert argv[argv.index("--settings") + 1].endswith(".control/p1-t1-1/settings.json")
         assert argv[argv.index("--model") + 1] == "fake-model"
         assert "WebFetch" not in argv[argv.index("--tools") + 1]
         assert "CLAUDECODE" not in c["env"], "the parent session's environment leaked into the run"
@@ -127,6 +127,7 @@ def test_leak_scan(lab_env, practice, monkeypatch):
     assert [o["tool"] for o in report["offences"]] == ["Read"]
     assert [o["input"]["command"] for o in report["blocked_attempts"]] == ["gh pr list"]
     assert report["offences"][0]["line"] > 0
+    assert "github token" not in json.dumps(report).lower()
     good = lab_env["runs"] / "test" / "p1-t1-2"
     assert scan.main([str(good)]) == 0 and read_json(good / "harness" / "scan.json")["clean"] is True
 
@@ -176,3 +177,13 @@ def test_stage_halts_new_starts_at_80_percent(lab_env, practice, tmp_path, capsy
     assert "HALT" in out and "No new runs will start" in out
     summary = read_json(lab_env["runs"] / "test" / "stage.json")
     assert summary["halted"] and list(summary["runs"].values()).count("finished") == 1
+
+
+def test_scan_flags_tokens_and_gh_auth_from_programs(lab_env, practice):
+    scenario(lab_env, p1_t1_1=["token"])
+    run.main(run_args(lab_env, practice, "p1-t1-1"))
+    folder = lab_env["runs"] / "test" / "p1-t1-1"
+    assert scan.main([str(folder)]) == 2
+    reasons = [(o["tool"], o["reason"]) for o in read_json(folder / "harness" / "scan.json")["offences"]]
+    assert ("Bash", "asks gh or git for GitHub credentials") in reasons
+    assert reasons.count(("Bash", "tool output contains a GitHub token")) == 2

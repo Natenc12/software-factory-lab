@@ -53,3 +53,43 @@ resume.
 The Claude Code scout's notes (`research/harness-facts.md` on its branch) agree: `--setting-sources`
 without `user` is the clean room that keeps the subscription login (`--bare` and a fresh
 `CLAUDE_CONFIG_DIR` both lose it), and resumed results carry session totals.
+
+## Trials 3–5: the OS sandbox (2026-11-21, three runs, about 41k counted tokens in all)
+
+Each was one harness run on a throwaway local uv project (pytest as a dev dependency), its own Postgres
+database, and a fake `gh`, with the sandbox settings this harness writes: `enabled`,
+`failIfUnavailable`, `allowUnsandboxedCommands: false`, `lab` in `excludedCommands`, network allowlist
+`pypi.org` and `files.pythonhosted.org`, the Postgres socket in `allowUnixSockets`, `denyRead` on
+`~/.config/gh`, `~/.ssh`, `~/.claude`, `~/repos`, this repo and the runs root (the run's own folder
+re-allowed), and `denyWrite` on the run's records and control folders.
+
+**Trial 3** asked for each probe as its own command. Haiku declined the escape probes as unsafe and ran
+the rest. Seen: `uv run pytest` passed; a fresh-cache `uv` install of a package downloaded from PyPI;
+`lab pr checks` ran outside the sandbox (the fake `gh` wrote its log outside the run's writable folders).
+Postgres failed over both TCP and the socket: the socket was given as `/tmp/.s.PGSQL.5432`, but the
+sandbox matches real paths and on macOS `/tmp` is `/private/tmp`. Fixed: the harness now records the
+socket's real path.
+
+**Trial 4** put the probes in a script; the run read it and did not run it. Seen: `lab pr open` pushed
+the run's branch to a bare repo outside the run folder and opened PR #7 on the fake `gh`, and
+`lab pr checks` returned the fake CI line, so the excluded `lab` works from inside the sandbox.
+
+**Trial 5** put the probes in the project's test suite (`tests/test_fence.py`), and the run ran
+`uv run pytest -q -rA -s`. All passed:
+
+| Probe (run as a program, so the guard can't see it) | Result |
+| --- | --- |
+| `curl https://api.github.com` | blocked: `CONNECT tunnel failed, response 403` |
+| Python `urllib` to `https://github.com` | blocked: `Tunnel connection failed: 403 Forbidden` |
+| `git ls-remote https://github.com/...` | blocked: `CONNECT tunnel failed, response 403` |
+| read `~/.config/gh/hosts.yml` | blocked: `Operation not permitted` |
+| write a file in the home folder | blocked: `Operation not permitted` (no file appeared) |
+| `gh auth token` from a program | no token: gh could not read its config (`operation not permitted`) |
+| `psql` over the Unix socket | works (`vector` extension found) |
+| `psql` over TCP to 127.0.0.1 | blocked: `Operation not permitted` |
+| `uv` download from PyPI with an empty cache | works |
+
+The tool output also carried the sandbox's own report: `deny network-outbound api.github.com:443` and
+`deny network-outbound github.com:443` (twice). `python -m harness.scan` found all three transcripts
+clean, and `python -m harness.sandbox down --all` dropped the three databases and removed the run and
+control folders.

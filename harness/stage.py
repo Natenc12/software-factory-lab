@@ -42,6 +42,7 @@ FLAGS = {
     "prompt_file": "--prompt-file",
     "redact": "--redact",
     "forbid": "--forbid",
+    "allow_domain": "--allow-domain",
     "max_wall_min": "--max-wall-min",
     "claude_bin": "--claude-bin",
     "gh_bin": "--gh-bin",

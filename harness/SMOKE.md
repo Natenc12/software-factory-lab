@@ -26,11 +26,14 @@ python3 -m harness.scan ~/factory-runs/smoke/p0-t1-1
 python3 -m harness.sandbox down ~/factory-runs/smoke/p0-t1-1
 ```
 
-`down` removes the clone, scratch and database and keeps `harness/` (records). Add `--all` to remove
+`down` removes the clone, scratch, database and the run's control folder
+(`~/factory-runs/smoke/.control/<run-id>/`) and keeps `harness/` (records). Add `--all` to remove
 the whole folder. The pull request and its branch on GitHub are left as they are.
 
 ## What to expect
 
+- Commands run in Claude Code's OS sandbox: only PyPI is reachable, and `lab` is the only way to GitHub.
+  `sandbox_violations` lines in the transcript show anything it refused.
 - **Shape B was written for race 1.** Its "Benchmark rules" tell the run to use `gh`, an issue number,
   and pages under `~/repos/pipeline-bench/runs/`. In this harness those are blocked by the guard, so
   the run will see "Blocked by the lab guard" and should fall back to `lab`, `TICKET.md` and its

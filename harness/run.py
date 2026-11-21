@@ -50,7 +50,7 @@ def clean_env(root: Path, extra: dict) -> dict:
         if k in os.environ:
             env[k] = os.environ[k]
     parts = [p for p in os.environ.get("PATH", "").split(":") if p and str(LAB_ROOT) not in p and "/.claude/" not in p]
-    env["PATH"] = ":".join([str(root / "harness" / "bin"), *parts])
+    env["PATH"] = ":".join([str(sandbox.control_dir(root) / "bin"), *parts])
     env["TMPDIR"] = str(root / "scratch" / "tmp")
     env["TERM"] = "dumb"
     env["DISABLE_AUTOUPDATER"] = "1"
@@ -60,18 +60,18 @@ def clean_env(root: Path, extra: dict) -> dict:
 
 
 def session_cmd(a, root: Path, prompt_resume: str | None) -> list[str]:
-    hdir = root / "harness"
+    ctl = sandbox.control_dir(root)
     cmd = [a.claude_bin, "-p", "--output-format", "stream-json", "--verbose", "--model", a.model]
-    cmd += ["--setting-sources", "", "--settings", str(hdir / "settings.json")]
+    cmd += ["--setting-sources", "", "--settings", str(ctl / "settings.json")]
     cmd += ["--disable-slash-commands", "--strict-mcp-config", "--no-chrome", "--permission-mode", "dontAsk"]
     cmd += ["--tools", sandbox.ALLOWED_TOOLS.replace(" ", ","), "--disallowedTools", "WebFetch,WebSearch"]
     cmd += ["--add-dir", str(root)]
     if a.effort:
         cmd += ["--effort", a.effort]
-    if (hdir / "arm-prompt.md").exists():
-        cmd += ["--append-system-prompt", (hdir / "arm-prompt.md").read_text(encoding="utf-8")]
-    if (hdir / "agents.json").exists():
-        cmd += ["--agents", str(hdir / "agents.json")]
+    if (ctl / "arm-prompt.md").exists():
+        cmd += ["--append-system-prompt", (ctl / "arm-prompt.md").read_text(encoding="utf-8")]
+    if (ctl / "agents.json").exists():
+        cmd += ["--agents", str(ctl / "agents.json")]
     cmd += ["--resume", prompt_resume] if prompt_resume else ["--session-id", a._session_id]
     return cmd
 
@@ -228,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--prompt-file", default=str(HERE / "prompts" / "run.md"))
     ap.add_argument("--redact", action="append", help="extra term to strip from questions (repeatable)")
     ap.add_argument("--forbid", action="append", default=[], help="extra path the run may not touch (repeatable)")
+    ap.add_argument("--allow-domain", action="append", default=[], help="extra host the sandbox may reach")
     ap.add_argument("--max-wall-min", type=float, default=240)
     ap.add_argument("--runs-root", help="default $FACTORY_RUNS_ROOT or ~/factory-runs")
     ap.add_argument("--claude-bin", default=os.environ.get("HARNESS_CLAUDE", "claude"))
@@ -274,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
                 runs_root=runs_root(a.runs_root),
                 gh_bin=a.gh_bin,
                 extra_forbidden=a.forbid,
+                allow_domains=a.allow_domain,
             )
         except Exception as e:  # noqa: BLE001 - any setup failure is a harness fault, reported plainly
             print(f"{a.run_id}: sandbox setup failed: {e}", file=sys.stderr)
