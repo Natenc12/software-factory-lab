@@ -1,0 +1,551 @@
+diff --git a/design/components/api.md b/design/components/api.md
+index 4437810..b7a3524 100644
+--- a/design/components/api.md
++++ b/design/components/api.md
+@@ -110,6 +110,13 @@ Every non-2xx response body is exactly:
+   naming here rather than under a route: they are refused in middleware, before routing has picked
+   a handler, so no route section can be their writer and a client switch built per-route misses
+   them. See *The request-body bound* below.
++- **`detail` on a 422 echoes the client's own rejected value, and every string in an envelope is
++  bounded** at `MAX_ERROR_ECHO_CHARS` (`gct.config`, provisional in `MAX_STAGE_BYTES`'s shape):
++  past it the string is truncated and marked with the length it really was. A bound on the VALUE,
++  not on the shape — the per-field list and every key in an entry are unchanged, so a client reads
++  the same envelope it always did. It is needed because a bound on what comes IN cannot bound what
++  goes OUT: the multipart exemption below takes a body off the request bound, and the 422 was
++  otherwise the size of the request (#134).
+ - `message` — for a human; names the remedy where one exists.
+ - Routes raise **`ApiError(status_code, kind, message, detail=None)`**; the status is the raiser's
+   choice. **Which status a given failure maps to is each route issue's decision**, not this spec's.
+@@ -136,7 +143,8 @@ uploaded file IS the request body and `gct.staging.stage` already bounds it whil
+ every real course upload, so a `multipart/form-data` request is passed through with the same
+ `receive` callable it arrived with. The residue: that label also takes a body off this bound on a
+ JSON route, where pydantic then refuses it 422 — smaller than the unbounded state that preceded
+-the module, and recorded in `limits.py` rather than silently.
++the module, and recorded in `limits.py` rather than silently. What that 422 COSTS is bounded on
++the way out instead, by the envelope's echo bound above (#134).
+ 
+ **This middleware renders its refusals and must never raise them.** `add_exception_handler`
+ registers on `ExceptionMiddleware`, which sits *inside* user middleware, so an `ApiError` raised
+diff --git a/src/gct/api/errors.py b/src/gct/api/errors.py
+index f100f2c..1d35204 100644
+--- a/src/gct/api/errors.py
++++ b/src/gct/api/errors.py
+@@ -28,6 +28,7 @@ from fastapi.responses import JSONResponse
+ from starlette.exceptions import HTTPException as StarletteHTTPException
+ 
+ from gct.api.schemas import ErrorBody, ErrorEnvelope
++from gct.config import MAX_ERROR_ECHO_CHARS
+ 
+ # The three kinds this module emits itself. Routes mint their own (a domain token per failure
+ # they render); these are the framework-level ones no route raises.
+@@ -53,48 +54,109 @@ class ApiError(Exception):
+         self.detail = detail
+ 
+ 
++def _bounded(text: str) -> str:
++    """Truncate one string to `MAX_ERROR_ECHO_CHARS`, marked with the length it really was.
++
++    The result is never longer than the bound AT ANY VALUE OF THE BOUND, which is what makes this
++    idempotent - `_validation` runs `_json_safe` over the error list and `render` runs it again
++    over the finished envelope, so a result over the bound would be truncated and marked a second
++    time on the way out.
++
++    The final clamp is the load-bearing part of that, not belt-and-braces. Budgeting for the
++    marker (`MAX_ERROR_ECHO_CHARS - len(marker)`) holds the bound only while the bound is the
++    larger of the two; below `len(marker)` the subtraction floors at 0 and the marker ALONE is
++    already over. `MAX_ERROR_ECHO_CHARS` is PROVISIONAL by declaration (`config.py`), so the
++    value that makes the unclamped form correct is exactly the one a future retune may change.
++    At 512 the clamp is a no-op - `keep + len(marker) == MAX_ERROR_ECHO_CHARS` by construction -
++    so it costs nothing on the path anyone actually takes.
++
++    What is NOT promised: that a marker in the output was written here. The surviving prefix is
++    the client's own text, so a client can send marker-shaped bytes and get them echoed beside
++    the real one. Bounding the echo is the guarantee; authenticating it is not, and could only be
++    bought by dropping `input` - the shape change this function exists to avoid.
++    """
++    if len(text) <= MAX_ERROR_ECHO_CHARS:
++        return text
++    marker = f"...[truncated from {len(text)} chars]"
++    return (text[: max(0, MAX_ERROR_ECHO_CHARS - len(marker))] + marker)[:MAX_ERROR_ECHO_CHARS]
++
++
+ def _json_safe(value: Any) -> Any:
+-    """Replace every non-finite float with its repr, recursively.
+-
+-    `NaN`, `Infinity` and `-Infinity` are not JSON, and `allow_nan=False` - starlette's own
+-    setting, kept here - makes `json.dumps` RAISE on one rather than emit it. A client puts one
+-    in the body without trying: `json.dumps(float("nan"))` emits a bare `NaN` by default, and
+-    FastAPI's parser accepts it. Pydantic then rejects the field and echoes the offending value
+-    into the 422's `detail`, which is how a float nobody in this codebase produced reaches the
+-    render. Stringified rather than dropped so the client can still see what was rejected.
++    """Make every leaf of an envelope renderable AND bounded, recursively.
++
++    Three leaf hazards, one arrival: the value is the CLIENT's, pydantic echoes it into the 422's
++    `detail`, and this runs at the last step - so an unhandled one dies INSIDE the exception
++    handler and the envelope collapses to a 500, the server taking the blame for a request that
++    was merely malformed. Each was measured, none is exotic.
++
++      - **A non-finite float.** `NaN`, `Infinity` and `-Infinity` are not JSON, and
++        `allow_nan=False` - starlette's own setting, kept in `render` - makes `json.dumps` RAISE
++        on one rather than emit it. A client puts one in the body without trying:
++        `json.dumps(float("nan"))` emits a bare `NaN` by default, and FastAPI's parser accepts
++        it. Stringified rather than dropped so the client can still see what was rejected.
++      - **Undecodable bytes.** When FastAPI cannot parse a body at all - no content type, or one
++        that is not JSON - pydantic's `input` is the RAW BODY, and one `0xff` byte is enough:
++        `jsonable_encoder`'s handler for `bytes` is `lambda o: o.decode()`, which raises
++        `UnicodeDecodeError`, and `json.dumps` would raise `TypeError` on the bytes regardless
++        (issue #134). Decoded with `errors="replace"`. That is not the repo's refuse-don't-convert
++        rule bending: the request was already REFUSED, 422, and this is the description of what
++        was refused - the bytes are not being accepted as input to anything.
++      - **A string the client sized.** The echo used to be as large as the request: 2,000,000
++        bytes in, 2,000,215 out, because a `multipart/form-data` label takes a body off #125's
++        request bound (`limits.py`) and pydantic then hands the whole thing back. Bounded by
++        `MAX_ERROR_ECHO_CHARS`.
++
++    BOUNDED AT EVERY STRING, not at the `input` key it was reported through. A key list is a
++    second writer that goes stale the first time pydantic adds a key, and `input` is not the only
++    client-controlled one: an `extra="forbid"` model echoes the client's own key into `loc`, and
++    `gct.staging.validate_filename` puts an unbounded `filename` into the sentence a route hands
++    to `message`. Dict KEYS are bounded too, for that first case; two keys that differ only past
++    the bound collapse into one, which is the accepted cost of describing a body nobody will
++    read twice.
++
++    REJECTED: dropping `input` instead of truncating it. It fixes the same two symptoms and is
++    shorter, but it changes the SHAPE of every 422 entry - `api.md` documents `detail` as
++    pydantic's per-field list - where truncating changes only the VALUE of a pathological one.
+     """
+     if isinstance(value, float) and not math.isfinite(value):
+         return repr(value)
++    if isinstance(value, bytes):
++        return _bounded(value.decode("utf-8", "replace"))
++    if isinstance(value, str):
++        return _bounded(value)
+     if isinstance(value, dict):
+-        return {key: _json_safe(item) for key, item in value.items()}
++        return {_json_safe(key): _json_safe(item) for key, item in value.items()}
+     if isinstance(value, (list, tuple)):
+         return [_json_safe(item) for item in value]
+     return value
+ 
+ 
+ class _SafeJSONResponse(JSONResponse):
+-    """Starlette's JSONResponse, hardened against the two ways rendering an envelope can RAISE.
+-
+-    Both hazards are the same shape and both were measured, not argued: the offending value comes
+-    from the CLIENT, pydantic echoes it into the 422's `detail`, and `render` is the last step. It
+-    dies INSIDE the exception handler, so the envelope collapses to a 500 `internal` - the server
+-    blaming itself for a request that was merely malformed, with the per-field list the client
+-    needed gone. Neither input is exotic; each is an ordinary client's mistake.
+-
+-    - **A lone surrogate.** Starlette renders with `ensure_ascii=False`, so `.encode("utf-8")`
+-      raises on one. JSON carries a surrogate as a `\\uXXXX` escape, so the bytes on the wire are
+-      plain ASCII and nothing rejects them before pydantic holds a `str`. Fixed by escaping.
+-      `jsonable_encoder` in `_validation` does not reach it: that fixes a non-serialisable `ctx`,
+-      and a surrogate survives it as a perfectly good `str`.
+-    - **A non-finite float.** `allow_nan=False` raises on `NaN`/`Infinity`. Fixed by `_json_safe`.
+-      This one is NOT new here - starlette 1.6.0 already passes `allow_nan=False`, so it 500s the
+-      same way on the plain `JSONResponse` this class replaces.
++    """Starlette's JSONResponse, hardened against the ways rendering an envelope can go wrong.
++
++    Every hazard is the same shape and each was measured, not argued: the offending value comes
++    from the CLIENT, pydantic echoes it into the 422's `detail`, and `render` is the last step. A
++    raise here happens INSIDE the exception handler, so the envelope collapses to a 500
++    `internal` - the server blaming itself for a request that was merely malformed, with the
++    per-field list the client needed gone. None of them is exotic; each is an ordinary client
++    mistake.
++
++    Most of them are properties of a LEAF, and `_json_safe` is their one writer - the non-finite
++    float, the undecodable byte string, the client-sized string. It is applied to EVERY envelope
++    rather than to the 422 alone, because any handler that echoes caller-supplied text reaches
++    this same last step.
++
++    ONE is a property of this render rather than of any leaf's type, so it lives here: **a lone
++    surrogate.** Starlette renders with `ensure_ascii=False`, so `.encode("utf-8")` raises on
++    one. JSON carries a surrogate as a `\\uXXXX` escape, so the bytes on the wire are plain ASCII
++    and nothing rejects them before pydantic holds a `str`. Fixed by escaping - `ensure_ascii` is
++    the only deliberate change below. `jsonable_encoder` in `_validation` does not reach it: that
++    fixes a non-serialisable `ctx`, and a surrogate survives it as a perfectly good `str`.
+ 
+     `allow_nan`, `indent` and `separators` are starlette 1.6.0's own values, restated because
+-    overriding `render` means restating all of them; `ensure_ascii` is the only deliberate change.
+-
+-    Applied to EVERY envelope rather than to the 422 alone, because any handler that echoes
+-    caller-supplied text reaches the same last step.
++    overriding `render` means restating all of them. `allow_nan=False` is why a non-finite float
++    is a hazard at all, and it is NOT new here - starlette 1.6.0 already passes it, so a plain
++    `JSONResponse` 500s on `NaN` the same way.
+     """
+ 
+     def render(self, content: Any) -> bytes:
+@@ -131,8 +193,17 @@ async def _validation(request: Request, exc: RequestValidationError) -> JSONResp
+     # fails JSON serialisation inside this handler - so the 422 envelope collapses into a bare
+     # 500 `internal` and the validation message the client needed is gone. FastAPI's own default
+     # 422 handler runs the list through the same encoder for the same reason.
++    #
++    # `_json_safe` runs FIRST, before the encoder, and the ORDER is the whole point: the encoder
++    # is the step that dies on the client's bytes (issue #134), so leaving the leaves to
++    # `render` - which applies `_json_safe` to every envelope anyway - would still 500 on one
++    # `0xff`. Applying it twice is free: it is idempotent (`_bounded`), and the second pass is
++    # what bounds whatever the encoder itself produced from a `ctx` exception.
+     return envelope(
+-        422, KIND_VALIDATION, "request validation failed", jsonable_encoder(exc.errors())
++        422,
++        KIND_VALIDATION,
++        "request validation failed",
++        jsonable_encoder(_json_safe(exc.errors())),
+     )
+ 
+ 
+diff --git a/src/gct/config.py b/src/gct/config.py
+index b16cba1..f83ad4b 100644
+--- a/src/gct/config.py
++++ b/src/gct/config.py
+@@ -98,6 +98,26 @@ MAX_JSON_BODY_BYTES = 64 * 1024
+ # ~15x under the shallowest break ever measured and 32x over the deepest legitimate body.
+ MAX_JSON_BODY_DEPTH = 32
+ 
++# --- The error envelope's echo bound (issue #134) ---------------------------------------------
++# The most CHARACTERS of any ONE client-controlled string an error envelope will echo back
++# (`gct.api.errors._json_safe`). Past it the string is truncated and marked with its true
++# length; the envelope's SHAPE is untouched - every field a client reads is still there.
++#
++# It sits with the two bounds above because the three are only legible together: a bound on what
++# comes IN cannot bound what goes OUT. A body labelled `multipart/form-data` is exempt from
++# `MAX_JSON_BODY_BYTES` by design - that exemption is what lets a 100 MiB upload through - and
++# pydantic echoes such a body back WHOLE when it lands on a JSON route instead. Measured before
++# this bound existed: 2,000,000 bytes in, 2,000,215 bytes out (issue #134).
++#
++# PROVISIONAL in the shape `MAX_STAGE_BYTES` is: no ADR owns the NUMBER. What it must admit is
++# enough of a rejected value for a client to RECOGNISE which value was refused - the opening of a
++# question or a class name, not the whole of either; past it the client is TOLD the full length
++# rather than shown it. Counted in characters rather than bytes because that is what the values
++# it bounds are counted in (`routers/ask.py`'s `MAX_QUESTION_CHARS`); the wire cost is higher,
++# since `_SafeJSONResponse.render` escapes with `ensure_ascii=True` and one astral character
++# costs twelve bytes there, so the true ceiling per string is ~6 KiB and not 512 bytes.
++MAX_ERROR_ECHO_CHARS = 512
++
+ # --- The V1 owner (ADR 0004) ----------------------------------------------------------------
+ # V1 is ONE hardcoded user with no auth (ADR 0004; ADR 0002's tenancy clause as amended by it).
+ # Every row the API writes and every scoped query it runs carries this owner_id, so V3 turns
+diff --git a/tests/gct/api/test_errors.py b/tests/gct/api/test_errors.py
+new file mode 100644
+index 0000000..1d1ff9a
+--- /dev/null
++++ b/tests/gct/api/test_errors.py
+@@ -0,0 +1,316 @@
++"""The error envelope's echo bound (issue #134): what a 422 hands back about the body it refused.
++
++Pydantic puts the client's own rejected value into every error entry, and the renderer walks it.
++Two live bugs came out of that, and they are one mechanism: one undecodable byte killed the
++render INSIDE the handler, so a 422 arrived as a 500 with the per-field list gone; and a
++multi-megabyte body labelled `multipart/form-data` - a label #125's request bound must let
++through, or no upload ever lands - came back whole, 2,000,000 bytes in and 2,000,215 out.
++
++THREE LAYERS, and the middle one is why this file is not just route tests. `_bounded` is pure and
++takes the adversarial cases, because truncation is silent in both directions: too eager and an
++ordinary rejected value is unreadable, too lax and the amplifier is still there. The probe pins
++the render around a route with no database. The acceptance pins run the real `POST /classes`.
++
++THE "STILL ECHOED WHOLE" PINS ARE LOAD-BEARING, not decoration. Every assertion about a bound is
++satisfied by code that returns nothing at all: a renderer that dropped `input`, or truncated every
++string to zero, passes each size check in here on its own. So each bound is asserted beside the
++value it must NOT have touched, and the entry's key set is asserted with it - truncating bounds a
++VALUE, and the shape `api.md` documents has to survive it.
++"""
++
++from __future__ import annotations
++
++import json
++
++import pytest
++from fastapi import FastAPI
++from fastapi.testclient import TestClient
++from pydantic import BaseModel, ConfigDict, field_validator
++
++from gct.api import errors, limits
++from gct.api.errors import _bounded, _json_safe, envelope
++from gct.config import MAX_ERROR_ECHO_CHARS
++
++ENTRY_KEYS = {"type", "loc", "msg", "input"}
++MARKER = "...[truncated from "
++
++
++# --------------------------------------------------------------------------------------------
++# The bound itself - pure
++# --------------------------------------------------------------------------------------------
++
++
++def test_a_string_at_the_bound_is_untouched() -> None:
++    """The direction a size assertion cannot see. `_bounded` is green for `lambda _: ""` unless
++    something pins that an admissible string comes back byte-for-byte."""
++    at_the_bound = "a" * MAX_ERROR_ECHO_CHARS
++    assert _bounded(at_the_bound) == at_the_bound
++    assert _bounded("") == ""
++
++
++def test_a_string_one_past_the_bound_is_truncated_and_says_how_long_it_was() -> None:
++    over = "a" * (MAX_ERROR_ECHO_CHARS + 1)
++    marked = _bounded(over)
++    assert len(marked) == MAX_ERROR_ECHO_CHARS
++    assert marked.startswith("aaaa")
++    assert marked.endswith(f"{MARKER}{MAX_ERROR_ECHO_CHARS + 1} chars]")
++
++
++def test_truncation_is_idempotent() -> None:
++    """`_validation` runs `_json_safe` before the encoder and `render` runs it again over the
++    finished envelope, so every string on the 422 path is bounded TWICE. A marker that pushed the
++    result past the bound would be appended once per pass - and the second marker would report
++    the length of the first truncation, not of the body the client sent."""
++    once = _json_safe({"input": "a" * 10 * MAX_ERROR_ECHO_CHARS})
++    assert _json_safe(once) == once
++    assert once["input"].count(MARKER) == 1
++
++
++def test_the_bound_holds_even_when_the_marker_does_not_fit_inside_it(monkeypatch) -> None:
++    """The degenerate bound, which the shipped value hides. Budgeting for the marker floors at 0
++    below `len(marker)`, so without the final clamp `_bounded` returns the marker alone - LONGER
++    than the bound it was asked for. `MAX_ERROR_ECHO_CHARS` is PROVISIONAL, so the only thing
++    keeping the unclamped form correct was a number a future retune is invited to change."""
++    monkeypatch.setattr(errors, "MAX_ERROR_ECHO_CHARS", 10)
++    assert len(_bounded("a" * 20)) <= 10
++    # The other arm: an admissible string at that bound still comes back byte-for-byte, so a
++    # `lambda _: ""` cannot satisfy the assertion above.
++    assert _bounded("a" * 10) == "a" * 10
++
++
++def test_truncation_is_idempotent_at_a_bound_below_the_marker(monkeypatch) -> None:
++    """Idempotence is a COROLLARY of the bound holding, so it fails wherever the bound does: a
++    result over the bound gets truncated and marked again by the second pass."""
++    monkeypatch.setattr(errors, "MAX_ERROR_ECHO_CHARS", 10)
++    once = _bounded("a" * 20)
++    assert _bounded(once) == once
++    # Stability alone is a WEAK pin: `f(f(x)) == f(x)` is trivially true of the identity function
++    # and of any constant, so the two lines above stay green against a `_bounded` that does
++    # nothing at all. The fixed point has to be pinned by VALUE for this test to mean what its
++    # name says.
++    assert once == f"{MARKER}20 chars]"[:10]
++
++
++def test_the_clamp_is_a_no_op_at_the_shipped_bound() -> None:
++    """Byte-for-byte: the clamp is correctness at a bound nobody has set, never a behavior change
++    at the one everybody gets. `keep + len(marker) == MAX_ERROR_ECHO_CHARS` by construction here,
++    so clamping to `MAX_ERROR_ECHO_CHARS` removes nothing."""
++    over = "a" * (MAX_ERROR_ECHO_CHARS * 3)
++    marker = f"{MARKER}{len(over)} chars]"
++    unclamped = over[: max(0, MAX_ERROR_ECHO_CHARS - len(marker))] + marker
++    assert _bounded(over) == unclamped
++
++
++def test_a_client_can_send_marker_shaped_text_and_the_echo_is_still_bounded() -> None:
++    """What the bound does NOT promise. The surviving prefix is the client's own text, so a
++    client who sends marker-shaped bytes gets them back beside the real marker and a reader
++    cannot tell which is which. Authenticating the marker would take dropping `input`, the shape
++    change `_json_safe`'s docstring records as rejected. Pinned so the weaker promise is the one
++    on file: the SIZE is guaranteed, the marker's provenance is not."""
++    forged = "X" * 400 + f"{MARKER}12345 chars]" + "Y" * 400
++    bounded = _bounded(forged)
++    assert len(bounded) == MAX_ERROR_ECHO_CHARS
++    assert bounded.count(MARKER) == 2
++    assert bounded.endswith(f"{MARKER}{len(forged)} chars]")
++
++
++def test_undecodable_bytes_render_as_text_rather_than_killing_the_render() -> None:
++    """`json.dumps` raises `TypeError` on `bytes` and `jsonable_encoder`'s handler for them is
++    `lambda o: o.decode()`, which raises `UnicodeDecodeError` on `0xff`. Both happen inside the
++    exception handler, which is what turned the 422 into a 500."""
++    assert _json_safe(b"\xff") == "�"
++    assert _json_safe(b"ok") == "ok"
++    assert len(_json_safe(b"\xff" * 10_000)) == MAX_ERROR_ECHO_CHARS
++    json.dumps(_json_safe({"input": b"\xff"}))  # the render's own call; raises if bytes survive
++
++
++def test_the_bound_reaches_every_string_in_a_nested_structure_including_keys() -> None:
++    """`input` is not the only client-controlled place: an `extra="forbid"` model echoes the
++    client's own KEY into `loc`, so a dict key is a client-sized string too."""
++    huge = "k" * (MAX_ERROR_ECHO_CHARS + 1)
++    safe = _json_safe({"loc": ["body", huge], "input": {huge: [huge]}})
++    assert safe["loc"][0] == "body"
++    assert len(safe["loc"][1]) == MAX_ERROR_ECHO_CHARS
++    key = next(iter(safe["input"]))
++    assert len(key) == MAX_ERROR_ECHO_CHARS
++    assert len(safe["input"][key][0]) == MAX_ERROR_ECHO_CHARS
++
++
++def test_a_non_finite_float_still_stringifies() -> None:
++    """The hazard `_json_safe` was written for (`allow_nan=False` makes `json.dumps` RAISE on
++    one), re-pinned here because this issue rewrote the function around it. The finite float
++    beside them is the other direction: a pass that stringified every float would be green on
++    the first two alone."""
++    assert _json_safe({"input": [float("nan"), float("inf"), -float("inf"), 1.5]}) == {
++        "input": ["nan", "inf", "-inf", 1.5]
++    }
++
++
++def test_an_ordinary_envelope_is_rendered_unchanged() -> None:
++    """Nothing an adapter actually emits comes anywhere near the bound: the whole envelope for a
++    real refusal must survive byte-for-byte, or the bound is a lie about every other response."""
++    body = envelope(413, "body_too_large", "the body exceeds the 65,536-byte limit").body
++    assert json.loads(body) == {
++        "error": {
++            "kind": "body_too_large",
++            "message": "the body exceeds the 65,536-byte limit",
++            "detail": None,
++        }
++    }
++
++
++# --------------------------------------------------------------------------------------------
++# The render, over a probe route - no database, no providers
++# --------------------------------------------------------------------------------------------
++
++
++class _Body(BaseModel):
++    """`extra="forbid"` so a client key lands in `loc`, and a validator that RAISES so a `ctx`
++    exception object reaches the encoder - the two client-controlled places besides `input`.
++
++    Module-level, and that is load-bearing for the same reason `test_skeleton.py` gives: this
++    file runs under `from __future__ import annotations`, and FastAPI resolves a route's string
++    annotations against the module's globals."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    name: str
++
++    @field_validator("name")
++    @classmethod
++    def _not_blank(cls, value: str) -> str:
++        if not value.strip():
++            raise ValueError("name must not be blank")
++        return value
++
++
++@pytest.fixture
++def probe() -> TestClient:
++    """An app wired exactly as `create_app` wires one - the real `errors.install` and the real
++    `limits.install` - around one route with a JSON body. `test_limits.py`'s probe, for its
++    reasons: these tests pin the RENDER, not any route's own validation, and need no database."""
++    app = FastAPI()
++    errors.install(app)
++    limits.install(app)
++
++    @app.post("/probe")
++    def _probe(body: _Body) -> dict:
++        return {"length": len(body.name)}
++
++    return TestClient(app, raise_server_exceptions=False)
++
++
++@pytest.mark.parametrize(
++    "content_type",
++    [None, "application/octet-stream", "multipart/form-data", "text/plain"],
++)
++def test_one_undecodable_byte_is_a_422_with_its_field_list(
++    probe: TestClient, content_type: str | None
++) -> None:
++    """The reported 500, in all four ways a body can reach pydantic un-parsed. Both halves are
++    asserted: the STATUS (it was 500) and the per-field list (it was gone) - a handler that
++    returned an empty 422 would satisfy the status alone."""
++    headers = {} if content_type is None else {"content-type": content_type}
++    response = probe.post("/probe", content=b"\xff", headers=headers)
++
++    assert response.status_code == 422
++    error = response.json()["error"]
++    assert error["kind"] == "validation"
++    entry = error["detail"][0]
++    assert set(entry) >= ENTRY_KEYS
++    assert entry["loc"] == ["body"]
++    assert entry["msg"]
++    assert entry["input"] == "�"  # the byte, described - not dropped, not fatal
++
++
++def test_a_multi_megabyte_body_is_refused_without_being_echoed_back(probe: TestClient) -> None:
++    """The amplifier. `multipart/form-data` is exempt from #125's request bound by design (an
++    upload IS the body), so this is the one label that still reaches pydantic at any size."""
++    body = b"x" * 2_000_000
++    response = probe.post("/probe", content=body, headers={"content-type": "multipart/form-data"})
++
++    assert response.status_code == 422
++    assert len(response.content) < 4096, "the 422 is the size of the request again"
++    entry = response.json()["error"]["detail"][0]
++    assert entry["loc"] == ["body"]  # the actionable part survived the bound
++    assert entry["input"].startswith("xxxx")
++    assert entry["input"].endswith(f"{MARKER}{len(body)} chars]")
++
++
++def test_an_ordinary_rejected_value_is_echoed_whole(probe: TestClient) -> None:
++    """The guard on all of the above: a small `input` is handed back exactly as sent, with the
++    entry's shape intact. Every bound in this file is green against a renderer that drops
++    `input`; this is the test that is not."""
++    response = probe.post("/probe", json={"nope": 1, "why": "because"})
++
++    assert response.status_code == 422
++    entry = response.json()["error"]["detail"][0]
++    assert set(entry) >= ENTRY_KEYS
++    assert entry["input"] == {"nope": 1, "why": "because"}
++    assert MARKER not in json.dumps(entry)
++
++
++def test_a_client_sized_key_lands_in_loc_and_is_bounded_there(probe: TestClient) -> None:
++    """`extra="forbid"` puts the client's own key into `loc`. Measured on `main`: a 5,000-character
++    key produced a 5,012-character `loc` entry, which is why the bound is on every string and not
++    on the `input` key alone."""
++    key = "k" * 5_000
++    response = probe.post("/probe", json={"name": "ok", key: 1})
++
++    assert response.status_code == 422
++    entries = response.json()["error"]["detail"]
++    locs = [entry["loc"] for entry in entries if entry["loc"][:1] == ["body"]]
++    assert locs, entries
++    assert all(len(part) <= MAX_ERROR_ECHO_CHARS for loc in locs for part in loc)
++    assert len(response.content) < 4096
++
++
++def test_a_raising_validator_still_renders_after_the_reordering(probe: TestClient) -> None:
++    """`_json_safe` now runs BEFORE `jsonable_encoder` in `_validation`. The encoder is still what
++    makes a `ctx` EXCEPTION OBJECT serialisable - the reason it is called at all - so the new
++    order must not have cost that. `test_skeleton.py` pins the same shape against the untouched
++    envelope; this one pins that the shape survived the reordering."""
++    response = probe.post("/probe", json={"name": "   "})
++
++    assert response.status_code == 422
++    error = response.json()["error"]
++    assert error["kind"] == "validation"
++    entry = error["detail"][0]
++    assert entry["loc"] == ["body", "name"]
++    assert "name must not be blank" in entry["msg"]
++
++
++# --------------------------------------------------------------------------------------------
++# Acceptance, on the real route
++# --------------------------------------------------------------------------------------------
++
++
++def test_an_undecodable_body_is_a_422_on_classes(api) -> None:
++    """The ticket's first measurement, on the route it was measured against."""
++    response = api.client.post("/classes", content=b"\xff")
++
++    assert response.status_code == 422
++    assert response.json()["error"]["kind"] == "validation"
++    assert response.json()["error"]["detail"][0]["loc"] == ["body"]
++
++
++def test_a_multi_megabyte_multipart_body_is_not_echoed_back_by_classes(api) -> None:
++    """The ticket's second measurement: 2,000,000 bytes in, 2,000,215 bytes out."""
++    body = b"x" * 2_000_000
++    response = api.client.post(
++        "/classes", content=body, headers={"content-type": "multipart/form-data"}
++    )
++
++    assert response.status_code == 422
++    assert len(response.content) < 4096
++    assert response.json()["error"]["detail"][0]["loc"] == ["body"]
++
++
++def test_a_real_rejected_class_name_is_still_echoed_whole(api) -> None:
++    """The other direction on the real route: an ordinary mistake still gets its value back."""
++    response = api.client.post("/classes", json={"nome": "Philosophy 101"})
++
++    assert response.status_code == 422
++    entry = response.json()["error"]["detail"][0]
++    assert entry["loc"] == ["body", "name"]
++    assert entry["input"] == {"nome": "Philosophy 101"}

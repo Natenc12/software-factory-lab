@@ -1,0 +1,18 @@
+{
+  "id": "T2",
+  "kind": "replay",
+  "title": "A request that fails validation can crash the error reply or get echoed back whole",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T2",
+  "base_commit": "fb1814e5de96e150bd18c619b5b32ef92a35182c",
+  "s3_base_ref": "base/T2-s3",
+  "s3_base_commit": "e71d702cf100a75a26021a5f4f3e8c4c1def8388",
+  "db": "postgres",
+  "deliverable": "pull_request",
+  "spec_words": {
+    "S0": 123,
+    "S1": 683,
+    "S2": 1017,
+    "S3": 1050
+  }
+}

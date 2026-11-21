@@ -1,0 +1,1233 @@
+diff --git a/design/components/api.md b/design/components/api.md
+index dbb74a9..626e9df 100644
+--- a/design/components/api.md
++++ b/design/components/api.md
+@@ -246,10 +246,11 @@ fields**, the same choice `NewClass` makes, because pydantic's default of droppi
+ key answers the two a client is most likely to send with silence: `k` (an answer retrieved at
+ `DEFAULT_K` with no signal, which would make "no `k` field" a preference rather than a rule)
+ and `owner_id` (V1's hardcoded scope with no signal, F12). It parses `class_id` ONCE at the top for the same
+-reason `POST /files` does — `retrieve` binds it raw into a `::uuid` cast, so a spelling Python
+-accepts and Postgres refuses would abort a request that named a real class. `enqueue` had the
+-identical shape and #121 fixed it at the writer; `retrieve` is still raw, so the parse here is
+-load-bearing rather than defensive — then checks ownership with `class_exists` BEFORE `ask(conn,
++reason `POST /files` does — the parse is what PRODUCES THE 400, in the route's own words, instead
++of `class_exists`'s message about a connection concern a client cannot act on. It is no longer what
++prevents a 500: `retrieve` bound `class_id` raw into a `::uuid` cast until #126 and canonicalises
++at its own boundary now, as every library entry point does — then checks ownership with
++`class_exists` BEFORE `ask(conn,
+ question, owner_id, class_id, embedder=, generator=)`, using the singletons above.
+ 
+ **All four grounding states are 200.** `GROUNDED`, `PARTIAL`, `REFUSAL` and `INTEGRITY_FLAGGED`
+diff --git a/src/gct/classes.py b/src/gct/classes.py
+index 1f76f62..ab915a5 100644
+--- a/src/gct/classes.py
++++ b/src/gct/classes.py
+@@ -28,11 +28,10 @@ applied to the writer that lacked it.
+ 
+ from __future__ import annotations
+ 
+-import uuid
+-
+ import psycopg
+ 
+ from gct.db import require_idle
++from gct.ids import canonical_uuid
+ 
+ # The closed set of reasons a name is refused - a token a caller switches on, exactly as
+ # `gct.staging.STAGING_REASONS` is. Widening it is a change the API's rendering map is required to
+@@ -195,6 +194,11 @@ def class_exists(conn: psycopg.Connection, *, class_id: str, owner_id: str) -> b
+     Postgres's cast rejects (`urn:uuid:<id>`), so validating the raw string and then binding
+     THAT would pass the check and still hit the exact abort the check prevents; binding
+     `str(uuid.UUID(class_id))` normalises every accepted spelling to the one Postgres takes.
++    `gct.ids.canonical_uuid` is the parse, shared with the library's other id-taking boundaries so
++    that the SET OF EXCEPTIONS the parser can raise has one writer. It shipped here catching only
++    `ValueError`, which let `None` (a `TypeError`) and an already-parsed `uuid.UUID` (an
++    `AttributeError`) escape with the parser's own message and no remedy - the opposite of what
++    this guard is for, and the whole of #126 at this site.
+ 
+     A READER, so deliberately NO `require_idle`: a SELECT inside a transaction is correct, and
+     this function must be callable from anywhere. But a SELECT is also enough to OPEN psycopg's
+@@ -203,14 +207,15 @@ def class_exists(conn: psycopg.Connection, *, class_id: str, owner_id: str) -> b
+     guard against. That is the caller's wiring to get right - autocommit, which is the API's
+     connection contract (`gct.api.deps.get_conn`).
+     """
+-    try:
+-        canonical = str(uuid.UUID(class_id))
+-    except ValueError as exc:
+-        raise ValueError(
+-            f"class_exists() requires a uuid class_id; got {class_id!r}. An id that is not a "
+-            "uuid cannot name any class - reject it at the boundary rather than asking the "
+-            "database, which would abort the connection's open transaction."
+-        ) from exc
++    canonical = canonical_uuid(
++        class_id,
++        fn="class_exists",
++        param="class_id",
++        remedy=(
++            "An id that is not a uuid cannot name any class - reject it at the boundary rather "
++            "than asking the database, which would abort the connection's open transaction."
++        ),
++    )
+ 
+     row = conn.execute(
+         """
+diff --git a/src/gct/files.py b/src/gct/files.py
+index f2a7b21..d8f5115 100644
+--- a/src/gct/files.py
++++ b/src/gct/files.py
+@@ -17,11 +17,12 @@ one of the values the route knows how to render actionably. The membership test
+ 
+ from __future__ import annotations
+ 
+-import uuid
+ from dataclasses import dataclass
+ 
+ import psycopg
+ 
++from gct.ids import canonical_uuid
++
+ 
+ @dataclass(frozen=True)
+ class FileStatus:
+@@ -73,7 +74,10 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+     with `InvalidTextRepresentation`), so validating the raw string and then binding it would pass
+     the check and still hit the exact abort the check exists to prevent. Every id the parser
+     accepts - hyphenated, braced, bare 32-hex, urn - reaches the database as the one spelling it
+-    accepts too.
++    accepts too. `gct.ids.canonical_uuid` is that parse, shared with the library's other id-taking
++    boundaries so the set of exceptions `uuid.UUID` can raise has one writer. It shipped here
++    catching only `ValueError`, so `None` (a `TypeError`) and an already-parsed `uuid.UUID` (an
++    `AttributeError`) escaped with the parser's own message and no remedy - #126 at this site.
+ 
+     This is a READER and deliberately does not call `require_idle`: a SELECT inside a
+     transaction is correct. But a SELECT is also enough to OPEN psycopg's implicit transaction on a
+@@ -81,14 +85,15 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+     the same connection arms exactly the trap the writers guard against. The remedy is the
+     caller's wiring - autocommit at the request-scoped connection, which is the API's contract.
+     """
+-    try:
+-        canonical = str(uuid.UUID(file_id))
+-    except ValueError as exc:
+-        raise ValueError(
+-            f"get_file_status() requires a uuid file_id; got {file_id!r}. An id that is not a "
+-            "uuid cannot name any file - reject it at the boundary rather than asking the "
+-            "database, which would abort the connection's open transaction."
+-        ) from exc
++    canonical = canonical_uuid(
++        file_id,
++        fn="get_file_status",
++        param="file_id",
++        remedy=(
++            "An id that is not a uuid cannot name any file - reject it at the boundary rather "
++            "than asking the database, which would abort the connection's open transaction."
++        ),
++    )
+ 
+     row = conn.execute(
+         """
+diff --git a/src/gct/ids.py b/src/gct/ids.py
+new file mode 100644
+index 0000000..220673f
+--- /dev/null
++++ b/src/gct/ids.py
+@@ -0,0 +1,89 @@
++"""Ids - the one place a caller-supplied uuid is turned into a spelling Postgres accepts, or
++refused with a message naming the remedy (#126).
++
++WHY THIS IS A MODULE AND NOT FOUR COPIES. Every id-taking callable in the library binds into a
++`%(...)s::uuid` cast, and every one of them therefore needs the same two facts: which spellings
++`uuid.UUID` accepts that the cast does not, and which exceptions `uuid.UUID` raises. The second
++fact is what drifted - `class_exists` and `get_file_status` shipped catching only `ValueError`,
++so two of the parser's three failure modes escaped carrying its own message and no remedy, which
++is the opposite of what a boundary guard is for. A tuple of exception types copied at four sites
++is a fact with four writers; this module makes it one.
++
++THE TWO SHAPES ARE A REAL CHOICE, NOT A CONVENIENCE PAIR, and the criterion is WHERE THE ID COMES
++FROM rather than whether the caller reads or writes. `gct.jobs.queue.enqueue`'s docstring is the
++writer of that argument and it is cited, not restated: an id a person typed gets `canonical_uuid`,
++an id read back out of the database - where it is canonical by construction - gets
++`require_canonical_uuid`, because any other spelling there is an upstream bug worth hearing about
++rather than quietly converting.
++
++NOT ADOPTED EVERYWHERE, deliberately. `enqueue`, and `ingest.pipeline.ingest_file`'s `file_id`
++guard, keep the inline guards they shipped with: each carries a long docstring arguing its own
++case, and moving the code out from under that prose would leave the prose describing something
++that is no longer there. They are the shape this module was extracted from, so the two remaining
++copies of the exception set are visible rather than hidden - which is the honest cost of scoping
++this to the sites #126 names. (`ingest_file`'s `class_id` guard, added by #126, does go through
++`canonical_uuid`.)
++"""
++
++from __future__ import annotations
++
++import uuid
++
++# `uuid.UUID` reports a bad argument in three different ways depending on what it was handed, and
++# the set is the whole reason this module exists:
++#   - a malformed STRING          -> ValueError
++#   - `None`                      -> TypeError ("one of the hex, bytes, ... arguments must be
++#                                    given")
++#   - anything without `.replace` -> AttributeError, raised from inside the parser: an `int`, a
++#     `list`, or - the case that actually happens - an already-parsed `uuid.UUID` a caller passed
++#     instead of `str(...)`.
++# Named rather than inlined so the two callables below cannot drift apart from each other.
++_PARSER_REJECTIONS = (ValueError, AttributeError, TypeError)
++
++
++def canonical_uuid(value: object, *, fn: str, param: str, remedy: str) -> str:
++    """LENIENT: return the canonical spelling of `value`, or raise `ValueError` naming the remedy.
++
++    For ids a person supplies. `uuid.UUID` accepts spellings Postgres's `::uuid` cast refuses -
++    `urn:uuid:<id>` is the demonstrated one - so validating the raw string and then binding THAT
++    passes the check and still fails at the cast, which is the precise trap #121 closed in
++    `enqueue` and #126 closed at the sites that had copied the shape without the fix. Binding
++    `str(uuid.UUID(value))` normalises every accepted spelling to the one Postgres takes.
++
++    HOW LENIENT THIS ACTUALLY IS: `uuid.UUID` is not a spelling whitelist. It strips `urn:` and
++    `uuid:` prefixes, strips surrounding braces, and removes hyphens WHEREVER they fall, so an id
++    with a misplaced hyphen - which the cast itself refuses - resolves here. `enqueue`'s docstring
++    is the writer of why that leniency is chosen rather than accidental.
++
++    `fn` names the callable the CALLER called, not necessarily the one that raises: a private
++    helper naming itself would send the reader to a frame their code never mentions.
++    """
++    try:
++        return str(uuid.UUID(value))  # type: ignore[arg-type]
++    except _PARSER_REJECTIONS as exc:
++        raise ValueError(
++            f"{fn}() requires a uuid {param} as a str (pass str(id) if you hold a uuid.UUID); "
++            f"got {value!r}. {remedy}"
++        ) from exc
++
++
++def require_canonical_uuid(value: object, *, fn: str, param: str, remedy: str) -> str:
++    """STRICT: return `value` unchanged if it is already the canonical spelling, else raise.
++
++    For ids that come back out of the database, where they are canonical by construction, so any
++    other spelling is an upstream bug. Refusing it loudly is the point - converting it quietly
++    would hide the bug and hand the same wrong id to the next layer. `ingest_file`'s `file_id`
++    guard is the shipped instance of this argument.
++
++    The comparison is against `value.lower()`, not `value`: `uuid.UUID` renders lowercase, so an
++    all-caps hyphenated id is canonical as far as Postgres is concerned and only the case differs.
++    """
++    try:
++        canonical = str(uuid.UUID(value)) == value  # type: ignore[union-attr, arg-type]
++    except _PARSER_REJECTIONS:
++        canonical = False
++    if not canonical:
++        raise ValueError(
++            f"{fn}() requires a canonical uuid {param} (pass str(id)); got {value!r}. {remedy}"
++        )
++    return value  # type: ignore[return-value]
+diff --git a/src/gct/ingest/index.py b/src/gct/ingest/index.py
+index 58bbc39..04d6542 100644
+--- a/src/gct/ingest/index.py
++++ b/src/gct/ingest/index.py
+@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
+ import psycopg
+ 
+ from gct.db import require_idle
++from gct.ids import canonical_uuid, require_canonical_uuid
+ 
+ 
+ class PublishRefused(Exception):
+@@ -90,6 +91,10 @@ def index_file(
+     ADR 0027 measured that prediction (every firing was a caller already in the hazardous state,
+     zero false alarms) and reversed it - accepted via #75.
+ 
++    Raises `ValueError` before the transaction opens on an id that cannot reach those casts
++    intact (#126): `file_id` must already be canonical, `class_id` - the argument and the one on
++    every chunk - is canonicalised. The guards below carry which is which and why.
++
+     SQL-boundary conversions (schema quirks, migrations/0001_init.sql):
+       - `page_or_slide` int -> text (`chunks.page_or_slide` is `text`).
+       - uuid columns (`file_id`, `class_id`) -> cast `%s::uuid`; `owner_id` is `text`.
+@@ -108,10 +113,73 @@ def index_file(
+     ADR 0025). The guard runs BEFORE the
+     transaction opens, so nothing is written at all - not even the `files` row.
+     """
+-    # Connection guard first: a wiring error outranks a payload error, and both must fire before
+-    # the transaction opens so a refused call writes nothing at all.
++    # Connection guard first: a wiring error outranks a payload error, and every guard here must
++    # fire before the transaction opens so a refused call writes nothing at all.
+     require_idle(conn, "index_file")
+ 
++    # ID GUARDS (#126). FIVE `%(...)s::uuid` binds across the three statements below took the
++    # caller's spelling raw - `file_id` in the `files` upsert, the chunk delete and the chunk
++    # insert, `class_id` in the upsert and again on every chunk in that insert - and
++    # `uuid.UUID` accepts spellings the cast refuses (`urn:uuid:<id>`), so a caller that had
++    # already checked the id with Python still failed inside Postgres - naming a Postgres type
++    # and no remedy. They run BEFORE `conn.transaction()`, so a refused call is indistinguishable
++    # from one that never happened.
++    #
++    # STRICT ON `file_id`, LENIENT ON `class_id`, and the split is not this function's invention:
++    # it is the criterion `enqueue`'s docstring states - where the id comes from, not reader vs
++    # writer. `file_id` is the id `ingest_file` either minted (`uuid4`) or read back out of the
++    # `jobs` row a worker claimed, canonical by construction in both cases, so any other spelling
++    # is an upstream bug and converting it quietly would hide it; `ingest_file`'s own `file_id`
++    # guard already refuses on exactly this reasoning, and this is the same rule enforced at the
++    # boundary a direct caller of `index_file` actually crosses. `class_id` travels down from a
++    # person - a script, the upload route's form field - and the sibling boundaries that take it
++    # (`enqueue`, `class_exists`, `retrieve`) all convert, so refusing here would make this the
++    # one place in the library that disagrees about the same id.
++    #
++    # THE COST OF NOT HAVING THIS WAS PAID EARLIER THAN THE CAST. `index_file` is reached from
++    # `ingest_file`, which parses, chunks and EMBEDS first, so a mis-spelled `class_id` used to
++    # buy a whole embedding run before Postgres rejected it. That is why `ingest_file` now
++    # canonicalises before `compose` as well: this guard is the boundary's, not the saving.
++    file_id = require_canonical_uuid(
++        file_id,
++        fn="index_file",
++        param="file_id",
++        remedy=(
++            "Pass the id `ingest_file` returned or the one on the claimed job row; a file_id "
++            "reaches this function from the database, where it is already canonical, so any "
++            "other spelling means the caller built it somewhere it should not have."
++        ),
++    )
++    class_id = canonical_uuid(
++        class_id,
++        fn="index_file",
++        param="class_id",
++        remedy=(
++            "Pass the id `create_class` returned for the class this file belongs to - an id "
++            "that is not a uuid cannot name any class, so the file and its chunks would have "
++            "nowhere to be scoped to."
++        ),
++    )
++    # EVERY CHUNK'S OWN `class_id` TOO, not just the file-level one. Step 3 binds `chunk.class_id`
++    # into its own cast, so guarding only the argument would let a urn-spelled chunk clear steps 1
++    # and 2 and abort at the insert - a half-guard that trades an early refusal for a late one.
++    # Canonicalised into a parallel list rather than in the comprehension below so the refusal
++    # still lands before `BEGIN`; the per-chunk value is kept (not overwritten with `class_id`)
++    # because a chunk disagreeing with its file about scope is a caller bug this box must not
++    # silently paper over - it would break the F6/F12 filter with no trace.
++    chunk_class_ids = [
++        canonical_uuid(
++            chunk.class_id,
++            fn="index_file",
++            param="chunk class_id",
++            remedy=(
++                "Every PreparedChunk carries the scope its rows are written under (F6/F12); "
++                "build them with the same canonical class_id the file is indexed under."
++            ),
++        )
++        for chunk in chunks
++    ]
++
+     # Empty-set guard: `executemany` over an empty sequence is a no-op, so steps 1-2 below would
+     # commit alone and publish a `ready` file with zero chunks. Raise (not assert): this guard must
+     # hold even under `python -O`, which strips assert statements.
+@@ -226,13 +294,13 @@ def index_file(
+                     {
+                         "file_id": file_id,
+                         "owner_id": chunk.owner_id,
+-                        "class_id": chunk.class_id,
++                        "class_id": chunk_class_id,
+                         "text": chunk.text,
+                         "file": chunk.file,
+                         "page_or_slide": str(chunk.page_or_slide),
+                         "embedding": chunk.embedding,
+                         "embedding_model_id": chunk.embedding_model_id,
+                     }
+-                    for chunk in chunks
++                    for chunk, chunk_class_id in zip(chunks, chunk_class_ids, strict=True)
+                 ],
+             )
+diff --git a/src/gct/ingest/pipeline.py b/src/gct/ingest/pipeline.py
+index 4d21c34..3b17b81 100644
+--- a/src/gct/ingest/pipeline.py
++++ b/src/gct/ingest/pipeline.py
+@@ -23,6 +23,7 @@ from uuid import UUID, uuid4
+ import psycopg
+ 
+ from gct.config import MAX_INGEST_WORDS
++from gct.ids import canonical_uuid
+ from gct.ingest.chunk import CHUNK_OVERLAP_WORDS, CHUNK_SIZE_WORDS, chunk_units
+ from gct.ingest.index import index_file
+ from gct.ingest.parse import ParseError, parse_file
+@@ -177,23 +178,28 @@ def ingest_file(
+     bought and no DB touched (ADR 0029). It is a PRECONDITION, not queue machinery - the PM-4 seam
+     holds and Slice 2's worker wraps this unchanged (ADR 0020).
+ 
+-    Raises `ValueError` on a malformed `file_id`, before `compose` runs. Only the FORMAT is
++    Raises `ValueError` on a malformed `file_id` or `class_id`, before `compose` runs - i.e.
++    before the only paid call on this path (#126). Only the FORMAT is
+     checked: nothing here or in `index_file` verifies the id names a row this caller may write.
+     That scope question is #24, parked on #71 - see the note on the guard below.
+     """
+     if file_id is None:
+         file_id = str(uuid4())
+     else:
+-        # Validated BEFORE `compose`, which parses and then EMBEDS - a paid call. Postgres would
+-        # reject a malformed id anyway, but only at `index_file`'s `::uuid` cast, i.e. after the
+-        # embedding run is already bought. This is the cheapest check in the pipeline and it was
+-        # the last to run; the fix is ordering, not detection. It also gives Slice 2 a clean
+-        # terminal failure (a bad id never becomes good on retry, ADR 0011) instead of a psycopg
+-        # error raised from inside the index transaction.
++        # Validated BEFORE `compose`, which parses and then EMBEDS - a paid call. A malformed id
++        # is rejected downstream anyway - by `index_file`'s own strict guard since #126, and by
++        # Postgres's `::uuid` cast before that - but not until after the embedding run is bought.
++        # This is the cheapest check in the pipeline and it was the last to run; the fix is
++        # ordering, not detection. It also gives Slice 2 a clean terminal failure (a bad id never
++        # becomes good on retry, ADR 0011) rather than the same refusal a layer down, after the
++        # spend: `index_file`'s own ValueError since #126 - measured, with the connection IDLE
++        # throughout, because that guard runs before its transaction opens - and before #126 a
++        # psycopg error raised from inside the index transaction.
+         #
+         # STRICT on purpose: Python's `UUID()` parses spellings Postgres rejects (urn:uuid:...,
+-        # stray hyphens), which would pass a lax `UUID(file_id)` guard and still die at the
+-        # `::uuid` cast - after the embed was bought. The worker's id arrives from the DB already
++        # stray hyphens), which would pass a lax `UUID(file_id)` guard and still die one layer
++        # down - at `index_file`'s strict guard now, at the `::uuid` cast before #126 - after the
++        # embed was bought. The worker's id arrives from the DB already
+         # canonical, so any other spelling (or a `uuid.UUID` instance) here is an upstream bug;
+         # refuse it loudly rather than convert it quietly.
+         #
+@@ -213,6 +219,34 @@ def ingest_file(
+                 f"file_id must be a canonical uuid string (pass str(id)), got {file_id!r}"
+             )
+ 
++    # `class_id` IS CANONICALISED HERE, BEFORE `compose` - and the position is the whole point,
++    # exactly as it is for the `file_id` guard above (#126). `index_file` guards its own boundary
++    # too, but by the time control reaches it `compose` has already parsed, chunked and EMBEDDED,
++    # so a spelling Postgres refuses would have cost a full paid embedding run before anything
++    # rejected it. The fix that saves the money is ordering; the guard downstream is the boundary
++    # contract for `index_file`'s own direct callers.
++    #
++    # LENIENT, unlike `file_id` above, and for the reason `enqueue`'s docstring states: this id
++    # comes from a person - the Slice 1 scripts and the eval runner pass whatever was typed -
++    # while `file_id` comes back out of the database already canonical. Same function, two
++    # sources, two guards. The `file_id` guard deliberately stays FIRST, so a call that gets both
++    # wrong is told about the one it cannot recover from - pinned by
++    # `test_ingest_file_rejects_a_malformed_file_id_before_spending_anything`, which passes a
++    # non-uuid class_id and expects the file_id complaint.
++    #
++    # The canonical form is what `compose` stamps onto every `PreparedChunk`, so the chunk rows
++    # and the `files` row cannot end up describing the same class in two different spellings.
++    class_id = canonical_uuid(
++        class_id,
++        fn="ingest_file",
++        param="class_id",
++        remedy=(
++            "Pass the id `create_class` returned for the class this file belongs to - an id "
++            "that is not a uuid cannot name any class, and the check is here so a bad one is "
++            "refused before the embedding run is bought."
++        ),
++    )
++
+     chunks = compose(
+         path,
+         owner_id,
+diff --git a/src/gct/retriever/retrieve.py b/src/gct/retriever/retrieve.py
+index fabe882..02788ac 100644
+--- a/src/gct/retriever/retrieve.py
++++ b/src/gct/retriever/retrieve.py
+@@ -29,6 +29,7 @@ from dataclasses import dataclass
+ 
+ import psycopg
+ 
++from gct.ids import canonical_uuid
+ from gct.providers.base import Embeddings
+ 
+ # Provisional top-k. The interface fixes the param; the VALUE is empirical - tuned against
+@@ -95,6 +96,12 @@ def _assert_embedding_consistency(
+     # Whole-class DISTINCT, carrying the FULL owner+class scope: the guard is not exempt from
+     # the isolation filter (F6/F12). class_id is a uuid column, owner_id is text - cast at the
+     # SQL boundary, matching ingest/index.py's idiom.
++    #
++    # `class_id` ARRIVES ALREADY CANONICAL and this is the reason the parse lives in `retrieve`
++    # rather than here: this helper is private and `retrieve` is its only caller, so one parse at
++    # the public entry covers both of this module's `::uuid` binds, and a second parse here would
++    # be a second writer for the same decision. A future second caller of this helper inherits
++    # that precondition - canonicalise before calling, or move the parse down.
+     rows = conn.execute(
+         """
+         select distinct embedding_model_id
+@@ -172,6 +179,10 @@ def retrieve(
+ 
+     `conn` MUST come from `gct.db.connect()`: the query vector is a `list[float]` and only
+     adapts to `vector(1536)` when the pgvector type is registered on the connection.
++
++    `class_id` is canonicalised before any statement and a non-uuid is refused with a `ValueError`
++    naming the remedy (#126) - see step 0b. `owner_id` gets no such treatment and needs none: it
++    is a `text` column bound with no cast, so no spelling of it can fail inside Postgres.
+     """
+     # 0. `k < 1` is a caller bug, and a silent one: `LIMIT 0` returns [] from a healthy class,
+     #    which the Grounder cannot tell apart from an empty class and turns into a REFUSAL.
+@@ -179,11 +190,46 @@ def retrieve(
+     if k < 1:
+         raise ValueError(f"k must be >= 1, got {k!r}")
+ 
++    # 0b. Canonicalise `class_id` BEFORE ANY STATEMENT (#126). Both queries below bind it into a
++    #     `%(class_id)s::uuid` cast, and `uuid.UUID` accepts spellings that cast refuses
++    #     (`urn:uuid:<id>` is the demonstrated one), so a caller-supplied spelling handed over raw
++    #     fails inside Postgres rather than here.
++    #
++    #     THE HARM IS SPECIFIC TO THIS FUNCTION AND WORSE THAN A REJECTED READ. `retrieve` is a
++    #     reader with no transaction of its own, so on a non-autocommit connection the failed cast
++    #     aborts the implicit transaction psycopg opened (ADR 0025) and EVERY LATER STATEMENT on
++    #     that connection fails with `InFailedSqlTransaction` - the caller loses the connection,
++    #     not just the query. `enqueue` was spared exactly this because it wraps its writes in
++    #     `conn.transaction()`, which rolls back cleanly; nothing here does.
++    #
++    #     LENIENT, not strict, and the criterion is where the id comes from rather than reader vs
++    #     writer - `enqueue`'s docstring is the writer of that argument. Every `class_id` reaching
++    #     `retrieve` was typed by a person somewhere upstream (a script, the eval runner, an HTTP
++    #     query parameter), so converting an accepted spelling is right and refusing it would only
++    #     move the same work into every caller. That is also what makes this function AGREE with
++    #     `class_exists`, which has always accepted these spellings: before this, one could say the
++    #     class exists while the other aborted the connection asking about it.
++    #
++    #     REJECTED: doing the same for `owner_id`, which sits right beside it in every parameter
++    #     dict here. It is a `text` column bound with NO cast (migrations/0001_init.sql), so it has
++    #     no spelling Postgres can reject and cannot produce this failure at all. A `None` owner
++    #     binds as NULL and matches nothing, which is a silent empty result rather than a poisoned
++    #     connection - a different complaint, and not one this function is the right place to fix.
++    canonical_class_id = canonical_uuid(
++        class_id,
++        fn="retrieve",
++        param="class_id",
++        remedy=(
++            "Pass the id `create_class` returned for the class being searched - an id that is "
++            "not a uuid cannot name any class, so there is nothing to retrieve from."
++        ),
++    )
++
+     # 1. Guard FIRST (ADR 0018) - before the paid embed call, so an empty class costs nothing
+     #    and a mismatched class fails before it can produce garbage similarity. A mismatch
+     #    raises out of here; only the empty-class case returns False.
+     if not _assert_embedding_consistency(
+-        conn, owner_id=owner_id, class_id=class_id, embedder=embedder
++        conn, owner_id=owner_id, class_id=canonical_class_id, embedder=embedder
+     ):
+         return []
+ 
+@@ -210,7 +256,7 @@ def retrieve(
+         order by distance asc
+         limit %(k)s
+         """,
+-        {"q_vec": q_vec, "owner_id": owner_id, "class_id": class_id, "k": k},
++        {"q_vec": q_vec, "owner_id": owner_id, "class_id": canonical_class_id, "k": k},
+     ).fetchall()
+ 
+     # 4/5. Distance -> normalized similarity, page_or_slide text -> int (mirroring index.py's
+diff --git a/tests/gct/api/test_ask_router.py b/tests/gct/api/test_ask_router.py
+index a7837d9..0d328b9 100644
+--- a/tests/gct/api/test_ask_router.py
++++ b/tests/gct/api/test_ask_router.py
+@@ -544,12 +544,19 @@ def test_a_non_uuid_class_id_is_400_in_the_routes_own_words(api):
+ def test_every_uuid_spelling_python_accepts_reaches_the_same_class(api, db_other, spelling):
+     """The route parses `class_id` ONCE and hands the canonical form downstream.
+ 
+-    `uuid.UUID` accepts four spellings; Postgres's `::uuid` cast accepts three. `class_exists`
+-    normalises before it binds, so all four pass the ownership check - and `retrieve` binds
+-    `class_id` RAW into that cast (both of its queries), so `urn:uuid:...` would reach it
+-    unchanged and abort with `InvalidTextRepresentation`: a 500 for a request that named a real
+-    class the caller owns. `enqueue` had the same shape and #121 fixed it at the writer;
+-    `retrieve` was outside that ticket and is still raw, so this pins the route's own parse.
++    `uuid.UUID` accepts four spellings of the same id; Postgres's `::uuid` cast accepts three.
++    `class_exists` normalises before it binds, so it answers True for all four - and `retrieve`
++    bound `class_id` RAW into that cast, in BOTH of its queries, until #126, so `urn:uuid:...`
++    reached it unchanged and aborted with `InvalidTextRepresentation`: a 500 for a request that
++    named a real class the caller owns. `enqueue` had the same shape and #121 fixed it at the
++    writer; #126 did the same for `retrieve`. Both library calls canonicalise for themselves now,
++    so this pins the route's END-TO-END behaviour, which must hold whichever of them parses.
++
++    WHAT IT DOES NOT PIN, and the earlier claim that it pinned "the route's own parse" was simply
++    wrong: delete the parse and all four cases here stay GREEN, because `class_exists` and
++    `retrieve` each canonicalise what they are handed. Measured, not reasoned. The parse is pinned
++    by `test_a_non_uuid_class_id_is_400_in_the_routes_own_words`, which turns 500 when it is
++    deleted - the 400 in the route's own words is what the parse owns, and all it owns.
+     """
+     _seed(db_other, api, texts=["Motion requires a mover."])
+     _providers(api, ScriptedGeneration("Argued from motion [S1].\nCOVERAGE: complete"))
+diff --git a/tests/gct/ingest/test_index.py b/tests/gct/ingest/test_index.py
+index c386278..168fb56 100644
+--- a/tests/gct/ingest/test_index.py
++++ b/tests/gct/ingest/test_index.py
+@@ -871,3 +871,242 @@ def test_a_raising_guard_propagates_and_publishes_nothing(db, db_other):
+     assert db_other.execute(
+         "select status, failed_reason from files where file_id = %s::uuid", (file_id,)
+     ).fetchone() == ("failed", "transient_exhausted")
++
++
++# --- The id boundary (#126) -----------------------------------------------------------------
++#
++# `index_file` bound FIVE `%(...)s::uuid` binds from caller-supplied ids across three statements:
++# `file_id` in the `files` upsert, the chunk delete and the chunk insert, and `class_id` in the
++# upsert and again on every chunk in that insert. The guards it now runs are
++# two DIFFERENT decisions, so they get two sets of tests: `class_id` is LENIENT (canonicalise) and
++# `file_id` is STRICT (refuse anything non-canonical), by the criterion `enqueue`'s docstring
++# states - where the id comes from, not reader vs writer.
++
++# Python's `uuid.UUID` parses four spellings of one id; Postgres's `::uuid` cast parses three.
++# Pinning the split keeps the accept test below from being trivially green.
++_POSTGRES_ACCEPTS_THE_CAST = {"plain": True, "braced": True, "hex32": True, "urn": False}
++
++# WHAT `uuid.UUID` RAISES DEPENDS ON WHAT IT WAS HANDED, and the three cases are not
++# interchangeable - which is why the guard catches three types rather than one.
++_NOT_A_USABLE_ID = {
++    "malformed": "intro-to-religion",  # ValueError from the parser
++    "none": None,  # TypeError: no hex/bytes/fields/int argument was given
++    "int": 12345,  # AttributeError: int has no `.replace`
++    "already_parsed": uuid.UUID("6f1e1b4a-0f0e-4a3e-9a7d-2f0a1b2c3d4e"),  # AttributeError
++}
++
++
++@pytest.mark.parametrize("spelling", ["plain", "braced", "hex32", "urn"])
++def test_every_class_id_spelling_python_accepts_publishes_one_canonical_scope(
++    db, db_other, spelling
++):
++    """`index_file` is LENIENT on `class_id`, and the whole row set lands under ONE spelling.
++
++    The spelling is used TWICE on purpose - as the argument and on every `PreparedChunk` - because
++    the two reach different casts. Guarding only the argument leaves the per-chunk bind raw, and a
++    `urn` chunk then clears the `files` upsert and the chunk delete before aborting at the insert:
++    a half-guard that trades an early refusal for a late one.
++
++    Only `urn` is sensitive to the canonicalisation; Postgres normalises braced and bare-hex
++    itself. The other three pin the LENIENCY decision - make this site strict like `file_id` and
++    braced, hex32 and urn go red together.
++
++    Read back through `db_other`, a SECOND connection: `db`'s own connection sees its uncommitted
++    work, so the canonical value would read back correctly whether or not it was published.
++    """
++    conn, owner_id, class_id = db
++    canonical = uuid.UUID(class_id)
++    written = {
++        "plain": str(canonical),
++        "braced": f"{{{canonical}}}",
++        "hex32": canonical.hex,
++        "urn": canonical.urn,
++    }[spelling]
++    assert uuid.UUID(written) == canonical, "the spelling under test names a different class"
++
++    try:
++        db_other.execute("select %s::uuid", (written,)).fetchone()
++        postgres_accepts = True
++    except psycopg.errors.InvalidTextRepresentation:
++        postgres_accepts = False
++    assert postgres_accepts is _POSTGRES_ACCEPTS_THE_CAST[spelling], (
++        f"Postgres's own handling of the {spelling} spelling changed; the premise is stale"
++    )
++
++    file_id = str(uuid.uuid4())
++    index_file(
++        conn,
++        file_id=file_id,
++        filename="lecture.pdf",
++        owner_id=owner_id,
++        class_id=written,
++        chunks=[_chunk(owner_id, written, "alpha", 1), _chunk(owner_id, written, "beta", 2)],
++    )
++
++    assert db_other.execute(
++        "select class_id::text, status from files where file_id = %s::uuid", (file_id,)
++    ).fetchone() == (str(canonical), "ready")
++    assert db_other.execute(
++        "select distinct class_id::text from chunks where file_id = %s::uuid", (file_id,)
++    ).fetchall() == [(str(canonical),)], "the chunks landed under a different class than the file"
++    assert (
++        db_other.execute(
++            "select count(*) from chunks where file_id = %s::uuid", (file_id,)
++        ).fetchone()[0]
++        == 2
++    )
++
++
++@pytest.mark.parametrize("kind", sorted(_NOT_A_USABLE_ID))
++@pytest.mark.parametrize("where", ["argument", "chunk"])
++def test_index_file_refuses_a_non_uuid_class_id_and_publishes_nothing(db, db_other, kind, where):
++    """Both class_id binds refuse, with a remedy, before the transaction opens.
++
++    `where` is the arm that would be missing from a guard on the argument alone: the per-chunk
++    `class_id` reaches its own cast in step 3, so a chunk carrying a bad id has to be refused
++    before `BEGIN` too, or the refusal arrives after two statements have already run inside the
++    transaction.
++
++    `already_parsed` is the case that will actually happen - psycopg hands uuid columns back as
++    `uuid.UUID` instances, so a caller reassembling chunks from a query holds exactly that.
++
++    `db_other` is what makes "publishes nothing" a real assertion: `db`'s own connection would
++    show the same zero whether the guard ran before the writes or the transaction rolled back
++    after them, and only the first is what this guard promises.
++    """
++    conn, owner_id, class_id = db
++    bad = _NOT_A_USABLE_ID[kind]
++    file_id = str(uuid.uuid4())
++    argument = bad if where == "argument" else class_id
++    on_chunk = bad if where == "chunk" else class_id
++    expected = (
++        r"index_file\(\) requires a uuid class_id"
++        if where == "argument"
++        else (r"index_file\(\) requires a uuid chunk class_id")
++    )
++
++    with pytest.raises(ValueError, match=expected) as caught:
++        index_file(
++            conn,
++            file_id=file_id,
++            filename="lecture.pdf",
++            owner_id=owner_id,
++            class_id=argument,
++            chunks=[_chunk(owner_id, on_chunk, "alpha", 1)],
++        )
++
++    assert "class" in str(caught.value), "the refusal does not name what to pass instead"
++    # Refused BEFORE `conn.transaction()`, so the connection is exactly as it was found.
++    assert conn.info.transaction_status == psycopg.pq.TransactionStatus.IDLE
++    assert (
++        db_other.execute("select count(*) from files where owner_id = %s", (owner_id,)).fetchone()[
++            0
++        ]
++        == 0
++    ), "a refused index_file published a files row"
++
++
++@pytest.mark.parametrize("spelling", ["braced", "hex32", "urn", "already_parsed"])
++def test_index_file_refuses_a_non_canonical_file_id_and_publishes_nothing(db, db_other, spelling):
++    """`file_id` is STRICT - the opposite decision to `class_id`, and this is what pins it apart.
++
++    A `file_id` reaches this function from the database: either `ingest_file` minted it with
++    `uuid4()` or a worker read it off the `jobs` row it claimed, canonical in both cases. So any
++    other spelling means the caller built it somewhere it should not have, and converting it
++    quietly would hide that. Note `braced` and `hex32` are spellings Postgres itself WOULD accept -
++    they are refused on the source-of-the-id argument, not because the cast would fail, which is
++    exactly what makes this a strict guard rather than a canonicalising one.
++
++    The accepting direction is `test_index_file_lands_full_set_and_flips_ready` and every other
++    test in this module: they all pass `str(uuid.uuid4())` and publish. CASE is the one axis this
++    guard does not treat as non-canonical - see the test below for why.
++    """
++    conn, owner_id, class_id = db
++    canonical = uuid.uuid4()
++    written = {
++        "braced": f"{{{canonical}}}",
++        "hex32": canonical.hex,
++        "urn": canonical.urn,
++        "already_parsed": canonical,
++    }[spelling]
++
++    with pytest.raises(ValueError, match=r"index_file\(\) requires a canonical uuid file_id"):
++        index_file(
++            conn,
++            file_id=written,
++            filename="lecture.pdf",
++            owner_id=owner_id,
++            class_id=class_id,
++            chunks=[_chunk(owner_id, class_id, "alpha", 1)],
++        )
++
++    assert conn.info.transaction_status == psycopg.pq.TransactionStatus.IDLE
++    assert (
++        db_other.execute(
++            "select count(*) from files where file_id = %s::uuid", (str(canonical),)
++        ).fetchone()[0]
++        == 0
++    ), "a refused index_file published a files row"
++
++
++def test_each_chunk_keeps_its_own_class_id_when_it_disagrees_with_the_file(db, db_other):
++    """A chunk's `class_id` is written from THE CHUNK, never from the file-level argument (#126).
++
++    This pins a decision the guards above made and nothing else could catch. `index_file`
++    canonicalises the argument and every chunk's own `class_id` separately, and binds the
++    per-chunk value; overwriting the chunk rows with the file's id would be one character's
++    difference in the same statement and passes every other test in this module, because `compose`
++    never produces a chunk whose scope differs from its file's. `index_file` is a supported direct
++    entry point (the PM-4 seam, ADR 0020), so a direct caller can, and this is the only test that
++    hands it such a set.
++
++    WHY NOT SILENTLY OVERWRITE, which is the tempting alternative and would make the rows
++    self-consistent: retrieval filters chunks on `owner_id AND class_id` (F6/F12), so overwriting
++    would move a caller's chunks into a class it never named and answer another class's questions
++    from them - a scope violation with no trace, since the rows would look correct. Divergence is a
++    caller bug, and this box surfaces it as data rather than papering over it.
++
++    BOTH DIRECTIONS, because a one-sided pin is exactly what the overwrite survives: the chunk rows
++    carry the CHUNK's class, and they do NOT carry the file's. The `files` row is asserted too -
++    the two values diverging is the whole scenario, so a fix that made them agree by moving the
++    FILE instead would otherwise slip through.
++
++    Read back through `db_other`, a SECOND connection: the subject is what was PUBLISHED, and
++    `db`'s own connection sees its uncommitted work either way.
++    """
++    conn, owner_id, file_class = db
++    chunk_class = _seed_class(conn, owner_id)
++    conn.commit()  # back to IDLE, which `require_idle` demands of every writer
++    assert chunk_class != file_class, "the two classes are the same; nothing would be proven"
++    file_id = str(uuid.uuid4())
++
++    index_file(
++        conn,
++        file_id=file_id,
++        filename="lecture.pdf",
++        owner_id=owner_id,
++        class_id=file_class,
++        chunks=[
++            _chunk(owner_id, chunk_class, "alpha", 1),
++            _chunk(owner_id, chunk_class, "beta", 2),
++        ],
++    )
++    conn.commit()
++
++    assert db_other.execute(
++        "select class_id::text from files where file_id = %s::uuid", (file_id,)
++    ).fetchone() == (file_class,), "the files row did not keep the class_id it was called with"
++
++    published = db_other.execute(
++        "select distinct class_id::text from chunks where file_id = %s::uuid", (file_id,)
++    ).fetchall()
++    assert published == [(chunk_class,)], (
++        f"the chunks were written under {published!r}, not their own class"
++    )
++    assert (
++        db_other.execute(
++            "select count(*) from chunks where file_id = %s::uuid and class_id = %s::uuid",
++            (file_id, file_class),
++        ).fetchone()[0]
++        == 0
++    ), "a chunk took the file-level class_id instead of its own"
+diff --git a/tests/gct/ingest/test_pipeline.py b/tests/gct/ingest/test_pipeline.py
+index a0e0d99..3bf37b6 100644
+--- a/tests/gct/ingest/test_pipeline.py
++++ b/tests/gct/ingest/test_pipeline.py
+@@ -26,7 +26,11 @@ from gct.providers.base import TransientEmbeddingError
+ from gct.retriever.retrieve import retrieve
+ 
+ OWNER_ID = "test-owner"
+-CLASS_ID = "test-class"
++# A REAL uuid, not a readable stand-in like the owner beside it. `compose` never looks at this
++# value, but `ingest_file` canonicalises it before spending anything (#126), so a non-uuid here
++# would make every ingest_file test in this module fail at the guard instead of where it is
++# aimed. `owner_id` stays a plain string because it is a `text` column with no cast anywhere.
++CLASS_ID = "6f1e1b4a-0f0e-4a3e-9a7d-2f0a1b2c3d4e"
+ 
+ 
+ def test_compose_stamps_provenance_model_and_embeds_all(pdf_factory, fake_embedder):
+@@ -406,10 +410,10 @@ def test_ingest_file_still_mints_a_file_id_when_none_is_supplied(
+ def test_ingest_file_rejects_a_malformed_file_id_before_spending_anything(pdf_factory):
+     """A `file_id` that isn't a uuid fails INSTANTLY - no parse, no embed, no DB.
+ 
+-    Postgres rejects a malformed id on its own, at `index_file`'s `::uuid` cast. That is a real
+-    check in the wrong place: `compose` has already run by then, so a typo costs a full embedding
+-    run before anyone finds out. The defect was ordering, not detection, so this test pins the
+-    ORDER rather than the message.
++    A malformed id is rejected downstream on its own - by `index_file`'s strict guard since #126,
++    and by Postgres's `::uuid` cast before that. That is a real check in the wrong place: `compose`
++    has already run by then, so a typo costs a full embedding run before anyone finds out. The
++    defect was ordering, not detection, so this test pins the ORDER rather than the message.
+ 
+     It proves that by making the later steps fatal instead of merely expensive. `conn=None` cannot
+     be executed against and `_ExplodingEmbedder` raises on use, so this test can only pass if the
+@@ -1079,3 +1083,72 @@ def test_zero_width_space_is_not_whitespace_to_python_and_survives_the_empty_che
+ 
+     assert len(units) == 1, "U+200B survives the `empty` terminal - it is not Python whitespace"
+     assert sum(len(u.text.split()) for u in units) == 1, "and it consumes ceiling budget"
++
++
++# The three ways `uuid.UUID` reports a bad argument, plus a malformed string (#126).
++_NOT_A_USABLE_CLASS_ID = {
++    "malformed": "intro-to-religion",
++    "none": None,
++    "int": 12345,
++    "already_parsed": uuid4(),
++}
++
++
++@pytest.mark.parametrize("kind", sorted(_NOT_A_USABLE_CLASS_ID))
++def test_ingest_file_rejects_a_bad_class_id_before_spending_anything(pdf_factory, kind):
++    """A `class_id` that isn't a uuid fails INSTANTLY - no parse, no embed, no DB (#126).
++
++    Same tripwire discipline as the `file_id` test above, and the same defect: the id is rejected
++    downstream on its own - by `index_file`'s guard now, by Postgres's `::uuid` cast before #126 -
++    but not until AFTER `compose` has bought a full embedding run. `conn=None` cannot be executed
++    against and `_ExplodingEmbedder` raises on use, so a `ValueError` here proves neither was
++    reached - move this guard below `compose` and the `RuntimeError` escapes instead, which is why
++    the exception
++    TYPE is asserted and not merely that something raised.
++
++    LENIENT, unlike `file_id`: this test is the refusing half only. The accepting half - that a
++    urn-spelled class_id ingests and publishes under the canonical spelling - is
++    `test_ingest_file_canonicalises_the_class_id_it_publishes_under`.
++    """
++    path = pdf_factory("lecture.pdf", ["alpha beta gamma"])
++
++    with pytest.raises(ValueError, match=r"ingest_file\(\) requires a uuid class_id") as caught:
++        ingest_file(
++            path,
++            OWNER_ID,
++            _NOT_A_USABLE_CLASS_ID[kind],
++            embedder=_ExplodingEmbedder(),
++            conn=None,
++        )
++
++    assert "create_class" in str(caught.value), "the refusal does not name what to pass instead"
++
++
++def test_ingest_file_canonicalises_the_class_id_it_publishes_under(
++    pdf_factory, fake_embedder, db, db_other
++):
++    """The lenient half: `urn:uuid:<id>` ingests, and every row lands under the canonical spelling.
++
++    `urn` is the spelling `uuid.UUID` accepts and Postgres's `::uuid` cast refuses, so before this
++    it reached `index_file` intact, aborted the insert with an `InvalidTextRepresentation` naming a
++    Postgres type - and did so only after the embedding run was already bought.
++
++    The `files` row and the `chunks` rows are both checked, through `db_other`, because they are
++    written from two different values: the argument and the `class_id` `compose` stamped onto every
++    `PreparedChunk`. Canonicalising one and not the other would leave them describing the same
++    class in two spellings, which the F6/F12 scope filter reads as two different classes.
++    """
++    conn, owner_id, class_id = db
++    path = pdf_factory("lecture.pdf", ["alpha beta gamma", "delta epsilon"])
++
++    urn = UUID(class_id).urn
++    assert urn != class_id, "the spelling under test is the canonical one; nothing is proven"
++
++    file_id = ingest_file(path, owner_id, urn, embedder=fake_embedder, conn=conn)
++
++    assert db_other.execute(
++        "select class_id::text, status from files where file_id = %s::uuid", (file_id,)
++    ).fetchone() == (class_id, "ready")
++    assert db_other.execute(
++        "select distinct class_id::text from chunks where file_id = %s::uuid", (file_id,)
++    ).fetchall() == [(class_id,)], "the chunks landed under a different spelling than the file"
+diff --git a/tests/gct/retriever/test_retrieve.py b/tests/gct/retriever/test_retrieve.py
+index 361f316..6f6c05a 100644
+--- a/tests/gct/retriever/test_retrieve.py
++++ b/tests/gct/retriever/test_retrieve.py
+@@ -16,6 +16,7 @@ import math
+ import uuid
+ from collections.abc import Sequence
+ 
++import psycopg
+ import pytest
+ 
+ from gct.config import ACTIVE_EMBEDDING_MODEL_ID
+@@ -319,3 +320,122 @@ class TestRetrieve:
+ 
+         with pytest.raises(TransientEmbeddingError):
+             retrieve(conn, "a question", owner_id, class_id, embedder=exploding)
++
++    # --- The id boundary (#126) -------------------------------------------------------------
++    #
++    # `retrieve` bound the caller's `class_id` spelling raw into BOTH of this module's
++    # `%(class_id)s::uuid` casts - the whole-class consistency DISTINCT and the top-k. The two
++    # tests below are the two directions of the same guard, and neither is optional: an accept-only
++    # pin is satisfied by a function that accepts everything, and a refuse-only pin by one that
++    # refuses everything.
++
++    # Python's `uuid.UUID` parses four spellings of one id; Postgres's `::uuid` cast parses three.
++    # Pinning the split is what keeps the accept test from being trivially green - without it, a
++    # passing `urn` case is indistinguishable from a Postgres that quietly started accepting it.
++    _POSTGRES_ACCEPTS_THE_CAST = {"plain": True, "braced": True, "hex32": True, "urn": False}
++
++    @pytest.mark.parametrize("spelling", ["plain", "braced", "hex32", "urn"])
++    def test_every_uuid_spelling_python_accepts_reaches_the_same_chunks(
++        self, db, db_other, ranking_embedder, seed_chunks, spelling
++    ):
++        """Every spelling of one class_id retrieves exactly what the canonical spelling does.
++
++        BOTH SQL SITES ARE EXERCISED BY THIS, which is why it is one test and not two:
++        `_assert_embedding_consistency` runs first and must return True (its own cast), and only
++        then does the top-k run (the second cast). Fix one site and leave the other raw and the
++        `urn` case still goes red - from whichever cast was left.
++
++        `urn` is the only case sensitive to the fix; Postgres normalises the braced and bare-hex
++        spellings itself. The other three pin the OTHER decision - that `retrieve` is LENIENT.
++        Swap in `ingest_file`-style strict rejection of any non-canonical spelling and braced,
++        hex32 and urn go red together. Two different guards, one parametrization.
++        """
++        conn, owner_id, class_id = db
++        canonical = uuid.UUID(class_id)
++        written = {
++            "plain": str(canonical),
++            "braced": f"{{{canonical}}}",
++            "hex32": canonical.hex,
++            "urn": canonical.urn,
++        }[spelling]
++        assert uuid.UUID(written) == canonical, "the spelling under test names a different class"
++
++        # Measured on `db_other`, which is autocommit - a refused cast is its own transaction
++        # there and cannot poison anything this test does later.
++        try:
++            db_other.execute("select %s::uuid", (written,)).fetchone()
++            postgres_accepts = True
++        except psycopg.errors.InvalidTextRepresentation:
++            postgres_accepts = False
++        assert postgres_accepts is self._POSTGRES_ACCEPTS_THE_CAST[spelling], (
++            f"Postgres's own handling of the {spelling} spelling changed; the premise is stale"
++        )
++
++        question = "what is the argument?"
++        ranking_embedder.assign(question, 0.10)
++        seed_chunks(["alpha chunk", "beta chunk"], embedder=ranking_embedder)
++
++        baseline = retrieve(conn, question, owner_id, str(canonical), embedder=ranking_embedder)
++        got = retrieve(conn, question, owner_id, written, embedder=ranking_embedder)
++
++        assert [c.text for c in baseline] == ["alpha chunk", "beta chunk"] or [
++            c.text for c in baseline
++        ] == ["beta chunk", "alpha chunk"], "the canonical baseline itself retrieved nothing usable"
++        assert got == baseline, f"the {spelling} spelling retrieved a different result"
++
++    @pytest.mark.parametrize(
++        "bad",
++        [
++            "intro-to-religion",  # ValueError from the parser
++            None,  # TypeError: no hex/bytes/fields/int argument was given
++            12345,  # AttributeError: int has no `.replace`
++            uuid.UUID("6f1e1b4a-0f0e-4a3e-9a7d-2f0a1b2c3d4e"),  # AttributeError, and the LIKELY one
++        ],
++        ids=["malformed", "none", "int", "already_parsed"],
++    )
++    def test_retrieve_refuses_a_non_uuid_class_id_and_leaves_the_connection_usable(
++        self, db, ranking_embedder, seed_chunks, bad
++    ):
++        """The refusal half - and the CONNECTION assertion is the point of this one.
++
++        `retrieve` is a reader with no transaction of its own. Before this, the raw bind meant a
++        spelling Postgres refused aborted the implicit transaction psycopg had already opened
++        (ADR 0025), so every later statement on that connection failed with
++        `InFailedSqlTransaction`: the caller lost the connection, not just the query. That is the
++        harm that distinguishes this site from the library's other id boundaries - `enqueue` wraps
++        its writes in `conn.transaction()` and psycopg rolls that back cleanly.
++
++        So the transaction is OPENED ON PURPOSE before the call, and the assertions after the
++        raise are the measurement: still INTRANS rather than INERROR, a plain statement still
++        answers, and a real `retrieve` on the same connection still returns the seeded chunks.
++        The last one is what a bare `select 1` cannot show - that the caller's actual work still
++        runs.
++
++        Parametrized over all four ways `uuid.UUID` reports a bad argument, because two of them
++        (`TypeError`, `AttributeError`) are precisely what escaped the guards this ticket widened
++        elsewhere. `already_parsed` is the case that will actually happen: a caller holding the
++        `uuid.UUID` psycopg handed it back passes that instead of `str(...)`.
++        """
++        conn, owner_id, class_id = db
++        question = "what is the argument?"
++        ranking_embedder.assign(question, 0.10)
++        seed_chunks(["alpha chunk", "beta chunk"], embedder=ranking_embedder)
++
++        conn.execute("select 1").fetchone()
++        assert conn.info.transaction_status == psycopg.pq.TransactionStatus.INTRANS, (
++            "this test's premise is a connection with an OPEN implicit transaction"
++        )
++
++        with pytest.raises(ValueError, match=r"retrieve\(\) requires a uuid class_id") as caught:
++            retrieve(conn, question, owner_id, bad, embedder=ranking_embedder)
++
++        assert "create_class" in str(caught.value), "the refusal does not name what to pass instead"
++        assert conn.info.transaction_status == psycopg.pq.TransactionStatus.INTRANS, (
++            "the refusal aborted the caller's transaction - the exact harm this guard prevents"
++        )
++        assert conn.execute("select 1").fetchone() == (1,)
++        still_works = retrieve(conn, question, owner_id, class_id, embedder=ranking_embedder)
++        assert {c.text for c in still_works} == {"alpha chunk", "beta chunk"}, (
++            "the refusal cost the caller its connection"
++        )
++        conn.rollback()
+diff --git a/tests/gct/test_classes.py b/tests/gct/test_classes.py
+index fa66bc6..568f209 100644
+--- a/tests/gct/test_classes.py
++++ b/tests/gct/test_classes.py
+@@ -414,3 +414,40 @@ def test_the_connection_guard_runs_before_the_name_guard(db, db_other):
+     assert caught.value.reason == "blank"
+ 
+     assert _row_count(db_other, owner_id) == 1, "a refused create wrote a row (db seeds one class)"
++
++
++# The three ways `uuid.UUID` reports a bad argument. `class_exists` shipped catching only the
++# first, so the other two escaped carrying the parser's own message and no remedy (#126).
++_NOT_A_USABLE_ID = {
++    "malformed": "intro-to-religion",  # ValueError from the parser
++    "none": None,  # TypeError: no hex/bytes/fields/int argument was given
++    "int": 12345,  # AttributeError: int has no `.replace`
++    "already_parsed": uuid.UUID("6f1e1b4a-0f0e-4a3e-9a7d-2f0a1b2c3d4e"),  # AttributeError
++}
++
++
++@pytest.mark.parametrize("kind", sorted(_NOT_A_USABLE_ID))
++def test_class_exists_refuses_every_way_the_parser_can_reject_an_id(db, kind):
++    """One remedy-naming `ValueError` for all three of `uuid.UUID`'s failure modes (#126).
++
++    The guard here caught only `ValueError`, so `None` came back as a `TypeError` reading "one of
++    the hex, bytes, bytes_le, fields, or int arguments must be given" and an already-parsed
++    `uuid.UUID` as "'UUID' object has no attribute 'replace'" - the parser's internals, naming no
++    remedy, from a function whose entire job at this line is to refuse well.
++
++    `already_parsed` is the case that will actually happen: psycopg returns uuid columns as
++    `uuid.UUID` instances, so a caller holding a real id passes the natural thing.
++
++    The connection assertion is the second direction: a refusal that left the connection INTRANS
++    would arm the ADR 0025 trap for the writer the API calls next in the same handler.
++    """
++    conn, owner_id, _ = db
++    conn.rollback()
++    assert conn.info.transaction_status == psycopg.pq.TransactionStatus.IDLE
++
++    with pytest.raises(ValueError, match=r"class_exists\(\) requires a uuid class_id") as caught:
++        class_exists(conn, class_id=_NOT_A_USABLE_ID[kind], owner_id=owner_id)
++
++    assert "cannot name any class" in str(caught.value), "the refusal names no remedy"
++    assert conn.info.transaction_status == psycopg.pq.TransactionStatus.IDLE
++    assert conn.execute("select 1").fetchone() == (1,), "the refusal cost the caller its connection"
+diff --git a/tests/gct/test_files.py b/tests/gct/test_files.py
+index 3fe9c12..d26540b 100644
+--- a/tests/gct/test_files.py
++++ b/tests/gct/test_files.py
+@@ -221,3 +221,45 @@ def test_file_status_refuses_attribute_assignment(db, tmp_path):
+         with pytest.raises(dataclasses.FrozenInstanceError):
+             setattr(got, field, value)
+     assert (got.status, got.failed_reason, got.filename) == ("queued", None, "lecture-3.pdf")
++
++
++# The three ways `uuid.UUID` reports a bad argument. `get_file_status` shipped catching only the
++# first, so the other two escaped carrying the parser's own message and no remedy (#126).
++_NOT_A_USABLE_ID = {
++    "malformed": "lecture-3",  # ValueError from the parser
++    "none": None,  # TypeError: no hex/bytes/fields/int argument was given
++    "int": 12345,  # AttributeError: int has no `.replace`
++    "already_parsed": uuid.UUID("6f1e1b4a-0f0e-4a3e-9a7d-2f0a1b2c3d4e"),  # AttributeError
++}
++
++
++@pytest.mark.parametrize("kind", sorted(_NOT_A_USABLE_ID))
++def test_get_file_status_refuses_every_way_the_parser_can_reject_an_id(db, tmp_path, kind):
++    """One remedy-naming `ValueError` for all three of `uuid.UUID`'s failure modes (#126).
++
++    Only the malformed STRING was covered before, and it is the only one of the three a route can
++    produce today - which is what made the other two a trap rather than a bug. `None` escaped as
++    a `TypeError` and an already-parsed `uuid.UUID` as an `AttributeError`, both naming the
++    parser's internals instead of the remedy.
++
++    Run on a connection with an OPEN transaction, and the arm that matters is the one after the
++    raise: still INTRANS rather than INERROR, and the reader still answers correctly for a real
++    id. A guard that let the parser's exception through would not abort anything either - but a
++    guard that had validated and then bound the RAW string would, and that is the shape this
++    module's sibling test pins from the other side.
++    """
++    file_id, owner_id = _enqueued(db, tmp_path)
++    conn = db[0]
++    conn.autocommit = False
++    conn.execute("select 1").fetchone()
++    assert conn.info.transaction_status == psycopg.pq.TransactionStatus.INTRANS
++
++    with pytest.raises(ValueError, match=r"get_file_status\(\) requires a uuid file_id") as caught:
++        get_file_status(conn, file_id=_NOT_A_USABLE_ID[kind], owner_id=owner_id)
++
++    assert "cannot name any file" in str(caught.value), "the refusal names no remedy"
++    assert conn.info.transaction_status == psycopg.pq.TransactionStatus.INTRANS
++    assert get_file_status(conn, file_id=file_id, owner_id=owner_id) == FileStatus(
++        status="queued", failed_reason=None, filename="lecture-3.pdf"
++    )
++    conn.rollback()
+diff --git a/tests/gct/test_ids.py b/tests/gct/test_ids.py
+new file mode 100644
+index 0000000..78023b3
+--- /dev/null
++++ b/tests/gct/test_ids.py
+@@ -0,0 +1,100 @@
++"""Pure tests for `gct.ids` - no DB, no network (#126).
++
++The library's id boundaries are pinned at their own sites, where the connection and the rows are
++there to assert against. This module pins the two things those tests can only observe indirectly:
++that the LENIENT and STRICT shapes are genuinely different decisions, and that the exception set
++`uuid.UUID` can raise is covered in full. That set is the reason this module exists at all -
++`class_exists` and `get_file_status` each carried their own copy of it, each caught one of the
++three, and the gap sat in the tree until #126.
++"""
++
++from __future__ import annotations
++
++import uuid
++
++import pytest
++
++from gct.ids import canonical_uuid, require_canonical_uuid
++
++CANONICAL = "6f1e1b4a-0f0e-4a3e-9a7d-2f0a1b2c3d4e"
++
++# Every spelling `uuid.UUID` accepts for one id. Three of the four are spellings Postgres's
++# `::uuid` cast also accepts; `urn` is the one it refuses, which is why binding the raw string is
++# not the same thing as validating it.
++SPELLINGS = {
++    "plain": CANONICAL,
++    "upper": CANONICAL.upper(),
++    "braced": "{" + CANONICAL + "}",
++    "hex32": CANONICAL.replace("-", ""),
++    "urn": f"urn:uuid:{CANONICAL}",
++}
++
++# The three ways `uuid.UUID` reports a bad argument, and they are not interchangeable: catching
++# only the first is exactly the defect this module was extracted to make un-repeatable.
++REJECTED = {
++    "malformed": "intro-to-religion",  # ValueError
++    "none": None,  # TypeError
++    "int": 12345,  # AttributeError - no `.replace`
++    "list": ["not", "an", "id"],  # AttributeError
++    "already_parsed": uuid.UUID(CANONICAL),  # AttributeError - the case that will happen
++}
++
++
++@pytest.mark.parametrize("spelling", sorted(SPELLINGS))
++def test_canonical_uuid_normalises_every_spelling_the_parser_accepts(spelling):
++    """Lenient: in comes any accepted spelling, out comes the single one Postgres takes."""
++    assert canonical_uuid(SPELLINGS[spelling], fn="f", param="class_id", remedy="r") == CANONICAL, (
++        spelling
++    )
++
++
++@pytest.mark.parametrize("spelling", sorted(SPELLINGS))
++def test_require_canonical_uuid_accepts_only_the_canonical_spelling(spelling):
++    """Strict: the opposite decision on the same inputs, which is what makes it a decision.
++
++    `upper` is the deliberate exception, inherited from `ingest_file`'s shipped guard rather than
++    re-decided here: `uuid.UUID` renders lowercase, so an all-caps hyphenated id differs in CASE
++    alone and Postgres stores it as the same value.
++    """
++    accepted = spelling in {"plain"}
++    if accepted:
++        assert (
++            require_canonical_uuid(SPELLINGS[spelling], fn="f", param="file_id", remedy="r")
++            == SPELLINGS[spelling]
++        )
++    else:
++        with pytest.raises(ValueError, match=r"f\(\) requires a canonical uuid file_id"):
++            require_canonical_uuid(SPELLINGS[spelling], fn="f", param="file_id", remedy="r")
++
++
++@pytest.mark.parametrize("kind", sorted(REJECTED))
++def test_both_shapes_refuse_every_parser_rejection_with_the_remedy(kind):
++    """All three exception types, both shapes, one `ValueError` carrying the caller's remedy.
++
++    The `from exc` chain is asserted on the lenient shape because that is the half a maintainer
++    would be tempted to simplify: the original cause is what tells a reader WHICH of the three
++    rejections fired, and swallowing it costs nothing at the call site and everything in a
++    traceback.
++    """
++    bad = REJECTED[kind]
++
++    with pytest.raises(ValueError, match=r"caller\(\) requires a uuid class_id") as lenient:
++        canonical_uuid(bad, fn="caller", param="class_id", remedy="pass the id create_class gave")
++    assert "pass the id create_class gave" in str(lenient.value)
++    assert isinstance(lenient.value.__cause__, (ValueError, AttributeError, TypeError))
++
++    with pytest.raises(ValueError, match=r"caller\(\) requires a canonical uuid file_id") as strict:
++        require_canonical_uuid(bad, fn="caller", param="file_id", remedy="pass str(id)")
++    assert "pass str(id)" in str(strict.value)
++
++
++def test_the_lenient_refusal_of_a_uuid_instance_tells_the_caller_to_pass_str_id():
++    """A `uuid.UUID` IS a uuid, so "requires a uuid" alone is false of that input, and the caller
++    has already followed every remedy about ids that are not uuids. The message must carry the
++    one remedy that applies - `str(id)` - itself, not rely on the caller's `remedy` text to say it
++    (this one deliberately does not). Reverting the message to its pre-/land wording turns this
++    red; nothing else in the suite reads the sentence."""
++    with pytest.raises(ValueError) as refused:
++        canonical_uuid(uuid.UUID(CANONICAL), fn="caller", param="class_id", remedy="Use a real id.")
++    assert "pass str(id) if you hold a uuid.UUID" in str(refused.value)
++    assert isinstance(refused.value.__cause__, AttributeError)

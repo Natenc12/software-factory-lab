@@ -1,0 +1,233 @@
+{
+  "ticket": "T7",
+  "codebase": "gct",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T7",
+  "base_sha": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+  "s3_base_ref": "base/T7-s3",
+  "s3_sha": "1ab787e3bca6c132ab20080cc49dde45874780c8",
+  "started": "2026-11-21T22:10:26+00:00",
+  "finished": "2026-11-21T22:16:41+00:00",
+  "databases_dropped": [
+    "author_gct_t7_base_73343",
+    "author_gct_t7_ref_73343",
+    "author_gct_t7_naive_round_73343",
+    "author_gct_t7_naive_s3_73343",
+    "author_gct_t7_naive_strip_73343",
+    "author_gct_t7_naive_73343",
+    "author_gct_t7_s3base_73343",
+    "author_gct_t7_s3ref_73343",
+    "author_gct_t7_s3naive_73343"
+  ],
+  "ok": true,
+  "steps": [
+    {
+      "name": "base: existing tests pass",
+      "ok": true,
+      "note": "1175 passed, 1 deselected in 48.63s",
+      "counts": {
+        "passed": 1175
+      },
+      "seconds": 50.2,
+      "log_tail": ""
+    },
+    {
+      "name": "hidden tests exist",
+      "ok": true,
+      "files": [
+        "tests/hidden/test_hidden_t7.py"
+      ]
+    },
+    {
+      "name": "base: every hidden test fails",
+      "ok": true,
+      "note": "8 failed in 2.84s",
+      "outcomes": {
+        "tests.hidden.test_hidden_t7::test_existing_rows_survive_the_conversion_and_sort_as_numbers": "failed",
+        "tests.hidden.test_hidden_t7::test_a_fresh_database_migrates_to_an_integer_column_twice": "failed",
+        "tests.hidden.test_hidden_t7::test_a_bad_existing_value_stops_the_migration_and_changes_nothing": "failed",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[3a]": "failed",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[2.7]": "failed",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[p. 12]": "failed",
+        "tests.hidden.test_hidden_t7::test_the_database_refuses_a_page_below_one": "failed",
+        "tests.hidden.test_hidden_t7::test_index_file_stores_integers_and_retrieve_returns_them": "failed"
+      },
+      "not_failing": [],
+      "seconds": 3.5
+    },
+    {
+      "name": "reference: leaves unchanged_paths alone",
+      "ok": true,
+      "touched": [],
+      "changed": [
+        "migrations/0005_page_or_slide_integer.sql",
+        "src/gct/ingest/index.py",
+        "src/gct/ingest/pipeline.py",
+        "src/gct/retriever/retrieve.py",
+        "tests/gct/ingest/test_index.py",
+        "tests/gct/ingest/test_pipeline.py"
+      ]
+    },
+    {
+      "name": "reference: every hidden test passes",
+      "ok": true,
+      "note": "8 hidden, 8 collected",
+      "outcomes": {
+        "tests.hidden.test_hidden_t7::test_existing_rows_survive_the_conversion_and_sort_as_numbers": "passed",
+        "tests.hidden.test_hidden_t7::test_a_fresh_database_migrates_to_an_integer_column_twice": "passed",
+        "tests.hidden.test_hidden_t7::test_a_bad_existing_value_stops_the_migration_and_changes_nothing": "passed",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[3a]": "passed",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[2.7]": "passed",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[p. 12]": "passed",
+        "tests.hidden.test_hidden_t7::test_the_database_refuses_a_page_below_one": "passed",
+        "tests.hidden.test_hidden_t7::test_index_file_stores_integers_and_retrieve_returns_them": "passed"
+      },
+      "not_passing": []
+    },
+    {
+      "name": "reference: existing tests pass",
+      "ok": true,
+      "note": "1183 passed, 1 deselected in 49.41s",
+      "counts": {
+        "passed": 1183
+      },
+      "failing": [],
+      "seconds": 50.4,
+      "log_tail": ""
+    },
+    {
+      "name": "base and reference ran the same hidden tests",
+      "ok": true,
+      "missing_on_base": [],
+      "base_collection_errors": []
+    },
+    {
+      "name": "reference: lint and format clean (tree and hidden tests)",
+      "ok": true,
+      "runs": [
+        {
+          "cmd": "ruff check",
+          "exit": 0,
+          "tail": "All checks passed!\n"
+        },
+        {
+          "cmd": "ruff format --check .",
+          "exit": 0,
+          "tail": "87 files already formatted\n"
+        },
+        {
+          "cmd": "ruff check tests/hidden/test_hidden_t7.py",
+          "exit": 0,
+          "tail": "All checks passed!\n"
+        },
+        {
+          "cmd": "ruff format --check tests/hidden/test_hidden_t7.py",
+          "exit": 0,
+          "tail": "1 file already formatted\n"
+        }
+      ]
+    },
+    {
+      "name": "hidden tests run in under about 2 minutes",
+      "ok": true,
+      "note": "3.9s"
+    },
+    {
+      "name": "naive-round.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[2.7]"
+      ],
+      "note": "1/8 hidden fail"
+    },
+    {
+      "name": "naive-round.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive-s3.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t7::test_a_bad_existing_value_stops_the_migration_and_changes_nothing",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[2.7]",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[3a]",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[p. 12]"
+      ],
+      "note": "4/8 hidden fail"
+    },
+    {
+      "name": "naive-s3.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive-strip.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[2.7]",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[3a]",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[p. 12]"
+      ],
+      "note": "3/8 hidden fail"
+    },
+    {
+      "name": "naive-strip.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t7::test_a_bad_existing_value_stops_the_migration_and_changes_nothing",
+        "tests.hidden.test_hidden_t7::test_the_database_refuses_a_page_below_one"
+      ],
+      "note": "2/8 hidden fail"
+    },
+    {
+      "name": "naive.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "s3: branch is base_ref plus one commit that only adds tests",
+      "ok": true,
+      "files": [
+        "tests/acceptance/test_page_numbers_are_integers.py"
+      ]
+    },
+    {
+      "name": "s3: acceptance tests fail on the S3 branch",
+      "ok": true,
+      "note": "3 failed in 0.78s",
+      "outcomes": {
+        "tests.acceptance.test_page_numbers_are_integers::test_example_1_existing_pages_become_integers": "failed",
+        "tests.acceptance.test_page_numbers_are_integers::test_example_4_index_and_retrieve_use_integers": "failed",
+        "tests.acceptance.test_page_numbers_are_integers::test_example_5_page_zero_is_refused": "failed"
+      }
+    },
+    {
+      "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
+      "ok": true,
+      "note": "1186 passed, 1 deselected in 49.01s",
+      "failing": [],
+      "log_tail": ""
+    },
+    {
+      "name": "s3: naive-s3.patch passes every acceptance test",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "s3: naive-s3.patch still fails a hidden test (hidden checks beyond acceptance)",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t7::test_a_bad_existing_value_stops_the_migration_and_changes_nothing",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[2.7]",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[3a]",
+        "tests.hidden.test_hidden_t7::test_a_value_that_only_looks_like_a_number_is_not_guessed[p. 12]"
+      ]
+    }
+  ]
+}

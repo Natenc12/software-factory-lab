@@ -1,0 +1,46 @@
+{
+  "hidden_test_cmd": "uv run pytest -q -m 'not live' tests/hidden",
+  "review_base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+  "unchanged_paths": [],
+  "scope_out_paths": [],
+  "traps": [],
+  "planted_bugs": [
+    {
+      "id": 1,
+      "where": "src/gct/api/routers/classes.py:217",
+      "what": "The offset is `page * per_page` instead of `(page - 1) * per_page`, so page 1 skips the newest per_page files and the last page can never be reached. The docstring and the description say page 1 is the newest files.",
+      "visible": "diff",
+      "proved_by": "tests/hidden/test_hidden_t8.py::test_bug_1_page_one_is_the_first_page"
+    },
+    {
+      "id": 2,
+      "where": "src/gct/api/routers/classes.py:226",
+      "what": "`if not files:` is true for an empty list as well as for None, so a class with no files answers 404 class_not_found instead of 200 with an empty list. The check must be `files is None`.",
+      "visible": "edge case",
+      "proved_by": "tests/hidden/test_hidden_t8.py::test_bug_2_an_empty_class_is_an_empty_list_not_a_404"
+    },
+    {
+      "id": 3,
+      "where": "src/gct/files.py:148",
+      "what": "The status filter casts to `%(status)s::file_status`, but there is no `file_status` type (`files.status` is text with a CHECK). Any request with ?status= raises UndefinedObject inside Postgres and answers 500. The feature's own tests never pass a status, so the suite stays green.",
+      "visible": "only when run",
+      "proved_by": "tests/hidden/test_hidden_t8.py::test_bug_3_the_status_filter_runs"
+    }
+  ],
+  "not_bugs": [
+    "The SQL is assembled with an f-string: only the fixed `status_filter` fragment is interpolated; every value is a bound parameter, so there is no injection.",
+    "The route imports the private `_FAILED_MESSAGE`, `_STATUS_MESSAGE` and `_UNKNOWN_FAILURE` maps from the files router. A style point, not a defect: the messages match GET /files/{file_id} as intended.",
+    "Newest first with `file_id` as the tie-breaker is the intended order, not a mistake.",
+    "Another owner's class answers 404 class_not_found, the same as a missing class. Intended (owners must not learn of each other's classes).",
+    "The lower bound of `page` (at least 1) and both bounds of `per_page` (1 to 100) are intended; FastAPI answers 422 outside them. This does not cover a huge `page`, which is a real defect (see other_real_defects).",
+    "No migration or index is added; `files_class_idx` on files(class_id) already exists.",
+    "`list_class_files` calls `class_exists` and then a second query, so a class deleted in between could give an empty list. There is no class deletion in the app, so this cannot happen.",
+    "`status` is limited by a Literal in the route, so an unknown status answers 422 before reaching the library.",
+    "`created_at.isoformat()` includes the timezone offset; that is valid ISO 8601."
+  ],
+  "other_real_defects": [
+    "A very large `page` (for example ?page=9223372036854775807) answers 500: `page` has no upper bound and the offset overflows bigint in Postgres.",
+    "web/src/api/schema.gen.ts is not regenerated for the new route, though web/scripts/api-types.test.ts pins it to web/openapi.json.",
+    "No test exercises the route or the status filter; the feature's tests cover only the library function without a filter, which is why all three planted bugs survive a green suite."
+  ]
+}

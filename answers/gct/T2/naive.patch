@@ -1,0 +1,18 @@
+diff --git a/src/gct/api/errors.py b/src/gct/api/errors.py
+index f100f2c..3ddf39c 100644
+--- a/src/gct/api/errors.py
++++ b/src/gct/api/errors.py
+@@ -132,7 +132,12 @@ async def _validation(request: Request, exc: RequestValidationError) -> JSONResp
+     # 500 `internal` and the validation message the client needed is gone. FastAPI's own default
+     # 422 handler runs the list through the same encoder for the same reason.
+     return envelope(
+-        422, KIND_VALIDATION, "request validation failed", jsonable_encoder(exc.errors())
++        422,
++        KIND_VALIDATION,
++        "request validation failed",
++        jsonable_encoder(
++            exc.errors(), custom_encoder={bytes: lambda b: b.decode("utf-8", "replace")}
++        ),
+     )
+ 
+ 

@@ -1,0 +1,18 @@
+{
+  "id": "T6",
+  "kind": "flawed",
+  "title": "Index the first 250,000 words of an over-long upload instead of refusing it",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T6",
+  "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+  "s3_base_ref": "base/T6-s3",
+  "s3_base_commit": "40417fcd9bf00476969e218bd6522b7e60507b56",
+  "db": "postgres",
+  "deliverable": "pull_request",
+  "spec_words": {
+    "S0": 66,
+    "S1": 385,
+    "S2": 586,
+    "S3": 624
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "T1",
+  "kind": "replay",
+  "title": "A file's status row can describe an attempt or an owner that is no longer true",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T1",
+  "base_commit": "5dc0d6429c6900a428b421e80ca7d97a0b118b83",
+  "s3_base_ref": "base/T1-s3",
+  "s3_base_commit": "bd5a187dc173743985e0182ddfed5952ff952ab0",
+  "db": "postgres",
+  "deliverable": "pull_request",
+  "spec_words": {
+    "S0": 121,
+    "S1": 755,
+    "S2": 1131,
+    "S3": 1164
+  }
+}

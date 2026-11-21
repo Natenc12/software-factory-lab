@@ -1,0 +1,33 @@
+diff --git a/src/gct/ingest/index.py b/src/gct/ingest/index.py
+index 9336dd5..8337cc0 100644
+--- a/src/gct/ingest/index.py
++++ b/src/gct/ingest/index.py
+@@ -93,7 +93,12 @@ def index_file(
+             """
+             insert into files (file_id, owner_id, class_id, filename, status)
+             values (%(file_id)s::uuid, %(owner_id)s, %(class_id)s::uuid, %(filename)s, 'ready')
+-            on conflict (file_id) do update set status = 'ready', updated_at = now()
++            on conflict (file_id) do update set
++                filename = excluded.filename,
++                owner_id = excluded.owner_id,
++                class_id = excluded.class_id,
++                status = 'ready',
++                updated_at = now()
+             """,
+             {"file_id": file_id, "owner_id": owner_id, "class_id": class_id, "filename": filename},
+         )
+diff --git a/src/gct/jobs/worker.py b/src/gct/jobs/worker.py
+index f31e885..abb30c7 100644
+--- a/src/gct/jobs/worker.py
++++ b/src/gct/jobs/worker.py
+@@ -466,6 +466,10 @@ def process_one(
+         # writer. No `require_idle` here on purpose: `claim` just committed and nothing runs
+         # between it and this statement, so the connection cannot be anything but idle.
+         with conn.transaction():
++            conn.execute(
++                "update files set failed_reason = null where file_id = %(file_id)s::uuid",
++                {"file_id": job.file_id},
++            )
+             conn.execute(
+                 """
+                 update files

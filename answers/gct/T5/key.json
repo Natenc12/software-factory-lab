@@ -1,0 +1,39 @@
+{
+  "hidden_test_cmd": "uv run pytest -q -m 'not live' tests/hidden",
+  "unchanged_paths": [
+    "migrations/0001_init.sql",
+    "migrations/0003_failed_reason_too_long.sql",
+    "migrations/0004_one_worker.sql"
+  ],
+  "scope_out_paths": [
+    "migrations/0001_init.sql",
+    "migrations/0003_failed_reason_too_long.sql",
+    "migrations/0004_one_worker.sql",
+    "web/src/"
+  ],
+  "traps": [
+    {
+      "id": "applied-migration-edited",
+      "check": "unchanged_paths",
+      "paths": [
+        "migrations/"
+      ]
+    }
+  ],
+  "open_decision": {
+    "what": "When two class names count as the same name. S0 and S1 leave it open (S1 says so in its Decisions); S2 and S3 state the answer.",
+    "owner_answer": "Same if they match after trimming both ends, collapsing every inner run of whitespace to one space, and ignoring letter case. Punctuation, digits and accents still count.",
+    "obvious_default": "Exact string match, which the code invites: names are documented as stored verbatim.",
+    "hidden_tests_assume": "the owner's answer: 'biology 101', '  Biology   101 ' and 'Biology\\t101' are refused after 'Biology 101'; 'Biology-101' and 'Biologie 101' are accepted"
+  },
+  "naive_patches": {
+    "naive.patch": "the obvious default: refuses only an exact repeat of the name",
+    "naive-s3.patch": "ignores case but not spacing, so '  Biology   101 ' and 'Biology\\t101' get through"
+  },
+  "planted_bugs": [],
+  "not_bugs": [],
+  "acceptance_test_paths": [
+    "tests/acceptance/test_class_names_are_unique.py"
+  ],
+  "tests_may_change": []
+}

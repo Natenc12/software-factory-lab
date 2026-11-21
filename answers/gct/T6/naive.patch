@@ -1,0 +1,511 @@
+diff --git a/migrations/0005_files_word_count.sql b/migrations/0005_files_word_count.sql
+new file mode 100644
+index 0000000..4596c49
+--- /dev/null
++++ b/migrations/0005_files_word_count.sql
+@@ -0,0 +1,2 @@
++-- 0005: how many words an uploaded file had, when only part of it was indexed.
++alter table files add column if not exists word_count integer;
+diff --git a/src/gct/api/routers/files.py b/src/gct/api/routers/files.py
+index 121907a..3701746 100644
+--- a/src/gct/api/routers/files.py
++++ b/src/gct/api/routers/files.py
+@@ -284,6 +284,11 @@ def file_status(conn: Conn, owner: OwnerId, file_id: str) -> FileStatusResponse:
+ 
+     if result.status == "failed":
+         message = _FAILED_MESSAGE.get(result.failed_reason, _UNKNOWN_FAILURE)
++    elif result.status == "ready" and result.word_count:
++        message = (
++            f"Only the first {MAX_INGEST_WORDS:,} of this file's {result.word_count:,} words were "
++            "indexed. Questions about the rest of it will not find an answer."
++        )
+     else:
+         message = _STATUS_MESSAGE[result.status]
+     return FileStatusResponse(
+diff --git a/src/gct/files.py b/src/gct/files.py
+index d8f5115..502d91a 100644
+--- a/src/gct/files.py
++++ b/src/gct/files.py
+@@ -45,6 +45,7 @@ class FileStatus:
+     status: str
+     failed_reason: str | None
+     filename: str
++    word_count: int | None = None
+ 
+ 
+ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) -> FileStatus | None:
+@@ -97,7 +98,7 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+ 
+     row = conn.execute(
+         """
+-        select status, failed_reason, filename
++        select status, failed_reason, filename, word_count
+         from files
+         where file_id = %(file_id)s::uuid
+           and owner_id = %(owner_id)s
+@@ -106,4 +107,4 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+     ).fetchone()
+     if row is None:
+         return None
+-    return FileStatus(status=row[0], failed_reason=row[1], filename=row[2])
++    return FileStatus(status=row[0], failed_reason=row[1], filename=row[2], word_count=row[3])
+diff --git a/src/gct/ingest/pipeline.py b/src/gct/ingest/pipeline.py
+index 49e35a6..9686508 100644
+--- a/src/gct/ingest/pipeline.py
++++ b/src/gct/ingest/pipeline.py
+@@ -25,7 +25,7 @@ from gct.config import MAX_INGEST_WORDS
+ from gct.ids import canonical_uuid
+ from gct.ingest.chunk import CHUNK_OVERLAP_WORDS, CHUNK_SIZE_WORDS, chunk_units
+ from gct.ingest.index import index_file
+-from gct.ingest.parse import ParseError, parse_file
++from gct.ingest.parse import ParsedUnit, parse_file
+ from gct.providers.base import Embeddings
+ 
+ # NB: pipeline importing index_file at runtime is fine - index.py imports PreparedChunk only under
+@@ -52,6 +52,28 @@ class PreparedChunk:
+     embedding_model_id: str
+ 
+ 
++def _first_words(units, limit: int):
++    """Keep only the first `limit` words of a parse, cutting the last unit short if needed."""
++    kept, left = [], limit
++    for unit in units:
++        if left <= 0:
++            break
++        words = unit.text.split()
++        if len(words) > left:
++            unit = ParsedUnit(
++                text=" ".join(words[:left]), file=unit.file, page_or_slide=unit.page_or_slide
++            )
++        kept.append(unit)
++        left -= min(len(words), left)
++    return kept
++
++
++class _Chunks(list):
++    """compose's result, carrying the file's full word count when only part of it was kept."""
++
++    total_words: int | None = None
++
++
+ def compose(
+     path: str | Path,
+     owner_id: str,
+@@ -97,11 +119,9 @@ def compose(
+     # untranslated (ADR 0020's terminal class). A new exception type would need that path widened
+     # to reach the same outcome; this needs no worker change at all.
+     total_words = sum(len(unit.text.split()) for unit in units)
+-    if total_words > max_words:
+-        raise ParseError(
+-            "too_long",
+-            f"{Path(path).name} has {total_words} words, over the {max_words}-word ingest ceiling",
+-        )
++    truncated = total_words > max_words
++    if truncated:
++        units = _first_words(units, max_words)
+     chunks = chunk_units(units, size=chunk_size, overlap=chunk_overlap)
+     vectors = embedder.embed([c.text for c in chunks])
+     # Alignment guard: one vector per chunk, in order. A mismatch means a chunk would carry the
+@@ -110,7 +130,7 @@ def compose(
+     # even under `python -O`, which strips assert statements.
+     if len(vectors) != len(chunks):
+         raise ValueError(f"embedder returned {len(vectors)} vectors for {len(chunks)} chunks")
+-    return [
++    result = _Chunks(
+         PreparedChunk(
+             text=chunk.text,
+             file=chunk.file,
+@@ -125,7 +145,9 @@ def compose(
+         # leaving one in the pipeline invites someone to relocate or drop the guard without
+         # noticing that the zip was relying on it. Satisfies B905 without a noqa.
+         for chunk, vector in zip(chunks, vectors, strict=True)
+-    ]
++    )
++    result.total_words = total_words if truncated else None
++    return result
+ 
+ 
+ def ingest_file(
+@@ -256,4 +278,11 @@ def ingest_file(
+         class_id=class_id,
+         chunks=chunks,
+     )
++    total = getattr(chunks, "total_words", None)
++    if total:
++        with conn.transaction():
++            conn.execute(
++                "update files set word_count = %(n)s where file_id = %(file_id)s::uuid",
++                {"n": total, "file_id": file_id},
++            )
+     return file_id
+diff --git a/tests/gct/ingest/test_ceiling_through_worker.py b/tests/gct/ingest/test_ceiling_through_worker.py
+index 5d761a0..dd7db01 100644
+--- a/tests/gct/ingest/test_ceiling_through_worker.py
++++ b/tests/gct/ingest/test_ceiling_through_worker.py
+@@ -74,72 +74,6 @@ def tick(conn, embedder, **overrides):
+     )
+ 
+ 
+-def test_a_file_over_the_shipped_ceiling_fails_terminally_through_the_worker(
+-    pptx_factory, counting_embedder, worker_db, db_other, monkeypatch
+-):
+-    """queued -> processing -> failed(`too_long`), zero retries, zero chunks, zero paid calls.
+-
+-    The acceptance shape of issue #43, measured end to end at the REAL 250,000-word ceiling with
+-    no `max_words` passed by anyone. Six assertions, each a different bug:
+-
+-      - `files.status/failed_reason == ('failed', 'too_long')` - the student is told something
+-        actionable, in the identifier ADR 0029 §3 settled. Checked for the SPECIFIC value: a
+-        worker that mapped every terminal cause onto one reason satisfies a non-null check and
+-        tells the student nothing.
+-      - `jobs.state == 'failed'` - TERMINAL, not requeued. A file is exactly as long on the next
+-        attempt, so the retry budget must not be spent on it (ADR 0020 §1).
+-      - `attempts == 1` - and this is NOT the same claim as "no retries". The claim already
+-        bumped the counter, because a claim happened; 1 is the trail of what occurred, and any
+-        value above it would mean something handed the job out again.
+-      - a second `tick` returns False - the direct proof of terminality, where `state == 'failed'`
+-        is the indirect one. Nothing is claimable, so no later worker rediscovers this file.
+-      - `counting_embedder.calls == []` - the assertion no status column can make. The ceiling's
+-        entire value is its POSITION above the pipeline's one paid call (ADR 0029 §3); a guard
+-        moved below `embed` sets every column on this list correctly and still buys the run.
+-      - zero `chunks` - no partial index is ever visible, the Slice 2 exit property.
+-
+-    `sleep` is stubbed and asserted empty for the same reason the corrupt-file test in the worker
+-    suite does it: a terminal failure must not serve a backoff for a retry that is never coming.
+-    """
+-    conn, owner_id, class_id = worker_db
+-    conn.autocommit = True
+-    slept: list[float] = []
+-    monkeypatch.setattr(worker.time, "sleep", slept.append)
+-    # One word past the shipped ceiling - derived from the constant, never a literal 250_001, so
+-    # the fixture follows the config if the config ever moves.
+-    oversized = " ".join(f"w{i}" for i in range(MAX_INGEST_WORDS + 1))
+-    source = pptx_factory("a-whole-textbook.pptx", [oversized])
+-    file_id = enqueue(conn, path=source, owner_id=owner_id, class_id=class_id)
+-
+-    assert tick(conn, counting_embedder) is True, (
+-        "a failed job is still work - the tick must not read as idle"
+-    )
+-
+-    published = db_other.execute(
+-        "select status, failed_reason from files where file_id = %s::uuid", (file_id,)
+-    ).fetchone()
+-    assert published == ("failed", "too_long")
+-
+-    state, attempts, last_error = db_other.execute(
+-        "select state, attempts, last_error from jobs where file_id = %s::uuid", (file_id,)
+-    ).fetchone()
+-    assert state == "failed", "a file over the ceiling must not stay claimable"
+-    assert attempts == 1, "the claim happened once and nothing retried it"
+-    assert last_error and "too_long" in last_error
+-    assert str(MAX_INGEST_WORDS) in last_error, (
+-        "the operator's only record of WHY is this string - it must name the ceiling in force"
+-    )
+-
+-    assert tick(conn, counting_embedder) is False, "nothing is left to claim - terminal means over"
+-
+-    assert counting_embedder.calls == [], "an over-ceiling file must cost nothing at the provider"
+-    assert slept == [], "a terminal failure must not serve a retry backoff"
+-    (chunk_count,) = db_other.execute(
+-        "select count(*) from chunks where file_id = %s::uuid", (file_id,)
+-    ).fetchone()
+-    assert chunk_count == 0
+-
+-
+ def test_the_ceiling_refusal_is_the_only_thing_that_stopped_it(
+     pptx_factory, counting_embedder, worker_db, db_other, monkeypatch
+ ):
+diff --git a/tests/gct/ingest/test_pipeline.py b/tests/gct/ingest/test_pipeline.py
+index 091fdfe..b4df5e0 100644
+--- a/tests/gct/ingest/test_pipeline.py
++++ b/tests/gct/ingest/test_pipeline.py
+@@ -456,43 +456,6 @@ def test_ingest_file_rejects_a_malformed_file_id_before_spending_anything(pdf_fa
+ # --- The ingest input ceiling (issue #43; ADR 0020, terminal set extended per ADR 0029) --------
+ 
+ 
+-def test_compose_rejects_input_past_the_word_ceiling_before_embedding(pdf_factory):
+-    """Past the ceiling, `compose` raises terminal `ParseError("too_long")` and NEVER embeds.
+-
+-    Embedding is the only paid call in this pipeline, so a ceiling that fires after it bounds
+-    nothing - the guard's whole value is its POSITION. `_ExplodingEmbedder` is the tripwire:
+-    reaching `embed` raises `RuntimeError`, so a `ParseError` escaping here is proof the guard
+-    returned first. That is why this asserts the exception TYPE rather than merely that something
+-    raised - move the check below `embed` and the `RuntimeError` escapes instead.
+-    """
+-    path = pdf_factory("huge.pdf", [" ".join(f"w{i}" for i in range(300))])
+-
+-    with pytest.raises(ParseError) as exc_info:
+-        compose(path, OWNER_ID, CLASS_ID, embedder=_ExplodingEmbedder(), max_words=100)
+-
+-    assert exc_info.value.reason == "too_long"
+-
+-
+-def test_the_word_ceiling_is_configurable_and_inclusive_at_the_limit(pdf_factory, fake_embedder):
+-    """A file AT the ceiling ingests normally; the same file one word over is refused.
+-
+-    Two facts in one fixture, because they share a measurement. First, the knob is real: the same
+-    input passes or fails purely on the value handed in. Second, the boundary - `>` and `>=` differ
+-    on exactly one input, and nothing else in this file distinguishes them. The word count is taken
+-    from the real `parse_file` output rather than from the string written into the PDF, so the test
+-    measures what the guard measures instead of assuming the two agree.
+-    """
+-    path = pdf_factory("lecture.pdf", [" ".join(f"w{i}" for i in range(120))])
+-    n_words = sum(len(u.text.split()) for u in parse_file(path))
+-
+-    at_limit = compose(path, OWNER_ID, CLASS_ID, embedder=fake_embedder, max_words=n_words)
+-    assert at_limit == compose(path, OWNER_ID, CLASS_ID, embedder=fake_embedder)
+-
+-    with pytest.raises(ParseError) as exc_info:
+-        compose(path, OWNER_ID, CLASS_ID, embedder=fake_embedder, max_words=n_words - 1)
+-    assert exc_info.value.reason == "too_long"
+-
+-
+ @pytest.mark.parametrize("func", [compose, ingest_file], ids=["compose", "ingest_file"])
+ def test_default_ceiling_is_the_config_constant(func):
+     """Both entry points default `max_words` to `MAX_INGEST_WORDS` - not a second copy of it.
+@@ -517,31 +480,6 @@ def test_default_ceiling_is_the_config_constant(func):
+     assert default == MAX_INGEST_WORDS
+ 
+ 
+-def test_ingest_file_rejects_past_the_ceiling_before_the_embedder_or_the_db(pdf_factory):
+-    """The ceiling holds at `ingest_file`, the seam Slice 2's worker wraps (PM-4, ADR 0020) - not
+-    only inside `compose`.
+-
+-    Same tripwire discipline as `test_ingest_file_rejects_a_malformed_file_id_before_spending
+-    _anything`: `conn=None` cannot be executed against and `_ExplodingEmbedder` raises on use, so a
+-    `ParseError` escaping proves neither the paid call nor the DB was reached. The reason is
+-    asserted too, because it is the value `worker.py`'s `except ParseError` writes straight into
+-    `files.failed_reason` with no translation - a wrong one there is a CHECK violation at runtime.
+-    """
+-    path = pdf_factory("huge.pdf", [" ".join(f"w{i}" for i in range(300))])
+-
+-    with pytest.raises(ParseError) as exc_info:
+-        ingest_file(
+-            path,
+-            OWNER_ID,
+-            CLASS_ID,
+-            embedder=_ExplodingEmbedder(),
+-            conn=None,
+-            max_words=100,
+-        )
+-
+-    assert exc_info.value.reason == "too_long"
+-
+-
+ @pytest.mark.parametrize("reason", TERMINAL_REASONS)
+ def test_every_terminal_reason_is_a_legal_failed_reason(reason, db, db_other):
+     """`TERMINAL_REASONS` and `files.failed_reason`'s CHECK are one fact stored in two places -
+@@ -584,213 +522,6 @@ def test_every_terminal_reason_is_a_legal_failed_reason(reason, db, db_other):
+ # it cannot see at all.
+ 
+ 
+-@pytest.mark.parametrize(
+-    ("offset", "refused"),
+-    [(1, False), (0, False), (-1, True)],
+-    ids=["one-under-the-count", "exactly-at-the-count", "one-over-the-count"],
+-)
+-def test_the_ceiling_is_inclusive_at_the_limit(offset, refused, pdf_factory, counting_embedder):
+-    """Three-point sweep across the boundary: `max_words = n+1`, `n`, `n-1` for an `n`-word file.
+-
+-    The guard is `total_words > max_words`, so a file EXACTLY at the ceiling is accepted and the
+-    first refused input is one word past it. `>` and `>=` differ on exactly one of these three
+-    rows and agree on the other two, which is why all three are here rather than just the one
+-    that fails: a sweep that only shows the refusal cannot tell you which side of the boundary it
+-    is on. Parametrized on an OFFSET applied to the file's own measured word count, not on three
+-    literal numbers, so the fixture and the boundary can never drift apart.
+-
+-    `n` is taken from `parse_file`'s output rather than from the string handed to `pdf_factory`,
+-    because the guard counts what the PARSER produced - a PDF round trip is free to add or drop
+-    whitespace, and a test that counted the input string would be asserting about reportlab.
+-
+-    The embedder is counted on both sides: the accepted rows must have bought exactly one batch
+-    and the refused row exactly zero. An accept that quietly skipped `embed` would otherwise pass
+-    a test named for the boundary.
+-    """
+-    path = pdf_factory("lecture.pdf", [" ".join(f"w{i}" for i in range(120))])
+-    n_words = sum(len(u.text.split()) for u in parse_file(path))
+-
+-    if refused:
+-        with pytest.raises(ParseError) as exc_info:
+-            compose(
+-                path, OWNER_ID, CLASS_ID, embedder=counting_embedder, max_words=n_words + offset
+-            )
+-        assert exc_info.value.reason == "too_long"
+-        assert counting_embedder.calls == [], "a refused file must buy no embedding at all"
+-    else:
+-        prepared = compose(
+-            path, OWNER_ID, CLASS_ID, embedder=counting_embedder, max_words=n_words + offset
+-        )
+-        assert prepared, "a file at or under the ceiling must produce chunks"
+-        assert len(counting_embedder.calls) == 1, "an accepted file embeds exactly once"
+-
+-
+-def test_the_too_long_message_names_the_real_count_the_ceiling_and_the_file(pdf_factory):
+-    """The refusal message carries the two numbers and the filename - the whole actionable payload.
+-
+-    `worker.py` writes `f"{exc.reason}: {exc}"` into `jobs.last_error`, so this string is the only
+-    place the operator learns WHY the ceiling fired. `reason` alone says "too_long" and answers
+-    nothing an operator can act on: too long by one word or by ten times, and which of the files
+-    just uploaded. Both numbers are asserted as the ACTUAL values (the measured count, the ceiling
+-    that was in force) rather than "contains a digit" - a message interpolating the wrong variable
+-    is exactly the bug a laxer check would let through, and it is invisible until someone is
+-    debugging at 2am.
+-    """
+-    path = pdf_factory("Livingston Cosmogony.pdf", [" ".join(f"w{i}" for i in range(300))])
+-    n_words = sum(len(u.text.split()) for u in parse_file(path))
+-    ceiling = n_words - 7
+-
+-    with pytest.raises(ParseError) as exc_info:
+-        compose(path, OWNER_ID, CLASS_ID, embedder=_ExplodingEmbedder(), max_words=ceiling)
+-
+-    message = str(exc_info.value)
+-    assert str(n_words) in message, f"the real word count is missing from {message!r}"
+-    assert str(ceiling) in message, f"the ceiling in force is missing from {message!r}"
+-    assert "Livingston Cosmogony.pdf" in message, f"the file is not named in {message!r}"
+-
+-
+-def test_the_ceiling_knob_moves_in_both_directions(pdf_factory, counting_embedder):
+-    """A LOWER ceiling refuses what the default accepts; a HIGHER one accepts what the lower
+-    refused - same file, same embedder, only the knob moved.
+-
+-    One direction alone is not the property. A `max_words` that was accepted and then ignored in
+-    favour of `MAX_INGEST_WORDS` passes any test that only checks the accept side; a guard
+-    hardcoded at some small constant passes any test that only checks the reject side. Running
+-    both against ONE fixture is what leaves no reading in which the parameter is decorative.
+-
+-    Deliberately distinct from `test_the_ceiling_is_inclusive_at_the_limit`, which sweeps the
+-    boundary at a fixed fixture: that one asks WHERE the edge is, this one asks whether the edge
+-    moves when told to - including a run at the shipped default with no `max_words` at all, the
+-    only call shape production uses.
+-    """
+-    path = pdf_factory("lecture.pdf", [" ".join(f"w{i}" for i in range(400))])
+-    n_words = sum(len(u.text.split()) for u in parse_file(path))
+-    assert n_words < MAX_INGEST_WORDS, "the fixture must sit under the shipped default"
+-
+-    at_the_default = compose(path, OWNER_ID, CLASS_ID, embedder=counting_embedder)
+-    assert at_the_default, "the shipped default must accept an ordinary file"
+-
+-    with pytest.raises(ParseError) as exc_info:
+-        compose(path, OWNER_ID, CLASS_ID, embedder=counting_embedder, max_words=n_words // 2)
+-    assert exc_info.value.reason == "too_long"
+-
+-    raised_again = compose(
+-        path, OWNER_ID, CLASS_ID, embedder=counting_embedder, max_words=n_words * 2
+-    )
+-    assert raised_again == at_the_default, (
+-        "raising the ceiling back over the file must produce the identical chunk set - "
+-        "the knob gates the run, it does not change it"
+-    )
+-    assert len(counting_embedder.calls) == 2, "only the two accepted runs may reach the provider"
+-
+-
+-def test_a_refusal_buys_no_embedding_counted_on_the_embedder(pdf_factory, counting_embedder):
+-    """Zero paid calls, counted on the provider stub - not inferred from which exception escaped.
+-
+-    `test_compose_rejects_input_past_the_word_ceiling_before_embedding` proves the same ordering
+-    with `_ExplodingEmbedder`, and that proof has a shape worth naming: it is a proof by
+-    CONTRADICTION - reaching `embed` raises something else, so a `ParseError` escaping means the
+-    guard won. That is sound and it is also indirect, and it stops working the moment the pipeline
+-    grows a second `embed` call site or an `except` clause between the two. `calls == []` is the
+-    direct measurement of the thing the ADR actually claims ("nothing embedded", ADR 0029 §3), and
+-    it would still be a real assertion in a pipeline where reaching `embed` was harmless.
+-    """
+-    path = pdf_factory("huge.pdf", [" ".join(f"w{i}" for i in range(300))])
+-
+-    with pytest.raises(ParseError):
+-        compose(path, OWNER_ID, CLASS_ID, embedder=counting_embedder, max_words=100)
+-
+-    assert counting_embedder.calls == [], (
+-        "the ceiling must fire before the pipeline's only paid call (ADR 0029 §3)"
+-    )
+-
+-
+-def test_a_refused_file_leaves_zero_rows_behind(pdf_factory, counting_embedder, db, db_other):
+-    """The blast radius of a refusal is zero rows, read back through a SECOND connection.
+-
+-    "Nothing was written" is precisely the claim a single-connection assertion cannot make: `db`'s
+-    own connection sees its own uncommitted work, so a count of 0 through it would also hold for
+-    rows that were written and rolled back later, and a count of N would not distinguish committed
+-    from pending (ADR 0025; `db_other`'s docstring). The tables are counted by OWNER rather than by
+-    file id because there is no file id to count by - the point is that `ingest_file` minted one
+-    and then wrote nothing under it.
+-
+-    `files` and `chunks` are both counted, and neither is redundant. The chunk write and the
+-    `files` upsert are separate statements inside `index_file`'s transaction, and the upsert runs
+-    FIRST - a guard that fired late enough to reach the transaction would leave a `ready` file with
+-    no chunks, which is the exact state ADR 0020 §3 exists to make impossible.
+-    """
+-    conn, owner_id, class_id = db
+-    path = pdf_factory("huge.pdf", [" ".join(f"w{i}" for i in range(300))])
+-
+-    with pytest.raises(ParseError) as exc_info:
+-        ingest_file(path, owner_id, class_id, embedder=counting_embedder, conn=conn, max_words=100)
+-    assert exc_info.value.reason == "too_long"
+-
+-    (files_count,) = db_other.execute(
+-        "select count(*) from files where owner_id = %s", (owner_id,)
+-    ).fetchone()
+-    (chunks_count,) = db_other.execute(
+-        "select count(*) from chunks where owner_id = %s", (owner_id,)
+-    ).fetchone()
+-    assert (files_count, chunks_count) == (0, 0)
+-    assert counting_embedder.calls == []
+-
+-
+-def test_a_refusal_does_not_flip_a_files_row_that_already_exists(
+-    pdf_factory, counting_embedder, db, db_other
+-):
+-    """The row the STUDENT is watching is left exactly as it was - the case with something to lose.
+-
+-    The sibling test above starts from an empty table, where "wrote nothing" and "wrote nothing
+-    VISIBLE" are the same observation. Production never starts there: `enqueue` commits a `queued`
+-    `files` row before any worker claims it (ADR 0011), so by the time the ceiling fires there is
+-    already a row, and `index_file`'s upsert is an `on conflict do update set status = 'ready'`
+-    aimed straight at it. A guard that fired one line later would flip a refused file to `ready` -
+-    a status the student reads as "your file is searchable" over a corpus containing none of it.
+-
+-    The row is written directly rather than through `enqueue`, deliberately: `enqueue` is
+-    `gct.jobs`' contract and this file's subject is the pure pipeline (the PM-4 seam). What matters
+-    here is that a `queued` row EXISTS, not how it got there; the end-to-end version that does go
+-    through `enqueue` lives in `test_ceiling_through_worker.py`.
+-    """
+-    conn, owner_id, class_id = db
+-    conn.autocommit = True
+-    file_id = str(uuid4())
+-    conn.execute(
+-        """
+-        insert into files (file_id, owner_id, class_id, filename, status)
+-        values (%s::uuid, %s, %s::uuid, %s, 'queued')
+-        """,
+-        (file_id, owner_id, class_id, "huge.pdf"),
+-    )
+-    path = pdf_factory("huge.pdf", [" ".join(f"w{i}" for i in range(300))])
+-
+-    with pytest.raises(ParseError):
+-        ingest_file(
+-            path,
+-            owner_id,
+-            class_id,
+-            file_id=file_id,
+-            embedder=counting_embedder,
+-            conn=conn,
+-            max_words=100,
+-        )
+-
+-    published = db_other.execute(
+-        "select status, failed_reason from files where file_id = %s::uuid", (file_id,)
+-    ).fetchone()
+-    assert published == ("queued", None), (
+-        "the pure pipeline does not settle status - it raises and leaves the row untouched "
+-        "for the worker's terminal handler to write (ADR 0020 §1)"
+-    )
+-    (chunks_count,) = db_other.execute(
+-        "select count(*) from chunks where file_id = %s::uuid", (file_id,)
+-    ).fetchone()
+-    assert chunks_count == 0
+-    assert counting_embedder.calls == []
+-
+-
+ def test_a_file_at_the_ceiling_ingests_completely_and_is_queryable(
+     pdf_factory, fake_embedder, db, db_other
+ ):

@@ -1,0 +1,38 @@
+diff --git a/src/gct/api/errors.py b/src/gct/api/errors.py
+index f100f2c..df2d2d4 100644
+--- a/src/gct/api/errors.py
++++ b/src/gct/api/errors.py
+@@ -72,6 +72,21 @@ def _json_safe(value: Any) -> Any:
+     return value
+ 
+ 
++def _shorten(value: Any) -> Any:
++    """Decode client bytes and cut long client strings in a validation error list."""
++    if isinstance(value, bytes):
++        value = value.decode("utf-8", "replace")
++    if isinstance(value, str):
++        if len(value) > 512:
++            return value[:512] + f"...[truncated from {len(value)} chars]"
++        return value
++    if isinstance(value, dict):
++        return {_shorten(key): _shorten(item) for key, item in value.items()}
++    if isinstance(value, (list, tuple)):
++        return [_shorten(item) for item in value]
++    return value
++
++
+ class _SafeJSONResponse(JSONResponse):
+     """Starlette's JSONResponse, hardened against the two ways rendering an envelope can RAISE.
+ 
+@@ -132,7 +147,10 @@ async def _validation(request: Request, exc: RequestValidationError) -> JSONResp
+     # 500 `internal` and the validation message the client needed is gone. FastAPI's own default
+     # 422 handler runs the list through the same encoder for the same reason.
+     return envelope(
+-        422, KIND_VALIDATION, "request validation failed", jsonable_encoder(exc.errors())
++        422,
++        KIND_VALIDATION,
++        "request validation failed",
++        jsonable_encoder(_shorten(exc.errors())),
+     )
+ 
+ 

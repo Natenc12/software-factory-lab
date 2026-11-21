@@ -1,0 +1,47 @@
+{
+  "hidden_test_cmd": "uv run pytest -q -m 'not live' tests/hidden",
+  "unchanged_paths": [
+    "migrations/0001_init.sql",
+    "migrations/0003_failed_reason_too_long.sql",
+    "migrations/0004_one_worker.sql",
+    "scripts/migrate.py"
+  ],
+  "scope_out_paths": [
+    "src/gct/api/",
+    "src/gct/grounder/",
+    "scripts/migrate.py",
+    "web/"
+  ],
+  "traps": [
+    {
+      "id": "applied-migration-edited",
+      "check": "unchanged_paths",
+      "paths": [
+        "migrations/0001_init.sql",
+        "migrations/0003_failed_reason_too_long.sql",
+        "migrations/0004_one_worker.sql"
+      ]
+    },
+    {
+      "id": "migrate-script-changed",
+      "check": "unchanged_paths",
+      "paths": [
+        "scripts/migrate.py"
+      ]
+    }
+  ],
+  "naive_patches": {
+    "naive.patch": "a one-line ALTER ... TYPE integer USING page_or_slide::integer with no lower bound: a page of 0 converts and later inserts of 0 are accepted",
+    "naive-s3.patch": "re-runnable and bounded, but guesses 1 for any existing value that is not a positive whole number instead of failing"
+  },
+  "planted_bugs": [],
+  "not_bugs": [],
+  "acceptance_test_paths": [
+    "tests/acceptance/test_page_numbers_are_integers.py"
+  ],
+  "tests_may_change": [
+    "tests/gct/ingest/test_index.py::test_index_file_lands_full_set_and_flips_ready",
+    "tests/gct/ingest/test_pipeline.py::test_a_file_at_the_ceiling_ingests_completely_and_is_queryable"
+  ],
+  "tests_may_change_note": "The reference fix updates the two listed tests, which asserted the column holds text."
+}
