@@ -1,0 +1,193 @@
+{
+  "ticket": "T4",
+  "codebase": "gct",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T4",
+  "base_sha": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+  "s3_base_ref": "base/T4-s3",
+  "s3_sha": "24c74362dacda09d214e38383f9118a34cc20857",
+  "started": "2026-11-21T19:46:49+00:00",
+  "finished": "2026-11-21T19:51:10+00:00",
+  "databases_dropped": [
+    "author_gct_t4_base_6302",
+    "author_gct_t4_ref_6302",
+    "author_gct_t4_naive_s3_6302",
+    "author_gct_t4_naive_6302",
+    "author_gct_t4_s3base_6302",
+    "author_gct_t4_s3ref_6302",
+    "author_gct_t4_s3naive_6302"
+  ],
+  "ok": true,
+  "steps": [
+    {
+      "name": "base: existing tests pass",
+      "ok": true,
+      "note": "1175 passed, 1 deselected in 49.68s",
+      "counts": {
+        "passed": 1175
+      },
+      "seconds": 51.3,
+      "log_tail": ""
+    },
+    {
+      "name": "hidden tests exist",
+      "ok": true,
+      "files": [
+        "tests/hidden/test_hidden_t4.py"
+      ]
+    },
+    {
+      "name": "base: every hidden test fails",
+      "ok": true,
+      "note": "6 failed in 0.89s",
+      "outcomes": {
+        "tests.hidden.test_hidden_t4::test_deleting_a_ready_file_removes_its_rows_and_bytes_and_nothing_else": "failed",
+        "tests.hidden.test_hidden_t4::test_delete_is_scoped_to_the_owner_and_reports_a_missing_file": "failed",
+        "tests.hidden.test_hidden_t4::test_a_file_the_worker_is_on_cannot_be_deleted": "failed",
+        "tests.hidden.test_hidden_t4::test_a_queued_file_can_be_deleted_and_is_then_never_processed": "failed",
+        "tests.hidden.test_hidden_t4::test_missing_staged_bytes_do_not_stop_a_delete": "failed",
+        "tests.hidden.test_hidden_t4::test_the_delete_route": "failed"
+      },
+      "not_failing": [],
+      "seconds": 1.6
+    },
+    {
+      "name": "reference: leaves unchanged_paths alone",
+      "ok": true,
+      "touched": [],
+      "changed": [
+        "src/gct/api/routers/files.py",
+        "src/gct/files.py",
+        "src/gct/staging.py",
+        "tests/gct/api/test_delete_route.py",
+        "tests/gct/test_delete_file.py",
+        "web/openapi.json"
+      ]
+    },
+    {
+      "name": "reference: every hidden test passes",
+      "ok": true,
+      "note": "6 hidden, 6 collected",
+      "outcomes": {
+        "tests.hidden.test_hidden_t4::test_deleting_a_ready_file_removes_its_rows_and_bytes_and_nothing_else": "passed",
+        "tests.hidden.test_hidden_t4::test_delete_is_scoped_to_the_owner_and_reports_a_missing_file": "passed",
+        "tests.hidden.test_hidden_t4::test_a_file_the_worker_is_on_cannot_be_deleted": "passed",
+        "tests.hidden.test_hidden_t4::test_a_queued_file_can_be_deleted_and_is_then_never_processed": "passed",
+        "tests.hidden.test_hidden_t4::test_missing_staged_bytes_do_not_stop_a_delete": "passed",
+        "tests.hidden.test_hidden_t4::test_the_delete_route": "passed"
+      },
+      "not_passing": []
+    },
+    {
+      "name": "reference: existing tests pass",
+      "ok": true,
+      "note": "1187 passed, 1 deselected in 47.12s",
+      "counts": {
+        "passed": 1187
+      },
+      "failing": [],
+      "seconds": 48.1,
+      "log_tail": ""
+    },
+    {
+      "name": "base and reference ran the same hidden tests",
+      "ok": true,
+      "missing_on_base": [],
+      "base_collection_errors": []
+    },
+    {
+      "name": "reference: lint and format clean (tree and hidden tests)",
+      "ok": true,
+      "runs": [
+        {
+          "cmd": "ruff check",
+          "exit": 0,
+          "tail": "All checks passed!\n"
+        },
+        {
+          "cmd": "ruff format --check .",
+          "exit": 0,
+          "tail": "89 files already formatted\n"
+        },
+        {
+          "cmd": "ruff check tests/hidden/test_hidden_t4.py",
+          "exit": 0,
+          "tail": "All checks passed!\n"
+        },
+        {
+          "cmd": "ruff format --check tests/hidden/test_hidden_t4.py",
+          "exit": 0,
+          "tail": "1 file already formatted\n"
+        }
+      ]
+    },
+    {
+      "name": "hidden tests run in under about 2 minutes",
+      "ok": true,
+      "note": "1.5s"
+    },
+    {
+      "name": "naive-s3.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t4::test_a_file_the_worker_is_on_cannot_be_deleted"
+      ],
+      "note": "1/6 hidden fail"
+    },
+    {
+      "name": "naive-s3.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t4::test_a_file_the_worker_is_on_cannot_be_deleted",
+        "tests.hidden.test_hidden_t4::test_a_queued_file_can_be_deleted_and_is_then_never_processed",
+        "tests.hidden.test_hidden_t4::test_deleting_a_ready_file_removes_its_rows_and_bytes_and_nothing_else",
+        "tests.hidden.test_hidden_t4::test_the_delete_route"
+      ],
+      "note": "4/6 hidden fail"
+    },
+    {
+      "name": "naive.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "s3: branch is base_ref plus one commit that only adds tests",
+      "ok": true,
+      "files": [
+        "tests/acceptance/test_delete_a_file.py"
+      ]
+    },
+    {
+      "name": "s3: acceptance tests fail on the S3 branch",
+      "ok": true,
+      "note": "1 error in 0.45s",
+      "outcomes": {
+        "tests.acceptance.test_delete_a_file": "error"
+      }
+    },
+    {
+      "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
+      "ok": true,
+      "note": "1191 passed, 1 deselected in 46.35s",
+      "failing": [],
+      "log_tail": ""
+    },
+    {
+      "name": "s3: naive-s3.patch passes every acceptance test",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "s3: naive-s3.patch still fails a hidden test (hidden checks beyond acceptance)",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t4::test_a_file_the_worker_is_on_cannot_be_deleted"
+      ]
+    }
+  ]
+}

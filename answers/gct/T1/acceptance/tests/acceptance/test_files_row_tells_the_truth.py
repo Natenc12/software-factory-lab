@@ -154,9 +154,7 @@ def test_example_3_a_transient_retry_shows_processing_and_no_reason(
     ).fetchone() == ("queued", 2)
 
 
-def test_example_4_a_successful_retry_is_ready_with_no_reason(
-    db, db_other, tmp_path, monkeypatch
-):
+def test_example_4_a_successful_retry_is_ready_with_no_reason(db, db_other, tmp_path, monkeypatch):
     conn, owner_id, class_id = db
     conn.autocommit = True
     monkeypatch.setattr(worker.time, "sleep", lambda _: None)

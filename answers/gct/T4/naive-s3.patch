@@ -1,0 +1,293 @@
+diff --git a/src/gct/api/routers/files.py b/src/gct/api/routers/files.py
+index 121907a..a7392bb 100644
+--- a/src/gct/api/routers/files.py
++++ b/src/gct/api/routers/files.py
+@@ -29,14 +29,14 @@ import uuid
+ from pathlib import Path
+ from typing import Annotated
+ 
+-from fastapi import APIRouter, File, Form, UploadFile
++from fastapi import APIRouter, File, Form, Response, UploadFile
+ from pydantic import BaseModel
+ 
+ from gct.api.deps import Conn, OwnerId
+ from gct.api.errors import ApiError
+ from gct.classes import class_exists
+ from gct.config import MAX_INGEST_WORDS
+-from gct.files import get_file_status
++from gct.files import FileBusy, delete_file, get_file_status
+ from gct.jobs.queue import enqueue
+ from gct.staging import StagingError, stage
+ 
+@@ -292,3 +292,33 @@ def file_status(conn: Conn, owner: OwnerId, file_id: str) -> FileStatusResponse:
+         failed_reason=result.failed_reason,
+         message=message,
+     )
++
++
++@router.delete("/{file_id}", status_code=204)
++def remove_file(conn: Conn, owner: OwnerId, file_id: str) -> Response:
++    """Delete an uploaded file: its chunks, its job, its status row and its staged bytes.
++
++    404 for a missing file and for another owner's file alike, as `GET /files/{file_id}` does.
++    409 `file_busy` while the worker is processing it.
++    """
++    try:
++        deleted = delete_file(conn, file_id=file_id, owner_id=owner)
++    except FileBusy as exc:
++        raise ApiError(
++            409,
++            "file_busy",
++            "This file is being processed right now. Try again once it is ready or failed.",
++        ) from exc
++    except ValueError as exc:
++        raise ApiError(
++            400,
++            "bad_file_id",
++            "file_id must be a uuid. Use the file_id returned when the file was uploaded.",
++        ) from exc
++    if not deleted:
++        raise ApiError(
++            404,
++            "file_not_found",
++            "No such file. Check the file id returned when the file was uploaded.",
++        )
++    return Response(status_code=204)
+diff --git a/src/gct/files.py b/src/gct/files.py
+index d8f5115..07c714c 100644
+--- a/src/gct/files.py
++++ b/src/gct/files.py
+@@ -21,7 +21,9 @@ from dataclasses import dataclass
+ 
+ import psycopg
+ 
++from gct.db import require_idle
+ from gct.ids import canonical_uuid
++from gct.staging import unstage
+ 
+ 
+ @dataclass(frozen=True)
+@@ -107,3 +109,53 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+     if row is None:
+         return None
+     return FileStatus(status=row[0], failed_reason=row[1], filename=row[2])
++
++
++class FileBusy(Exception):
++    """The worker is processing this file right now, so it cannot be deleted yet."""
++
++
++def delete_file(conn: psycopg.Connection, *, file_id: str, owner_id: str) -> bool:
++    """Delete `file_id` for `owner_id`: its chunks, its job, its `files` row and its staged bytes.
++
++    Returns `False`, and deletes nothing, when there is no such file for this owner - a missing
++    file and another owner's file look the same, as in `get_file_status` (F12).
++
++    Raises `FileBusy` while the worker is on the file. Two rows say so and either is enough: the
++    job is `processing` from the moment `claim` commits, and the file turns `processing` one
++    statement later. Deleting in that window would pull the job out from under the worker, and its
++    publish would then recreate the `files` row with no job behind it.
++
++    The rows go in one transaction; the `files` row is locked first so a claim cannot slip in
++    between the check and the delete. The staged bytes are removed only after that commits, and a
++    file that is already gone from staging is not an error.
++    """
++    canonical = canonical_uuid(
++        file_id,
++        fn="delete_file",
++        param="file_id",
++        remedy="Pass the file_id returned when the file was uploaded.",
++    )
++    require_idle(conn, "delete_file")
++    with conn.transaction():
++        row = conn.execute(
++            """
++            select f.status, f.staging_ref, false
++            from files f
++            where f.file_id = %(file_id)s::uuid and f.owner_id = %(owner_id)s
++            for update of f
++            """,
++            {"file_id": canonical, "owner_id": owner_id},
++        ).fetchone()
++        if row is None:
++            return False
++        status, staging_ref, job_running = row
++        if status == "processing" or job_running:
++            raise FileBusy(f"file {canonical} is being processed; delete it once it is done")
++        for table in ("chunks", "jobs", "files"):
++            conn.execute(
++                f"delete from {table} where file_id = %(file_id)s::uuid",
++                {"file_id": canonical},
++            )
++    unstage(staging_ref)
++    return True
+diff --git a/src/gct/staging.py b/src/gct/staging.py
+index f9e1cc1..17b5781 100644
+--- a/src/gct/staging.py
++++ b/src/gct/staging.py
+@@ -247,6 +247,22 @@ def stage(
+     return str(final)
+ 
+ 
++def unstage(staging_ref: str | Path | None) -> None:
++    """Remove a staged upload: the file, and its slot directory if that is now empty.
++
++    Missing is fine - the bytes may never have arrived, or a previous delete removed them.
++    """
++    if not staging_ref:
++        return
++    path = Path(staging_ref)
++    path.unlink(missing_ok=True)
++    slot = path.parent
++    try:
++        slot.rmdir()
++    except OSError:
++        pass  # not empty, already gone, or not a slot: leave it
++
++
+ def _fsync_dir(directory: Path) -> None:
+     """Persist a directory's entries (a rename is metadata of the PARENT, not of the file)."""
+     fd = os.open(directory, os.O_RDONLY)
+diff --git a/tests/gct/api/test_delete_route.py b/tests/gct/api/test_delete_route.py
+new file mode 100644
+index 0000000..cf1ee5e
+--- /dev/null
++++ b/tests/gct/api/test_delete_route.py
+@@ -0,0 +1,29 @@
++"""`DELETE /files/{file_id}` over the real app; the library half is in test_delete_file.py."""
++
++from __future__ import annotations
++
++import io
++
++from gct.db import connect
++from gct.jobs.queue import enqueue
++from gct.staging import stage
++
++
++def test_delete_answers_204_then_404(api, tmp_path):
++    staged = stage(io.BytesIO(b"bytes"), filename="lecture.pdf", staging_dir=tmp_path)
++    with connect() as conn:
++        conn.autocommit = True
++        file_id = enqueue(conn, path=staged, owner_id=api.owner_id, class_id=api.class_id)
++
++    first = api.client.delete(f"/files/{file_id}")
++    assert first.status_code == 204
++    assert first.content == b""
++    second = api.client.delete(f"/files/{file_id}")
++    assert second.status_code == 404
++    assert second.json()["error"]["kind"] == "file_not_found"
++
++
++def test_delete_refuses_a_malformed_id(api):
++    response = api.client.delete("/files/not-a-uuid")
++    assert response.status_code == 400
++    assert response.json()["error"]["kind"] == "bad_file_id"
+diff --git a/tests/gct/test_delete_file.py b/tests/gct/test_delete_file.py
+new file mode 100644
+index 0000000..ad5e908
+--- /dev/null
++++ b/tests/gct/test_delete_file.py
+@@ -0,0 +1,60 @@
++"""`delete_file` and `DELETE /files/{file_id}`: what goes, what stays, and when it is refused."""
++
++from __future__ import annotations
++
++import io
++from pathlib import Path
++
++import pytest
++
++from gct.files import FileBusy, delete_file, get_file_status
++from gct.jobs.queue import enqueue
++from gct.staging import stage
++
++
++def _queued(conn, owner_id, class_id, tmp_path, name="lecture.pdf") -> tuple[str, Path]:
++    staged = Path(stage(io.BytesIO(b"bytes"), filename=name, staging_dir=tmp_path))
++    return enqueue(conn, path=str(staged), owner_id=owner_id, class_id=class_id), staged
++
++
++def test_delete_removes_the_row_the_job_and_the_staged_bytes(db, db_other, tmp_path):
++    conn, owner_id, class_id = db
++    conn.autocommit = True
++    file_id, staged = _queued(conn, owner_id, class_id, tmp_path)
++
++    assert delete_file(conn, file_id=file_id, owner_id=owner_id) is True
++
++    assert get_file_status(db_other, file_id=file_id, owner_id=owner_id) is None
++    assert db_other.execute(
++        "select count(*) from jobs where file_id = %s::uuid", (file_id,)
++    ).fetchone() == (0,)
++    assert not staged.exists()
++    assert not staged.parent.exists(), "the empty staging slot is removed too"
++
++
++def test_another_owners_file_is_reported_missing_and_kept(db, db_other, tmp_path):
++    conn, owner_id, class_id = db
++    conn.autocommit = True
++    file_id, staged = _queued(conn, owner_id, class_id, tmp_path)
++
++    assert delete_file(conn, file_id=file_id, owner_id="another-owner") is False
++    assert get_file_status(db_other, file_id=file_id, owner_id=owner_id) is not None
++    assert staged.exists()
++
++
++@pytest.mark.parametrize(
++    "busy_sql",
++    [
++        "update files set status = 'processing' where file_id = %s::uuid",
++    ],
++)
++def test_a_file_being_processed_is_refused(db, db_other, tmp_path, busy_sql):
++    conn, owner_id, class_id = db
++    conn.autocommit = True
++    file_id, staged = _queued(conn, owner_id, class_id, tmp_path)
++    conn.execute(busy_sql, (file_id,))
++
++    with pytest.raises(FileBusy):
++        delete_file(conn, file_id=file_id, owner_id=owner_id)
++    assert get_file_status(db_other, file_id=file_id, owner_id=owner_id) is not None
++    assert staged.exists()
+diff --git a/web/openapi.json b/web/openapi.json
+index 63298b1..fe92df2 100644
+--- a/web/openapi.json
++++ b/web/openapi.json
+@@ -146,6 +146,37 @@
+             }
+           }
+         }
++      },
++      "delete": {
++        "tags": [
++          "files"
++        ],
++        "operationId": "remove_file_files__file_id__delete",
++        "parameters": [
++          {
++            "name": "file_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          }
++        ],
++        "responses": {
++          "204": {
++            "description": "Successful Response"
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
+       }
+     },
+     "/ask": {

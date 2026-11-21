@@ -33,7 +33,7 @@ import sys
 import tempfile
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -177,8 +177,14 @@ class Verifier:
         self.env_base = {k: v for k, v in os.environ.items() if k not in ("VIRTUAL_ENV", "OPENAI_API_KEY")}
         # UV_PYTHON matches the practice repo's own CI. gct-lab does not compile on Python 3.13+ (a lone
         # surrogate in a docstring), and with no .python-version uv would otherwise pick the newest one.
-        self.env_base.update({"CI": "1", "OPENAI_API_KEY": "", "GCT_STAGING_DIR": str(self.tmp / "staging"),
-                              "UV_PYTHON": os.environ.get("VERIFY_UV_PYTHON", "3.10")})
+        self.env_base.update(
+            {
+                "CI": "1",
+                "OPENAI_API_KEY": "",
+                "GCT_STAGING_DIR": str(self.tmp / "staging"),
+                "UV_PYTHON": os.environ.get("VERIFY_UV_PYTHON", "3.10"),
+            }
+        )
 
     def step(self, name: str, ok: bool, **detail) -> bool:
         self.steps.append({"name": name, "ok": bool(ok), **detail})
@@ -206,7 +212,7 @@ class Verifier:
         return sh(["git", "-C", str(self.lab), "rev-parse", "--verify", f"{ref}^{{commit}}"]).stdout.strip()
 
     def run(self) -> dict:
-        started = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        started = datetime.now(UTC).isoformat(timespec="seconds")
         base_ref = self.meta["base_ref"]
         s3_ref = self.meta.get("s3_base_ref")
         result = {
@@ -238,7 +244,7 @@ class Verifier:
                     self.step("drop-db", False, note=f"{name}: {exc}")
             if not self.keep:
                 shutil.rmtree(self.tmp, ignore_errors=True)
-        result["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        result["finished"] = datetime.now(UTC).isoformat(timespec="seconds")
         result["databases_dropped"] = self.dbs
         result["ok"] = all(s["ok"] for s in self.steps) and bool(self.steps)
         result["steps"] = self.steps
@@ -248,16 +254,28 @@ class Verifier:
         env = self.prepare(tree, base_ref, "base")
         res = run_pytest(tree.path, env, [], "base-existing")
         ok = res["exit"] == 0 and res["counts"].get("passed", 0) > 0
-        self.step("base: existing tests pass", ok, note=res["summary"], counts=res["counts"],
-                  seconds=res["seconds"], log_tail=res["log_tail"])
+        self.step(
+            "base: existing tests pass",
+            ok,
+            note=res["summary"],
+            counts=res["counts"],
+            seconds=res["seconds"],
+            log_tail=res["log_tail"],
+        )
         files = tree.add_hidden(self.hidden)
         self.step("hidden tests exist", bool(files), files=files)
         res = run_pytest(tree.path, env, ["tests/hidden"], "base-hidden")
         hid = hidden_outcomes(res)
         not_failing = sorted(k for k, v in hid.items() if v not in ("failed", "error"))
         self.base_hidden = hid
-        self.step("base: every hidden test fails", bool(hid) and not not_failing, note=res["summary"],
-                  outcomes=hid, not_failing=not_failing, seconds=res["seconds"])
+        self.step(
+            "base: every hidden test fails",
+            bool(hid) and not not_failing,
+            note=res["summary"],
+            outcomes=hid,
+            not_failing=not_failing,
+            seconds=res["seconds"],
+        )
 
     def check_reference(self, tree: Tree, base_ref: str) -> None:
         env = self.prepare(tree, base_ref, "ref", self.ref_patch)
@@ -267,29 +285,48 @@ class Verifier:
         self.step("reference: leaves unchanged_paths alone", not touched, touched=touched, changed=changed)
         # Lint the patched tree as the app's CI does, before the hidden tests are copied in.
         self.tree_lint = []
-        for cmd in (["uv", "run", "--locked", "ruff", "check"],
-                    ["uv", "run", "--locked", "ruff", "format", "--check", "."]):
+        for cmd in (
+            ["uv", "run", "--locked", "ruff", "check"],
+            ["uv", "run", "--locked", "ruff", "format", "--check", "."],
+        ):
             out = sh(cmd, cwd=tree.path, env=env, check=False)
-            self.tree_lint.append({"cmd": " ".join(cmd[3:]), "exit": out.returncode,
-                                   "tail": (out.stdout + out.stderr)[-1500:]})
+            self.tree_lint.append(
+                {"cmd": " ".join(cmd[3:]), "exit": out.returncode, "tail": (out.stdout + out.stderr)[-1500:]}
+            )
         hidden_files = tree.add_hidden(self.hidden)
         ids = collect_ids(tree.path, env, ["tests/hidden"])
         self.hidden_ids = ids
         res = run_pytest(tree.path, env, [], "ref-all")
         hid = hidden_outcomes(res)
         bad = sorted(k for k, v in hid.items() if v != "passed")
-        self.step("reference: every hidden test passes", bool(hid) and not bad and len(hid) == len(ids),
-                  note=f"{len(hid)} hidden, {len(ids)} collected", outcomes=hid, not_passing=bad)
+        self.step(
+            "reference: every hidden test passes",
+            bool(hid) and not bad and len(hid) == len(ids),
+            note=f"{len(hid)} hidden, {len(ids)} collected",
+            outcomes=hid,
+            not_passing=bad,
+        )
         others = {k: v for k, v in res["outcomes"].items() if k not in hid}
         bad_other = sorted(k for k, v in others.items() if v in ("failed", "error"))
-        self.step("reference: existing tests pass", res["exit"] == 0 and not bad_other, note=res["summary"],
-                  counts=res["counts"], failing=bad_other, seconds=res["seconds"], log_tail=res["log_tail"])
+        self.step(
+            "reference: existing tests pass",
+            res["exit"] == 0 and not bad_other,
+            note=res["summary"],
+            counts=res["counts"],
+            failing=bad_other,
+            seconds=res["seconds"],
+            log_tail=res["log_tail"],
+        )
         # The base tree's ids must line up with the patched tree's, or "every hidden test fails" proved less.
         base_keys = set(self.base_hidden)
         missing = sorted(k for k in hid if k not in base_keys)
         collection_errors = [k for k, v in self.base_hidden.items() if v == "error" and "::" not in k]
-        self.step("base and reference ran the same hidden tests", not missing or bool(collection_errors),
-                  missing_on_base=missing, base_collection_errors=collection_errors)
+        self.step(
+            "base and reference ran the same hidden tests",
+            not missing or bool(collection_errors),
+            missing_on_base=missing,
+            base_collection_errors=collection_errors,
+        )
         lint = [
             ["uv", "run", "--locked", "ruff", "check", *hidden_files],
             ["uv", "run", "--locked", "ruff", "format", "--check", *hidden_files],
@@ -298,8 +335,9 @@ class Verifier:
         for cmd in lint:
             out = sh(cmd, cwd=tree.path, env=env, check=False)
             outs.append({"cmd": " ".join(cmd[3:]), "exit": out.returncode, "tail": (out.stdout + out.stderr)[-1500:]})
-        self.step("reference: lint and format clean (tree and hidden tests)", all(o["exit"] == 0 for o in outs),
-                  runs=outs)
+        self.step(
+            "reference: lint and format clean (tree and hidden tests)", all(o["exit"] == 0 for o in outs), runs=outs
+        )
         t0 = time.time()
         res = run_pytest(tree.path, env, ["tests/hidden"], "ref-hidden-timing")
         secs = round(time.time() - t0, 1)
@@ -312,8 +350,12 @@ class Verifier:
         hid = hidden_outcomes(res)
         failing = sorted(k for k, v in hid.items() if v in ("failed", "error"))
         others_bad = sorted(k for k, v in res["outcomes"].items() if k not in hid and v in ("failed", "error"))
-        self.step(f"{patch.name}: at least one hidden test fails", bool(failing), failing=failing,
-                  note=f"{len(failing)}/{len(hid)} hidden fail")
+        self.step(
+            f"{patch.name}: at least one hidden test fails",
+            bool(failing),
+            failing=failing,
+            note=f"{len(failing)}/{len(hid)} hidden fail",
+        )
         self.step(f"{patch.name}: existing tests still pass (a competent fix)", not others_bad, failing=others_bad)
 
     def check_s3(self, tree: Tree, base_ref: str, s3_ref: str) -> None:
@@ -323,18 +365,30 @@ class Verifier:
         added = [line.split("\t") for line in added if line.strip()]
         only_tests = all(st == "A" and p.startswith("tests/") for st, p in added)
         accept = [p for _, p in added]
-        self.step("s3: branch is base_ref plus one commit that only adds tests",
-                  parent == base_sha and only_tests and bool(accept), files=accept)
+        self.step(
+            "s3: branch is base_ref plus one commit that only adds tests",
+            parent == base_sha and only_tests and bool(accept),
+            files=accept,
+        )
         env = self.prepare(tree, s3_ref, "s3base")
         res = run_pytest(tree.path, env, accept, "s3-base")
-        self.step("s3: acceptance tests fail on the S3 branch", res["counts"].get("failed", 0)
-                  + res["counts"].get("error", 0) > 0, note=res["summary"], outcomes=res["outcomes"])
+        self.step(
+            "s3: acceptance tests fail on the S3 branch",
+            res["counts"].get("failed", 0) + res["counts"].get("error", 0) > 0,
+            note=res["summary"],
+            outcomes=res["outcomes"],
+        )
         env = self.prepare(tree, s3_ref, "s3ref", self.ref_patch)
         tree.add_hidden(self.hidden)
         res = run_pytest(tree.path, env, [], "s3-ref")
         bad = sorted(k for k, v in res["outcomes"].items() if v in ("failed", "error"))
-        self.step("s3: with the reference fix, acceptance, hidden and existing tests pass",
-                  res["exit"] == 0 and not bad, note=res["summary"], failing=bad, log_tail=res["log_tail"])
+        self.step(
+            "s3: with the reference fix, acceptance, hidden and existing tests pass",
+            res["exit"] == 0 and not bad,
+            note=res["summary"],
+            failing=bad,
+            log_tail=res["log_tail"],
+        )
         naive = self.adir / "naive-s3.patch"
         naive = naive if naive.exists() else self.naive_patch
         if not naive.exists():
@@ -348,8 +402,11 @@ class Verifier:
         acc_bad = sorted(k for k, v in acc.items() if v != "passed")
         hid_fail = sorted(k for k, v in hid.items() if v in ("failed", "error"))
         self.step(f"s3: {naive.name} passes every acceptance test", bool(acc) and not acc_bad, failing=acc_bad)
-        self.step(f"s3: {naive.name} still fails a hidden test (hidden checks beyond acceptance)", bool(hid_fail),
-                  failing=hid_fail)
+        self.step(
+            f"s3: {naive.name} still fails a hidden test (hidden checks beyond acceptance)",
+            bool(hid_fail),
+            failing=hid_fail,
+        )
 
 
 def main(argv: list[str] | None = None) -> int:

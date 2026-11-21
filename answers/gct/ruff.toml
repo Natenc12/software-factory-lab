@@ -1,0 +1,7 @@
+# The hidden and acceptance tests here are copied into gct-lab's `tests/` and linted there with gct-lab's
+# own settings (line length 100, `gct` first-party). Match them, so both repos' linters agree.
+extend = "../../pyproject.toml"
+line-length = 100
+
+[lint.isort]
+known-first-party = ["gct"]

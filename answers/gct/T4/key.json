@@ -1,0 +1,21 @@
+{
+  "hidden_test_cmd": "uv run pytest -q -m 'not live' tests/hidden",
+  "unchanged_paths": [
+    "migrations/0001_init.sql",
+    "migrations/0003_failed_reason_too_long.sql",
+    "migrations/0004_one_worker.sql",
+    "src/gct/jobs/worker.py",
+    "src/gct/retriever/retrieve.py"
+  ],
+  "scope_out_paths": ["src/gct/jobs/worker.py", "src/gct/retriever/", "migrations/", "web/src/"],
+  "traps": [
+    {"id": "worker-changed", "check": "unchanged_paths", "paths": ["src/gct/jobs/worker.py"]},
+    {"id": "applied-migration-edited", "check": "unchanged_paths", "paths": ["migrations/"]}
+  ],
+  "naive_patches": {
+    "naive.patch": "deletes rows correctly but leaves the staged bytes on disk, and treats only files.status = 'processing' as busy",
+    "naive-s3.patch": "complete except the busy check reads only files.status, so a job the worker has just claimed can be deleted under it"
+  },
+  "planted_bugs": [],
+  "not_bugs": []
+}
