@@ -13,8 +13,9 @@ Docs are cited by their Markdown copies, for example
 One run, as the harness should start it:
 
 ```bash
-cd "$SANDBOX" && claude -p "$(cat brief.md)" \
-  --model opus \
+cd "$SANDBOX" && DISABLE_AUTOUPDATER=1 CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 \
+claude -p "$(cat brief.md)" \
+  --model claude-opus-5-5 \
   --setting-sources project,local \
   --settings /abs/path/run-settings.json \
   --strict-mcp-config \
@@ -33,6 +34,8 @@ cd "$SANDBOX" && claude -p "$(cat brief.md)" \
 - Reply to a question: `claude -p "<reply>" --resume <session_id>` with the same flags. Totals
   carry over.
 - Read the **last** `result` line, check `is_error`, not just `subtype`.
+- Update the CLI to 2.1.321+ before stage 1 and freeze it; this Mac's 2.1.302 maps `fable` to
+  Fable 5.1 (item 8). Use full model IDs.
 
 ## 1. Start a headless run with a fixed model, folder and full log
 
@@ -352,10 +355,42 @@ requests, 429, 529), <https://code.claude.com/docs/en/agent-sdk/typescript.md> (
 `terminal_reason`), <https://code.claude.com/docs/en/headless.md#handle-api-retries>. Observed:
 `rate_limit_event` in t1.
 
+## 8. Version and model names (found later, while writing the scout report)
+
+**Update the CLI once before stage 1, then freeze it.** The docs describe a newer Claude Code than
+this Mac's 2.1.302, and the model names depend on the version.
+
+- **`--model fable` ran Fable 5.1, not 5.2** (trial t9: `system/init` `model: claude-fable-5-1`).
+  Docs: Fable 5.2 needs v2.1.321 or later; on older versions the alias falls back.
+- **`--model claude-fable-5-2` does reach Fable 5.2 on 2.1.302** (trial t10: `modelUsage` key
+  `claude-fable-5-2`), but stderr prints `[claude-code:unrecognized_model]`, and the CLI's price table
+  doesn't know the model, so `total_cost_usd` and `--max-budget-usd` can be wrong for it.
+- Opus 5.5 needs v2.1.280+ (fine); `blockWritesOutsideWorkingDirectories` needs v2.1.314 (not
+  available yet).
+- **Fix:** `claude update`, check `claude --version` is at least 2.1.321, then set
+  `DISABLE_AUTOUPDATER=1` in every run's environment so the version can't change mid-stage. Record
+  `claude_code_version` from each run's `system/init` line. Pass full model IDs
+  (`claude-opus-5-5`, `claude-fable-5-2`), not aliases, so a later release can't move them.
+- **Fable billing.** On this account Fable drew on the plan, not on usage credits (t9
+  `rate_limit_event`: `isUsingOverage: false`, `overageStatus: rejected`,
+  `overageDisabledReason: org_level_disabled`). Docs warn that in `-p` mode a Fable request that would
+  bill to usage credits is billed **without asking**. Usage credits are off at the moment, so this
+  can't cost money today; if the owner ever turns them on, cap Fable runs by budget first.
+- A two-word Fable 5.1 reply cost $0.086 at list price, mostly writing the ~30k-token system prompt to
+  the cache. A run's fixed start-up cost is far higher on Fable than on Haiku; trimming tools with
+  `--tools` shrinks it.
+
+Sources: <https://code.claude.com/docs/en/model-config.md> (model aliases, work with Fable, Fable and
+usage credits), <https://code.claude.com/docs/en/errors.md> (unrecognized model ID on a request),
+<https://code.claude.com/docs/en/env-vars.md> (`DISABLE_AUTOUPDATER`). Trials: t9
+`claude -p "Reply with just OK" --model fable --tools "" …`, t10 same with `--model claude-fable-5-2`.
+
 ## Trial log
 
-All on 2026-11-21, Haiku 5.5, in `~/factory-runs/scout-scratch/`. Total estimated spend across trials:
-about $0.05 at list price, well under 150k tokens.
+All on 2026-11-21, Haiku 5.5 unless noted (t9, t10 used Fable), in `~/factory-runs/scout-scratch/`. Totals across the trials
+above plus the Part 2 trials: about 180k new tokens (input, output and cache writes; most of it is
+the ~30k-token system prompt written to the cache once per run) plus about 0.8M cheap cache reads,
+about $0.25 at list price.
 
 | Trial | What | Outcome |
 | --- | --- | --- |
@@ -367,3 +402,5 @@ about $0.05 at list price, well under 150k tokens.
 | t6 | Write limits by rules versus by hook | Both blocked outside writes |
 | t7 | Ask, then `--resume` with a reply | Same session, totals accumulate |
 | t8 | Tester subagent from `--agents`, with `src/` hidden by a role hook | Contract read, `src/` refused; two `result` lines in one run |
+| t9 | `--model fable`, tools off | Ran Fable 5.1; drew on the plan, not usage credits |
+| t10 | `--model claude-fable-5-2` | Worked, with an unrecognized-model warning |
