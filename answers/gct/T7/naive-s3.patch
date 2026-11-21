@@ -1,0 +1,62 @@
+diff --git a/migrations/0005_page_or_slide_integer.sql b/migrations/0005_page_or_slide_integer.sql
+new file mode 100644
+index 0000000..5f9f960
+--- /dev/null
++++ b/migrations/0005_page_or_slide_integer.sql
+@@ -0,0 +1,15 @@
++-- 0005: chunks.page_or_slide becomes an integer. Re-runnable.
++do $$
++begin
++    if exists (
++        select 1 from information_schema.columns
++        where table_name = 'chunks' and column_name = 'page_or_slide' and data_type = 'text'
++    ) then
++        alter table chunks alter column page_or_slide type integer
++            using case when page_or_slide ~ '^[0-9]+$' and page_or_slide::integer >= 1
++                       then page_or_slide::integer else 1 end;
++    end if;
++end
++$$;
++alter table chunks drop constraint if exists chunks_page_positive;
++alter table chunks add constraint chunks_page_positive check (page_or_slide >= 1);
+diff --git a/src/gct/ingest/index.py b/src/gct/ingest/index.py
+index 26cadcd..75d8327 100644
+--- a/src/gct/ingest/index.py
++++ b/src/gct/ingest/index.py
+@@ -219,7 +219,7 @@ def index_file(
+                         "class_id": chunk_class_id,
+                         "text": chunk.text,
+                         "file": chunk.file,
+-                        "page_or_slide": str(chunk.page_or_slide),
++                        "page_or_slide": chunk.page_or_slide,
+                         "embedding": chunk.embedding,
+                         "embedding_model_id": chunk.embedding_model_id,
+                     }
+diff --git a/tests/gct/ingest/test_index.py b/tests/gct/ingest/test_index.py
+index b49122a..7fbc71d 100644
+--- a/tests/gct/ingest/test_index.py
++++ b/tests/gct/ingest/test_index.py
+@@ -92,8 +92,8 @@ def test_index_file_lands_full_set_and_flips_ready(db):
+         assert row_owner == owner_id
+         assert str(row_class) == class_id
+         assert row_model == MODEL_ID
+-        assert isinstance(row_page, str)  # int -> text at the SQL boundary
+-    assert [r[3] for r in rows] == ["1", "2", "10"]
++        assert isinstance(row_page, int)
++    assert [r[3] for r in rows] == [1, 2, 10]
+ 
+ 
+ def test_reindex_replaces_the_set(db):
+diff --git a/tests/gct/ingest/test_pipeline.py b/tests/gct/ingest/test_pipeline.py
+index 091fdfe..9c58a58 100644
+--- a/tests/gct/ingest/test_pipeline.py
++++ b/tests/gct/ingest/test_pipeline.py
+@@ -833,7 +833,7 @@ def test_a_file_at_the_ceiling_ingests_completely_and_is_queryable(
+         "select text, file, page_or_slide from chunks where file_id = %s::uuid order by chunk_id",
+         (file_id,),
+     ).fetchall()
+-    assert sorted(stored) == sorted((c.text, c.file, str(c.page_or_slide)) for c in expected), (
++    assert sorted(stored) == sorted((c.text, c.file, c.page_or_slide) for c in expected), (
+         "a file at the ceiling must be indexed WHOLE, not partially"
+     )
+ 

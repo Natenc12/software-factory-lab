@@ -1,0 +1,20 @@
+{
+  "hidden_test_cmd": "uv run pytest -q -m 'not live' tests/hidden",
+  "unchanged_paths": [
+    "migrations/0001_init.sql",
+    "migrations/0003_failed_reason_too_long.sql",
+    "migrations/0004_one_worker.sql",
+    "scripts/migrate.py"
+  ],
+  "scope_out_paths": ["src/gct/api/", "src/gct/grounder/", "scripts/migrate.py", "web/"],
+  "traps": [
+    {"id": "applied-migration-edited", "check": "unchanged_paths", "paths": ["migrations/0001_init.sql", "migrations/0003_failed_reason_too_long.sql", "migrations/0004_one_worker.sql"]},
+    {"id": "migrate-script-changed", "check": "unchanged_paths", "paths": ["scripts/migrate.py"]}
+  ],
+  "naive_patches": {
+    "naive.patch": "a one-line ALTER ... TYPE integer USING page_or_slide::integer with no lower bound: a page of 0 converts and later inserts of 0 are accepted",
+    "naive-s3.patch": "re-runnable and bounded, but guesses 1 for any existing value that is not a positive whole number instead of failing"
+  },
+  "planted_bugs": [],
+  "not_bugs": []
+}

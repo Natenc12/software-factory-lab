@@ -1,0 +1,11 @@
+{
+  "id": "T7",
+  "kind": "migration",
+  "title": "Store chunk page numbers as integers, keeping every existing row",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T7",
+  "s3_base_ref": "base/T7-s3",
+  "db": "postgres",
+  "deliverable": "pull_request",
+  "spec_words": {"S0": 0, "S1": 0, "S2": 0, "S3": 0}
+}
