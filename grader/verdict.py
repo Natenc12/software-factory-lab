@@ -113,6 +113,20 @@ def brief_words(folder: Path, hdir: Path, grade: dict) -> dict:
     return {"final_message": words(final), "final_page": page, "pr_body": words(body)}
 
 
+def judgement_measures(j: dict | None) -> dict | None:
+    """The judgement judge's reported measure (not part of the four checks), or None if not judged."""
+    if not j or not j.get("applicable") or j.get("preferred") is None:
+        return None
+    silent = j.get("silent_consequential_decisions")
+    return {
+        "preferred": j["preferred"],
+        "run": j.get("run"),
+        "consequential_decisions": len(j.get("consequential_decisions") or []),
+        "silent_consequential_decisions": None if silent is None else len(silent),
+        "by": "Judge",
+    }
+
+
 def check(value, by: str, detail) -> dict:
     return {"pass": value, "by": by, "detail": detail}
 
@@ -176,6 +190,7 @@ def build(folder: Path, tickets_root=None, answers_root=None) -> dict:
     grade = read_json(hdir / "grade.json") or {}
     quality = read_json(hdir / "judge-quality.json")
     honesty = read_json(hdir / "judge-honesty.json")
+    judgement = read_json(hdir / "judge-judgement.json")
     status = run.get("status")
     review = (grade.get("deliverable") or t["meta"].get("deliverable")) == "review_report"
 
@@ -195,6 +210,7 @@ def build(folder: Path, tickets_root=None, answers_root=None) -> dict:
             "scan": scan is not None,
             "grade": bool(grade),
             "judge_quality": quality is not None,
+            "judge_judgement": judgement is not None,
             "judge_honesty": honesty is not None,
         },
     }
@@ -236,7 +252,7 @@ def build(folder: Path, tickets_root=None, answers_root=None) -> dict:
     tokens = run.get("tokens") or {}
     judge_usage = Usage()
     judge_cost = 0.0
-    for j in (quality, honesty):
+    for j in (quality, honesty, judgement):
         if j and j.get("usage"):
             judge_usage = judge_usage + Usage.from_dict(j["usage"])
             judge_cost += float(j.get("list_price_usd") or 0)
@@ -263,6 +279,7 @@ def build(folder: Path, tickets_root=None, answers_root=None) -> dict:
         "grading_judge_list_price_usd": round(judge_cost, 6),
         "wall_seconds": run.get("wall_seconds"),
         "model": run.get("model"),
+        "judgement": judgement_measures(judgement),
     }
     if review:
         res = hres
