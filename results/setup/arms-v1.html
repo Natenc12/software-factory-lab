@@ -1,0 +1,298 @@
+<title>Factory Lab Arms</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one reading column. Asks first, then proof from setup, the arms as a grid, how research was used, budget, next steps. Same tokens as the plan page. */
+:root{
+  --bg:#f4f3ef; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#8a8984; --line:#e2e0d9; --grid:#ecebe6;
+  --w1:#2a78d6; --w2:#eb6834;
+  --good:#0b7a0b; --warn:#8a5f00; --crit:#c23030; --goodbg:#e6f4e6; --warnbg:#fbf0d6; --critbg:#fae3e3;
+  --ask:#fff6c7; --askline:#d9bf3a; --code:#efeee9;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86; --line:#33322f; --grid:#262624;
+    --w1:#3987e5; --w2:#d95926;
+    --good:#35b535; --warn:#fab219; --crit:#e66767; --goodbg:#16301a; --warnbg:#3a2e14; --critbg:#3b1d1d;
+    --ask:#3a3412; --askline:#8a7a22; --code:#262624;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86; --line:#33322f; --grid:#262624;
+  --w1:#3987e5; --w2:#d95926;
+  --good:#35b535; --warn:#fab219; --crit:#e66767; --goodbg:#16301a; --warnbg:#3a2e14; --critbg:#3b1d1d;
+  --ask:#3a3412; --askline:#8a7a22; --code:#262624;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif}
+main{max-width:980px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:26px;margin:0 0 2px;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink2);margin:40px 0 10px;font-weight:700}
+h3{font-size:15px;margin:0 0 4px}
+p{margin:0 0 8px}
+.sub{color:var(--ink2);margin:0 0 14px;max-width:70ch}
+.small{font-size:13px;color:var(--ink2)}
+.lead{max-width:72ch;margin:0 0 12px}
+code{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code);border-radius:4px;padding:1px 5px;overflow-wrap:anywhere}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.slot{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;min-width:0}
+.slot b{display:block;font-size:11px;color:var(--ink2);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.slot.ask{background:var(--ask);border-color:var(--askline)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.askcard{background:var(--ask);border:1px solid var(--askline);border-radius:12px;padding:14px 16px;min-width:0}
+.askcard .n{font-size:12px;font-weight:700;color:var(--ink2);letter-spacing:.05em;text-transform:uppercase}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:5px;padding:0 6px;line-height:18px;vertical-align:1px;white-space:nowrap;border:1px solid var(--line);color:var(--ink2);background:var(--surface)}
+.tag.s{background:var(--goodbg);color:var(--good);border-color:transparent}
+.tag.n{background:var(--warnbg);color:var(--warn);border-color:transparent}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.wide{min-width:680px}
+tr.new td{background:var(--ask)}
+.pill{font-size:11px;font-weight:700;border-radius:6px;padding:1px 8px;white-space:nowrap}
+.pill.new{background:var(--warnbg);color:var(--warn)}
+.pill.same{background:var(--grid);color:var(--ink2)}
+.pill.chg{background:var(--goodbg);color:var(--good)}
+.matrix{min-width:640px}
+.matrix th,.matrix td{text-align:center;padding:6px 4px}
+.matrix td.rowh,.matrix th.rowh{text-align:left;white-space:nowrap}
+.matrix td.rowh b{font-weight:600}
+.matrix tr.gap td{border-top:2px solid var(--line)}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--w1);vertical-align:middle}
+.ring{display:inline-block;width:14px;height:14px;border-radius:50%;border:3px solid var(--w1);vertical-align:middle}
+.dia{display:inline-block;width:12px;height:12px;background:var(--w2);transform:rotate(45deg);vertical-align:middle;border-radius:2px}
+.skip{color:var(--muted)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin-top:10px;align-items:center}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.col{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface);min-width:0;border-top:4px solid var(--line)}
+.col.a{border-top-color:var(--good)} .col.b{border-top-color:var(--askline)} .col.c{border-top-color:var(--muted)}
+ul.tight{margin:4px 0 0;padding-left:18px}ul.tight li{margin:4px 0}
+ol.steps{margin:4px 0 0;padding-left:20px}ol.steps li{margin:5px 0}
+@media (max-width:760px){
+  .strip{grid-template-columns:1fr 1fr}
+  .grid2,.three{grid-template-columns:1fr}
+}
+</style>
+
+<main>
+<h1>Software factory lab: arms for stage 1</h1>
+<p class="sub">Gate 1. Setup part 1 is done: the lab repo, the research, the Claude Code scout and a proven run harness. This page shows the arms I will freeze and what the research did and did not change.</p>
+
+<div class="strip">
+  <div class="slot"><b>Status</b>Setup part 1 done. Waiting at gate 1</div>
+  <div class="slot ask"><b>From you</b>A yes, and one command</div>
+  <div class="slot"><b>Risk</b>Low to medium. Cost of a run on GCT is still unmeasured</div>
+  <div class="slot"><b>Updated</b>Nov 21 · v1</div>
+</div>
+
+<h2>What I need from you</h2>
+<div class="grid2">
+  <div class="askcard">
+    <div class="n">1 · Your yes</div>
+    <h3>Approve the arms below</h3>
+    <p>A plain yes means:</p>
+    <ul class="tight">
+      <li><b>Add one arm, P1R</b> (loose guide plus a fresh reviewer). That makes 80 runs, up from 72. Say "yes, without P1R" to keep 72.</li>
+      <li><b>Every run uses Claude Code's default effort</b> for Opus 5.5, which is medium. Tell me if your own sessions use a higher setting and I'll match it.</li>
+      <li>I create <code>gct-lab</code>, have the tickets written and audited, freeze everything, publish a short freeze note, and <b>start stage 1 without another stop</b>. The next gate is the stage 1 results.</li>
+    </ul>
+  </div>
+  <div class="askcard">
+    <div class="n">2 · One command</div>
+    <h3>Update the Claude command line</h3>
+    <p>Run <code>claude update</code> in Terminal. This Mac has version 2.1.302. Fable 5.2, which the judges use, needs 2.1.321 or newer; on the old version its cost figures can be wrong. <span class="tag s">Script</span> scout trial</p>
+    <p class="small">After the update the harness pins the version, so it can't change in the middle of a stage.</p>
+  </div>
+</div>
+
+<h2>What setup proved</h2>
+<div class="panel">
+  <p class="lead">Three smoke runs on pipeline-lab, each a real Opus 5.5 run of race 1's first ticket, started and watched by the harness. All three fixed the bug.</p>
+  <div class="scroll"><table class="wide">
+    <tr><th>Smoke run</th><th class="num">Hidden tests</th><th class="num">Time</th><th class="num">Counted tokens</th><th class="num">List price</th><th>Owner stops</th><th>Leak scan</th></tr>
+    <tr><td>Bare</td><td class="num">12 of 12</td><td class="num">64 s</td><td class="num">21k</td><td class="num">$0.24</td><td>0</td><td>clean</td></tr>
+    <tr><td>Race 1's contract-first checklist</td><td class="num">12 of 12</td><td class="num">95 s</td><td class="num">32k</td><td class="num">$0.38</td><td>1, answered by the reply judge</td><td>clean</td></tr>
+    <tr><td>Bare, after the sandbox was added</td><td class="num">12 of 12</td><td class="num">51 s</td><td class="num">23k</td><td class="num">$0.26</td><td>0</td><td>clean</td></tr>
+  </table></div>
+  <p class="small" style="margin-top:8px">Hidden tests, tokens and scans: <span class="tag s">Script</span>. CI was green on the first two pull requests <span class="tag">CI</span>; I closed the third before its CI reported <span class="tag n">Not checked</span>. All three pull requests are closed unmerged.</p>
+  <ul class="tight" style="margin-top:10px">
+    <li><b>Each run is its own session</b> with a set model, its own folder and database, a token ceiling and a full log. <span class="tag s">Script</span></li>
+    <li><b>Clean room works:</b> your <code>work-ticket</code> skill and guard hook did not load into a run. <span class="tag s">Script</span></li>
+    <li><b>The wall holds:</b> from inside a run, GitHub, the web, your GitHub login file and your other repos were all unreachable. Only the three <code>lab</code> commands got through. <span class="tag s">Script</span> 3 real trials</li>
+    <li><b>Stand-in owner works:</b> a run stopped with a question, the judge picked a reply from the sheet, the harness pasted it and the run finished. <span class="tag s">Script</span></li>
+    <li><b>Not yet seen for real:</b> a plan-limit pause and resume (tested with a fake only), and a run on GCT. <span class="tag n">Not checked</span></li>
+  </ul>
+</div>
+
+<h2>The arms I will freeze</h2>
+<div class="panel">
+  <p class="lead">Six ways of working the same ticket. Same model, same effort, same sandbox, same stand-in owner. Only the instructions differ. Order is simplest first, which is also the tie-break order.</p>
+  <div class="scroll"><table class="wide">
+    <tr><th>Arm</th><th>What the run is given</th><th>Planned owner stops</th><th>Since the plan page</th></tr>
+    <tr><td><b>P0 Bare</b></td><td>The ticket and "open a pull request".</td><td>None</td><td><span class="pill same">same</span></td></tr>
+    <tr><td><b>P1 Loose</b></td><td>A one-page guide: work in the sandbox, add tests, open a PR, write a short summary, ask when unsure.</td><td>When it chooses</td><td><span class="pill same">same</span></td></tr>
+    <tr class="new"><td><b>P1R Loose + reviewer</b></td><td>P1, plus one rule: before opening the PR, start a fresh reviewer that sees only the ticket, the diff and the test command. Fix what it marks as blocking.</td><td>When it chooses</td><td><span class="pill new">new · your call</span></td></tr>
+    <tr><td><b>P3 Contract</b></td><td>Writes its own contract from the ticket (examples of done, a must-not-change list), checks the ticket's facts, builds, tests each example, runs a fresh reviewer, and ticks each contract line in the brief.</td><td>Only if the ticket is wrong, then the merge brief</td><td><span class="pill same">same</span></td></tr>
+    <tr><td><b>P2 Checklist</b></td><td>Today's <code>work-ticket</code> checklist, adapted to the lab: plan, build, prove, a review that can't be skipped, merge brief.</td><td>Plan, then the merge brief</td><td><span class="pill same">same</span></td></tr>
+    <tr><td><b>P4 Team</b></td><td>A lead runs your five roles: planner, architect, builder, tester, reviewer. Only the builder writes product code. The tester writes tests from the contract and <b>cannot open the code</b>. At most 2 review rounds.</td><td>Only if the contract is wrong, then the merge brief</td><td><span class="pill chg">limits enforced</span></td></tr>
+  </table></div>
+  <ul class="tight" style="margin-top:10px">
+    <li><b>Why add P1R.</b> P2 and P3 each bundle a reviewer with a lot of other process. P1R shows whether the reviewer alone gives most of the gain. If it does, your winning checklist can be one page. In race 1, on the same Opus generation as now, reviewers found real bugs.</li>
+    <li><b>P4's limits are now real.</b> The scout showed Claude Code can refuse a role's attempt to read a folder. So "the tester never sees the code" is enforced by the tool, not requested in a prompt. <span class="tag s">Script</span> scout trial</li>
+    <li><b>Effort is now a fixed setting.</b> Race 1 never controlled it. Left alone it would be a hidden difference between runs.</li>
+  </ul>
+</div>
+
+<h3 style="margin-top:16px">Stage 1 with P1R: 80 runs</h3>
+<div class="panel">
+  <div class="scroll">
+  <table class="matrix" id="matrix">
+    <tr><th class="rowh">How the run works · ticket level</th><th>Replay 1</th><th>Replay 2</th><th>Replay 3</th><th>Feature</th><th>Vague</th><th>Flawed</th><th>Migration</th><th>Review</th><th class="num">Runs</th></tr>
+  </table>
+  </div>
+  <div class="legend">
+    <span><i class="ring"></i>meter runs: the first 6, one per arm</span>
+    <span><i class="dot"></i>rest of the first wave</span>
+    <span><i class="dia"></i>second wave, after the first is graded</span>
+    <span><span class="skip">–</span> not run</span>
+    <span><b>76 planned + 4 held back = 80</b></span>
+  </div>
+</div>
+
+<h2>How I used the research, given your concern</h2>
+<div class="panel" style="margin-bottom:12px">
+  <p class="lead">You said findings on Claude 4-era models can't be trusted for the 5.5 generation. I agree, and the research agent redid its report with that rule: every finding now carries the model and date it was tested on. The outcome: <b>old evidence changed no arm.</b> It only added things to measure.</p>
+</div>
+<div class="three">
+  <div class="col a">
+    <h3>Adopted: true for any model</h3>
+    <p class="small">These are about running a fair test, not about how a model behaves.</p>
+    <ul class="tight small">
+      <li>No run can see another run, the answers or the real repo. Built into the harness.</li>
+      <li>The auditor checks each hidden test isn't too narrow (demands one exact fix) or too wide (checks things the ticket never asked).</li>
+      <li>Before the freeze, the grader must pass every reference fix and fail every empty change.</li>
+      <li>A scripted trap for editing an existing test the ticket didn't ask to change.</li>
+      <li>A run's new tests must fail on the starting code, or they prove nothing.</li>
+      <li>Replay tickets come from after the models' June 2026 training cutoff. GCT's whole history starts July 6, 2026, so all of it qualifies. <span class="tag s">Script</span></li>
+    </ul>
+  </div>
+  <div class="col b">
+    <h3>Kept as guesses our runs will test</h3>
+    <p class="small">Evidence on current models is thin or missing. No arm changed.</p>
+    <ul class="tight small">
+      <li>"Models game the checks when a ticket is broken." The flawed ticket measures it.</li>
+      <li>"Models edit tests to make them pass." Opus 4.1 only. The trap measures it.</li>
+      <li>"A fresh reviewer beats self-review." No current study. P1R measures it.</li>
+      <li>"Models don't ask unless told to." No Claude 5 data. The vague ticket measures it.</li>
+      <li>"Splitting the writing across agents hurts." One October study, on Opus 5. P4 against P3 measures it.</li>
+      <li>"More context and paperwork doesn't help." The spec levels measure it.</li>
+    </ul>
+  </div>
+  <div class="col c">
+    <h3>Not adopted</h3>
+    <p class="small">Proposed by the research, but resting on old models.</p>
+    <ul class="tight small">
+      <li>Drop the architect from P4. Your five roles stay.</li>
+      <li>Add "interview first" and "locked tests" to stage 1. Both are held as possible stage 2 add-ons, for you to decide at gate 2.</li>
+      <li>Drop "small slices". Also a gate 2 decision.</li>
+    </ul>
+  </div>
+</div>
+<p class="small" style="margin-top:10px">Research verdicts are the research agent's reading of its sources <span class="tag">Run says</span>. I checked two of its citations against the source pages and both quoted correctly <span class="tag s">Script</span>. Our own stage 1 will be the first evidence on these questions for Opus 5.5 on your code. Full report: <code>research/report.md</code> in the lab repo.</p>
+
+<h2>From the Claude Code scout</h2>
+<div class="grid2">
+  <div class="panel">
+    <h3>Already in the harness</h3>
+    <p class="small">All checked against today's official docs and by small trials. <span class="tag s">Script</span></p>
+    <ul class="tight small">
+      <li>Runs start with a flag set that drops your skills, hooks, memory and connectors but keeps the login.</li>
+      <li>Claude Code's own sandbox is the main wall. Rules and a guard hook are the second layer.</li>
+      <li>Per-role limits for the team arm.</li>
+      <li>Full model names and a pinned version, so nothing shifts mid-stage.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <h3>Candidates for later gates</h3>
+    <p class="small">Nothing here runs in stage 1. Each will come with a cost at its gate.</p>
+    <ul class="tight small">
+      <li><b>Check gate:</b> a hook that won't let a run finish until tests and lint pass. Stage 2 add-on.</li>
+      <li><b>Built-in <code>/code-review</code></b> against our own reviewer brief. Stage 2.</li>
+      <li><b>Fixed-shape merge brief</b> the harness can check before you read it. Stage 2.</li>
+      <li><b>Advisor:</b> Opus builds and consults Fable at key points. A fourth model arm for stage 3.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Budget, restated from what was measured</h2>
+<div class="panel">
+  <ul class="tight">
+    <li><b>Runs on pipeline-lab cost about a sixth of my estimate:</b> 21k to 32k counted tokens against the 130k to 240k I planned for. <span class="tag s">Script</span></li>
+    <li><b>That doesn't size GCT.</b> GCT has about 40 times the code, so runs will read far more. My new expectation for stage 1 is 8M to 16M tokens, against the 24M cap. <span class="tag n">Not checked: estimate</span></li>
+    <li><b>So the first six GCT runs act as a meter.</b> One run per arm on the first ticket goes first. If they point past the cap, I stop and report before starting the rest. If not, I carry on without stopping.</li>
+    <li><b>The cap stays at 24M</b> even with P1R. Ceilings per run stay as on the plan page; P1R gets 0.6M.</li>
+    <li><b>Your plan:</b> weekly usage stands at 21% for all models and 31% for Fable, and resets in about 16 hours. <span class="tag s">Script</span> Stage 1 will start after that reset. I'll report the share it uses after the meter runs.</li>
+  </ul>
+</div>
+
+<h2>What happens after your yes</h2>
+<div class="panel">
+  <ol class="steps">
+    <li><b>Create <code>gct-lab</code></b>, exactly as listed on the plan page: private, a fresh download of GCT at commit <code>283ebf8</code>, one starting branch per replay and executable-spec ticket, labels copied, no secrets, nothing ever merged.</li>
+    <li><b>Write the six arm files</b> to match the table above. P2 comes from your <code>work-ticket</code> skill, read only.</li>
+    <li><b>Ticket author</b> writes 8 tickets at up to 4 spec levels, with hidden tests and reference fixes. <b>A separate auditor</b>, on a different model, tries to break them.</li>
+    <li><b>Write the stand-in reply sheet</b> and extend the grader. Dry-run the grader on every reference fix and on empty changes.</li>
+    <li><b>Freeze and tag</b> <code>stage-1-frozen</code> in both repos. Publish a short freeze note with the hashes and links to the exact files.</li>
+    <li><b>Run stage 1:</b> meter runs, the rest of the first wave, grading, the second wave, then the results page. That is gate 2.</li>
+  </ol>
+  <p class="small" style="margin-top:8px">About 1 day to the freeze, then about 1 day of runs and grading, if the Mac stays awake and no plan limit holds things up.</p>
+</div>
+
+<h2>Smaller points, one line each</h2>
+<div class="panel">
+  <ul class="tight">
+    <li><b>GCT's risk check will show red on some pull requests,</b> because it wants <code>owner-ok</code> on high-risk paths. Runs can't clear it and aren't marked down for it.</li>
+    <li><b>Stage 4 shortlist is ready:</b> jsoup (Java), Hono (TypeScript), ripgrep (Rust), fzf (Go), click (Python). The research recommends jsoup, then Hono. You pick at gate 4, not now.</li>
+    <li><b>Setup spend so far</b> is inside the 9M cap by the helpers' own reports. <span class="tag">Run says</span> I'll give a measured total on the freeze note.</li>
+  </ul>
+</div>
+
+<p class="small" style="margin-top:14px"><span class="tag s">Script</span> = a command I or a helper ran today. <span class="tag">CI</span> = GitHub's checks. <span class="tag">Run says</span> = a helper's own report, not re-checked. <span class="tag n">Not checked</span> = my estimate or a gap.</p>
+</main>
+
+<script>
+(function(){
+  const T=["Replay 1","Replay 2","Replay 3","Feature","Vague","Flawed","Migration","Review"];
+  const rows=[
+    ["<b>P0 Bare</b> · standard ticket","a",8],
+    ["<b>P1 Loose</b> · standard","a",8],
+    ["<b>P1R Loose + reviewer</b> · standard","a",8],
+    ["<b>P3 Contract</b> · standard","a",8],
+    ["<b>P2 Checklist</b> · standard","a",8],
+    ["<b>P4 Team</b> · standard","a",8],
+    ["<b>P0 Bare</b> · rough ticket","s",7],
+    ["<b>P0 Bare</b> · full spec","s",7],
+    ["<b>P0 Bare</b> · executable spec","s",7],
+    ["<b>Best process</b> · executable spec","b",7]
+  ];
+  let h="";
+  rows.forEach(([name,kind,n],i)=>{
+    h+=`<tr class="${i===6||i===9?"gap":""}"><td class="rowh">${name}</td>`;
+    T.forEach((t,j)=>{
+      if(kind!=="a"&&j===7) h+=`<td><span class="skip">–</span></td>`;
+      else if(kind==="b") h+=`<td><i class="dia"></i></td>`;
+      else if(kind==="a"&&j===0) h+=`<td><i class="ring"></i></td>`;
+      else h+=`<td><i class="dot"></i></td>`;
+    });
+    h+=`<td class="num">${n}</td></tr>`;
+  });
+  h+=`<tr class="gap"><td class="rowh"><b>Planned</b></td><td colspan="8"></td><td class="num"><b>76</b></td></tr>`;
+  document.getElementById("matrix").insertAdjacentHTML("beforeend",h);
+})();
+</script>

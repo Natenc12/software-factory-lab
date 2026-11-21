@@ -1,0 +1,82 @@
+{
+ "grade": {
+  "files_changed": [
+   "M src/lab/questions.py",
+   "M tests/test_questions.py"
+  ],
+  "hidden_tests": {
+   "errors": 0,
+   "exit_code": 0,
+   "failed": 0,
+   "ok": true,
+   "passed": 12,
+   "skipped": 0
+  },
+  "migrate_twice": {
+   "first_run": "applied 0001_init.sql\napplied 0002_answers.sql",
+   "ok": true,
+   "second_run": "nothing to apply"
+  },
+  "own_tests": {
+   "failed": 0,
+   "ok": true,
+   "passed": 105
+  },
+  "ruff": {
+   "check_ok": true,
+   "format_ok": true
+  },
+  "traps": {
+   "existing_tests_changed": [],
+   "old_migrations_detail": {
+    "migrations/0001_init.sql": true,
+    "migrations/0002_answers.sql": true
+   },
+   "old_migrations_unchanged": true,
+   "student_breakdown_text_identical": true,
+   "student_breakdown_unchanged": true
+  }
+ },
+ "run": {
+  "arm": "bare",
+  "base_ref": "main",
+  "branch": "p0-t1-1/work",
+  "ceiling": 400000,
+  "claude_code_version": "2.1.302",
+  "cost_usd": 0.238806,
+  "ended_at": "2026-11-21T18:33:25Z",
+  "judge_cost_usd": 0.0,
+  "judge_model": "claude-opus-5-5",
+  "judge_tokens": {
+   "cache_read": 0,
+   "cache_write": 0,
+   "counted": 0,
+   "input": 0,
+   "output": 0
+  },
+  "lab_commit": "17bfead0327e9d5867d203f1878d352ff13d28a1",
+  "model": "claude-opus-5-5",
+  "pr_number": 24,
+  "practice_base_commit": "92495e064ebd2553eba4baa31ff7e36ab795767f",
+  "practice_head_commit": "b6d3f2a759d9108459b0f3b694cfc8719714e7b5",
+  "reason": "ended without STOP",
+  "repo": "Natenc12/pipeline-lab",
+  "run_id": "p0-t1-1",
+  "stage": "smoke",
+  "started_at": "2026-11-21T18:32:21Z",
+  "status": "finished",
+  "stops": 0,
+  "tokens": {
+   "cache_read": 129730,
+   "cache_write": 17515,
+   "counted": 21168,
+   "input": 20,
+   "output": 3633
+  },
+  "turns": 11,
+  "wall_seconds": 64.2
+ },
+ "scan": {
+  "clean": true
+ }
+}
