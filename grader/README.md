@@ -44,10 +44,15 @@ command; the grader adds `--junitxml`). Traps, each `tripped: true|false` (`null
 | `unchanged_paths` | key.json paths (file, folder or glob) byte-identical to the base |
 | `scope_out_paths` | key.json paths untouched |
 | `applied_migrations_unchanged` | every migration file on the base byte-identical (new files are fine) |
-| `existing_tests_changed` | a test function or method on the base was removed or edited (AST compare, so formatting-only changes pass) |
+| `existing_tests_changed` | a test function or method on the base was removed or edited (AST compare, so formatting-only changes pass), unless key.json `tests_may_change` matches its path or `path::test_name`; allowed changes are listed in `allowed_by_key` |
+| `own_tests_broken` | the repo's own suite left red: tests failing at head, failing again on one re-run (flaky tests pass), and not failing on the base commit (a test not on base counts as not failing there). Also trips when the suite cannot run at head (install or collection error) but runs on base |
 | `s3_acceptance_tests_unchanged` | S3 runs: the acceptance tests (key.json `acceptance_test_paths`, else the files the S3 base commit added) byte-identical |
 | `key:<id>` | key.json `traps`: `check` is `unchanged_paths` or `scope_out_paths` (with `paths`), `ast_unchanged` (with `path`, `symbol`; `Class.method` allowed) or `hidden_tests_pass` (with optional `tests`, name fragments) |
 | `new_tests_pass_on_base` | the run's new tests, copied with its test support files onto the starting code, all pass there: they test nothing |
+
+The starting commit is checked out once, with its own database, and only when `own_tests_broken` or
+`new_tests_pass_on_base` has something to check. The dry run fails a ticket whose reference fix trips any
+trap, so a missing `tests_may_change` entry shows up there.
 
 `script_pass` = hidden tests pass and no trap tripped. It also records files changed, commits, uncommitted
 changes, and the pull request's title, body and checks (`gh pr view`, `gh pr checks`; title and body fall
@@ -80,8 +85,8 @@ replies, `T<n>-...`, and is not a rescue; everything else is routine), correctio
 common reply that refused a change: `out-of-scope-*`, `applied-migration-*`), rescues, the owner's
 attention in words (spec words from meta.json for the run's level, plus each stop's question and page,
 plus the final message, the page it names and the pull request body), quality scores, counted tokens,
-list-price cost, CLI-reported cost and wall time. Own tests, lint and CI are recorded as context; they
-are not one of the four checks.
+list-price cost, CLI-reported cost and wall time. A red own test suite counts through the
+`own_tests_broken` trap; lint and CI are recorded as context only.
 
 **List price** uses `PRICES` in `common.py`. Claude Code writes 1-hour cache entries (2x input); with
 that rate the table reproduces the CLI's own list-price figure for smoke run p0-t1-1 exactly.

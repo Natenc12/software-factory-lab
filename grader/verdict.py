@@ -266,7 +266,7 @@ def build(folder: Path, tickets_root=None, answers_root=None) -> dict:
         "lint_ok": (grade.get("lint") or {}).get("ok"),
         "migrate_twice_ok": (grade.get("migrate_twice") or {}).get("ok") if grade.get("migrate_twice") else None,
         "pr_checks": (grade.get("pull_request") or {}).get("checks_summary"),
-        "note": "context only: not part of the four checks",
+        "note": "context only: a red own suite already counts through the own_tests_broken trap; lint and CI are not checks",
     }
     return v
 

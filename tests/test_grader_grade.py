@@ -208,3 +208,88 @@ RACE1 = Path(__file__).parent / "fixtures" / "race1"
 def test_dryrun_race1_t1_on_pipeline_lab():
     report = dryrun.dry_run(load_config("pipeline-lab"), RACE1 / "tickets", RACE1 / "answers")
     assert report["green"], report["tickets"]["T1"]["problems"]
+
+
+def test_existing_test_changes_named_in_tests_may_change_are_allowed_and_listed(practice):
+    edited = TESTS.replace("== [0, 1, 2]", "== [0, 1, 2]  # same\n    assert len(page(list(range(10)), 1, 3)) == 3")
+    edited = edited.replace("def test_bad_page", "def test_bad_page_renamed")
+    head = commit(practice["repo"], practice["base"], {"app/pages.py": FIXED, "tests/test_pages.py": edited})
+    key = {**practice["key"], "tests_may_change": ["tests/test_pages.py::test_first_page"]}
+    trap = run_grade(practice, head, key=key)["traps"]["existing_tests_changed"]
+    assert trap["tripped"] is True and trap["changed"] == ["tests/test_pages.py::test_bad_page removed"]
+    assert trap["allowed_by_key"] == ["tests/test_pages.py::test_first_page modified"]
+    key = {**practice["key"], "tests_may_change": ["tests/test_pages.py"]}
+    trap = run_grade(practice, head, key=key)["traps"]["existing_tests_changed"]
+    assert trap["tripped"] is False and len(trap["allowed_by_key"]) == 2
+
+
+BROKEN_BAD_PAGE = FIXED.replace('        raise ValueError("bad page")\n', "        return []\n")
+FLAKY = """import os
+from pathlib import Path
+
+
+def test_sometimes_fails_once():
+    marker = Path(os.environ["LAB_DB"] + ".flaky")
+    if not marker.exists():
+        marker.write_text("seen")
+        raise AssertionError("fails the first time only")
+"""
+
+
+def test_own_tests_broken_by_the_change_trip(practice):
+    new_failing = TESTS + "\n\ndef test_new_and_broken():\n    assert page([1], 1, 1) == []\n"
+    head = commit(
+        practice["repo"], practice["base"], {"app/pages.py": BROKEN_BAD_PAGE, "tests/test_pages.py": new_failing}
+    )
+    g = run_grade(practice, head)
+    trap = g["traps"]["own_tests_broken"]
+    assert trap["tripped"] is True and g["hidden_tests"]["ok"]
+    assert trap["broken"] == ["tests/test_pages.py::test_bad_page", "tests/test_pages.py::test_new_and_broken"]
+    assert trap["already_failing_on_base"] == [] and "own_tests_broken" in g["traps_tripped"]
+
+
+def test_a_test_already_failing_on_base_does_not_trip(practice):
+    base = commit(
+        practice["repo"],
+        practice["base"],
+        {"tests/test_pages.py": TESTS + "\n\ndef test_old_bug():\n    assert False\n"},
+    )
+    head = commit(practice["repo"], base, {"app/pages.py": FIXED})
+    g = run_grade(practice, head, base=base)
+    trap = g["traps"]["own_tests_broken"]
+    assert trap["tripped"] is False and trap["already_failing_on_base"] == ["tests/test_pages.py::test_old_bug"]
+    assert g["own_tests"]["failed"] == 1 and g["script_pass"] is True
+
+
+def test_a_flaky_test_that_passes_on_re_run_does_not_trip(practice):
+    base = commit(practice["repo"], practice["base"], {"tests/test_flaky.py": FLAKY})
+    head = commit(practice["repo"], base, {"app/pages.py": FIXED})
+    trap = run_grade(practice, head, base=base)["traps"]["own_tests_broken"]
+    assert trap == {
+        "tripped": False,
+        "failing_at_head": ["tests/test_flaky.py::test_sometimes_fails_once"],
+        "passed_on_rerun": ["tests/test_flaky.py::test_sometimes_fails_once"],
+    }
+
+
+def test_a_suite_that_cannot_run_at_head_trips_unless_base_cannot_either(practice):
+    head = commit(practice["repo"], practice["base"], {"app/pages.py": FIXED, "tests/test_syntax.py": "def broken(:\n"})
+    trap = run_grade(practice, head)["traps"]["own_tests_broken"]
+    assert trap["tripped"] is True and trap["head_exit_code"] == 2 and trap["base_exit_code"] == 0
+    base = commit(practice["repo"], practice["base"], {"tests/test_syntax.py": "def broken(:\n"})
+    head = commit(practice["repo"], base, {"app/pages.py": FIXED})
+    trap = run_grade(practice, head, base=base)["traps"]["own_tests_broken"]
+    assert trap["tripped"] is False and "nor on base" in trap["why"]
+
+
+def test_dryrun_goes_red_when_the_reference_edits_a_test_the_key_does_not_allow(practice):
+    edited = TESTS.replace("== [0, 1, 2]", "== list(range(3))")
+    fix = commit(practice["repo"], practice["base"], {"app/pages.py": FIXED, "tests/test_pages.py": edited + NEW_TEST})
+    (practice["ans"] / "reference.patch").write_text(grade.git(practice["repo"], "diff", practice["base"], fix))
+    report = dryrun.dry_run(practice["config"], practice["tickets"], practice["answers"])
+    assert not report["green"]
+    assert any("existing_tests_changed" in p for p in report["tickets"]["T1"]["problems"])
+    key = {**practice["key"], "tests_may_change": ["tests/test_pages.py::test_first_page"]}
+    (practice["ans"] / "key.json").write_text(json.dumps(key))
+    report = dryrun.dry_run(practice["config"], practice["tickets"], practice["answers"])
+    assert report["green"], report["tickets"]["T1"]["problems"]
