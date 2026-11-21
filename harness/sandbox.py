@@ -8,7 +8,10 @@ Layout:
     TICKET.md      the ticket
     arm/           the arm's files (absent for a bare arm)
     db/            SQLite database file (pipeline-lab); Postgres runs get database run_<run_id>
-    harness/       records and controls; the run's guard keeps the session out of it
+    harness/       records (transcript, run.json, owner log); the session cannot read or write it
+
+The run's controls (settings, guard hook, `lab`) live outside the run folder, in
+<runs root>/<stage>/.control/<run-id>/, so nothing the session can write can change them.
 """
 
 import argparse
@@ -27,6 +30,23 @@ HERE = Path(__file__).resolve().parent
 # tools. The subagent tool is called Task in 2.1.302's init record and Agent in the docs; both are named.
 ALLOWED_TOOLS = "Task Agent Bash Read Edit Write NotebookEdit Glob Grep"
 SHA_RE = re.compile(r"^[0-9a-f]{7,40}$")
+# The OS sandbox's network allowlist: package downloads only. GitHub is reached only through `lab`,
+# which runs outside the sandbox. Postgres is reached through its Unix socket, not TCP.
+NET_ALLOW = ["pypi.org", "files.pythonhosted.org"]
+
+
+def control_dir(root: Path) -> Path:
+    return Path(root).parent / ".control" / Path(root).name
+
+
+def pg_socket(pg_bin: str = "psql") -> str | None:
+    """The local server's Unix socket file, e.g. /tmp/.s.PGSQL.5432."""
+    dirs, port = psql("SHOW unix_socket_directories", pg_bin=pg_bin), psql("SHOW port", pg_bin=pg_bin)
+    if dirs.returncode != 0 or port.returncode != 0:
+        return None
+    first = dirs.stdout.strip().split(",")[0].strip()
+    # The OS sandbox matches real paths: on macOS /tmp is a link to /private/tmp.
+    return os.path.realpath(f"{first}/.s.PGSQL.{port.stdout.strip()}") if first else None
 
 
 def pg_name(run_id: str) -> str:
@@ -40,7 +60,7 @@ def psql(sql: str, db: str = "postgres", pg_bin: str = "psql") -> subprocess.Com
     )
 
 
-def create_postgres(run_id: str, pg_bin: str = "psql", host_url: str = "postgresql://localhost") -> dict:
+def create_postgres(run_id: str, pg_bin: str = "psql") -> dict:
     name = pg_name(run_id)
     exists = psql(f"SELECT 1 FROM pg_database WHERE datname = '{name}'", pg_bin=pg_bin)
     if exists.returncode != 0:
@@ -51,7 +71,11 @@ def create_postgres(run_id: str, pg_bin: str = "psql", host_url: str = "postgres
         out = psql(sql, db, pg_bin)
         if out.returncode != 0:
             raise RuntimeError(f"{sql} failed: {out.stderr.strip()}")
-    return {"kind": "postgres", "name": name, "url": f"{host_url}/{name}"}
+    socket = pg_socket(pg_bin)
+    if not socket:
+        raise RuntimeError("cannot find the Postgres server's Unix socket")
+    sock_dir = socket.rsplit("/", 1)[0]
+    return {"kind": "postgres", "name": name, "url": f"postgresql:///{name}?host={sock_dir}", "socket": socket}
 
 
 def drop_postgres(name: str, pg_bin: str = "psql") -> None:
@@ -98,13 +122,14 @@ def arm_files(arm: Path | None) -> tuple[list[Path], list[Path]]:
 
 
 def guard_config(root: Path, runs_root: Path, extra_forbidden: list[str]) -> dict:
+    """The guard's view of the run: its sandbox, its private folders, and places it may never touch."""
     home = os.path.realpath(os.path.expanduser("~"))
     forbidden = [str(LAB_ROOT), str(runs_root), f"{home}/repos", f"{home}/.claude", f"{home}/.config/gh"]
     forbidden += [os.path.realpath(os.path.expanduser(p)) for p in extra_forbidden]
     return {
         "sandbox": str(root),
         "home": home,
-        "private": [str(root / "harness")],
+        "private": [str(root / "harness"), str(control_dir(root))],
         "forbidden": sorted(set(forbidden)),
         "read_ok": [f"{home}/{p}" for p in (".local", ".cache", ".pyenv", ".cargo", ".rustup", "Library/Caches")],
         "write_ok": ["/dev/null", "/tmp", "/private/tmp"],
@@ -113,9 +138,14 @@ def guard_config(root: Path, runs_root: Path, extra_forbidden: list[str]) -> dic
     }
 
 
-def settings(root: Path, cfg: dict) -> dict:
-    hdir = root / "harness"
-    guard_cmd = f'"{sys.executable}" "{hdir / "guard.py"}" "{hdir / "guard.json"}"'
+def settings(root: Path, cfg: dict, allow_domains: list[str] = NET_ALLOW, unix_sockets: list[str] = ()) -> dict:
+    """The run's settings file: OS sandbox first, then permission rules and the guard hook.
+
+    Absolute paths in permission rules start with `//`; sandbox paths are plain absolute paths.
+    """
+    ctl = control_dir(root)
+    home = cfg["home"]
+    guard_cmd = f'"{sys.executable}" "{ctl / "guard.py"}" "{ctl / "guard.json"}"'
     deny = [
         "WebFetch",
         "WebSearch",
@@ -123,16 +153,38 @@ def settings(root: Path, cfg: dict) -> dict:
         "Bash(curl *)",
         "Bash(wget *)",
         *(f"Bash(git {s} *)" for s in ("fetch", "pull", "clone", "ls-remote", "remote", "push")),
-        f"Read(/{hdir}/**)",
-        f"Edit(/{hdir}/**)",
+        *(f"{tool}(/{d}/**)" for d in cfg["private"] for tool in ("Read", "Edit")),
     ]
     for bad in cfg["forbidden"]:
         if not Path(root).is_relative_to(bad):
             deny += [f"Read(/{bad}/**)", f"Edit(/{bad}/**)"]
+    lab = str(ctl / "bin" / "lab")
+    sandbox = {
+        "enabled": True,
+        "failIfUnavailable": True,
+        "allowUnsandboxedCommands": False,
+        "autoAllowBashIfSandboxed": True,
+        # Only a call that is `lab ...` and nothing else runs outside the sandbox (docs: every command in
+        # the call must match; redirects, cd and $(...) keep a call sandboxed).
+        "excludedCommands": ["lab", "lab *", lab, f"{lab} *"],
+        "filesystem": {
+            "allowWrite": [f"{home}/.cache/uv"],
+            "denyWrite": list(cfg["private"]),
+            "denyRead": sorted(
+                {*cfg["forbidden"], *cfg["private"], *(f"{home}/{p}" for p in (".ssh", ".aws", ".netrc", ".gnupg"))}
+            ),
+            "allowRead": [str(root)],
+        },
+        "network": {"allowedDomains": list(allow_domains), "allowUnixSockets": list(unix_sockets)},
+    }
+    file_tools = [t for t in ALLOWED_TOOLS.split() if t not in ("Edit", "Write", "NotebookEdit")]
     return {
         "autoMemoryEnabled": False,
         "includeCoAuthoredBy": False,
-        "permissions": {"allow": ALLOWED_TOOLS.split(), "deny": deny},
+        # `Edit(...)` covers Write and NotebookEdit; scoped, because an Edit allow rule also widens
+        # where the sandbox lets Bash write.
+        "permissions": {"allow": [*file_tools, f"Edit(/{root}/**)"], "deny": deny},
+        "sandbox": sandbox,
         "hooks": {"PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": guard_cmd}]}]},
     }
 
@@ -152,15 +204,24 @@ def create(
     gh_bin: str,
     pg_bin: str = "psql",
     extra_forbidden: list[str] = (),
+    allow_domains: list[str] = (),
 ) -> dict:
     """Build the sandbox. Raises if the folder exists; cleans up after itself if a step fails."""
     parse_run_id(run_id)
-    if root.exists():
+    ctl = control_dir(root)
+    if root.exists() or ctl.exists():
         raise RuntimeError(f"sandbox already exists: {root}")
     root.mkdir(parents=True)
     hdir = root / "harness"
     hdir.mkdir()
-    manifest = {"run_id": run_id, "root": str(root), "created": now_iso(), "database": None, "branch": None}
+    manifest = {
+        "run_id": run_id,
+        "root": str(root),
+        "control": str(ctl),
+        "created": now_iso(),
+        "database": None,
+        "branch": None,
+    }
     write_json(hdir / "sandbox.json", manifest)
     try:
         branch = f"{run_id}/work"
@@ -189,9 +250,13 @@ def create(
             env = {"LAB_DB": str(path), "DATABASE_URL": f"sqlite:///{path}"}
         elif db == "postgres":
             manifest["database"] = create_postgres(run_id, pg_bin)
-            env = {"DATABASE_URL": manifest["database"]["url"]}
+            env = {
+                "DATABASE_URL": manifest["database"]["url"],
+                "PGHOST": manifest["database"]["socket"].rsplit("/", 1)[0],
+            }
         write_json(hdir / "sandbox.json", manifest)
 
+        ctl.mkdir(parents=True)
         instructions, agents = arm_files(arm)
         if arm and arm.is_dir():
             shutil.copytree(arm, root / "arm")
@@ -200,20 +265,23 @@ def create(
             shutil.copyfile(arm, root / "arm" / arm.name)
         if instructions:
             parts = [f"<!-- {p.name} -->\n{p.read_text(encoding='utf-8').strip()}\n" for p in instructions]
-            (hdir / "arm-prompt.md").write_text("\n".join(parts), encoding="utf-8")
+            (ctl / "arm-prompt.md").write_text("\n".join(parts), encoding="utf-8")
         if agents:
-            write_json(hdir / "agents.json", dict(parse_agent(p) for p in agents))
+            write_json(ctl / "agents.json", dict(parse_agent(p) for p in agents))
 
         cfg = guard_config(root, runs_root, list(extra_forbidden))
-        write_json(hdir / "guard.json", cfg)
-        shutil.copyfile(HERE / "guard.py", hdir / "guard.py")
-        write_json(hdir / "settings.json", settings(root, cfg))
-        (hdir / "bin").mkdir()
+        sockets = [manifest["database"]["socket"]] if db == "postgres" else []
+        run_settings = settings(root, cfg, [*NET_ALLOW, *allow_domains], sockets)
+        for folder in (ctl, hdir):  # live copies in the control folder, a record copy in harness/
+            write_json(folder / "guard.json", cfg)
+            write_json(folder / "settings.json", run_settings)
+        shutil.copyfile(HERE / "guard.py", ctl / "guard.py")
+        (ctl / "bin").mkdir()
         lab = (HERE / "lab.py").read_text(encoding="utf-8").replace("#!/usr/bin/env python3", f"#!{sys.executable}", 1)
-        (hdir / "bin" / "lab").write_text(lab, encoding="utf-8")
-        (hdir / "bin" / "lab").chmod(0o755)
+        (ctl / "bin" / "lab").write_text(lab, encoding="utf-8")
+        (ctl / "bin" / "lab").chmod(0o755)
         write_json(
-            hdir / "lab.json",
+            ctl / "lab.json",
             {
                 "repo": repo,
                 "branch": branch,
@@ -222,7 +290,7 @@ def create(
                 "repo_dir": str(rdir),
                 "ticket": str(root / "TICKET.md"),
                 "sandbox": str(root),
-                "private": str(hdir),
+                "private": [str(hdir), str(ctl)],
                 "events": str(hdir / "lab-events.jsonl"),
                 "gh": gh_bin,
             },
@@ -251,6 +319,9 @@ def teardown(root: Path, everything: bool = False, quiet: bool = False, pg_bin: 
         drop_postgres(dbinfo["name"], pg_bin)
         removed.append(f"database {dbinfo['name']}")
     targets = [root] if everything else [root / n for n in ("repo", "scratch", "arm", "db", "TICKET.md")]
+    ctl = Path(manifest.get("control") or control_dir(root))
+    if ctl == control_dir(root) and (read_json(ctl / "lab.json") or {}).get("sandbox") == str(root):
+        targets.append(ctl)
     for t in targets:
         if t.is_dir():
             shutil.rmtree(t)

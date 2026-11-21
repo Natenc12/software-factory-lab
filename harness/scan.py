@@ -18,6 +18,10 @@ from harness import guard
 from harness.common import read_json, write_json
 
 BRANCH_RE = re.compile(r"\b[a-z0-9]+-[a-z0-9]+-[0-9]+/work\b")
+# GitHub token formats: classic (ghp_, gho_, ghu_, ghs_, ghr_) and fine-grained (github_pat_).
+TOKEN_RE = re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}\b|\bgithub_pat_[A-Za-z0-9_]{40,}\b")
+# `gh auth ...` or git's credential helpers called from inside a program or a quoted string.
+GH_AUTH_RE = re.compile(r"""\bgh\b["'\s,\]\[]{1,8}auth\b|auth\s+git-credential|\bgit\b["'\s,]{1,6}credential\b""")
 REFUSED = ("Blocked by the lab guard", "hook error", "denied", "not allowed", "Permission to use")
 
 
@@ -68,6 +72,8 @@ def scan(folder: Path) -> dict:
                 others = sorted(set(BRANCH_RE.findall(text)) - {own_branch})
                 if others:
                     reason = f"names another run's branch: {', '.join(others)}"
+            if not reason and GH_AUTH_RE.search(text):
+                reason = "asks gh or git for GitHub credentials"
             if not reason and name != "Bash":
                 for word in cfg.get("forbidden_words", []):
                     if word.lower() in text.lower() and name not in ("Write", "Edit", "MultiEdit"):
@@ -76,6 +82,27 @@ def scan(folder: Path) -> dict:
                 is_error, result = results.get(block.get("id"), (False, ""))
                 blocked = is_error and any(k.lower() in result.lower() for k in REFUSED)
                 offences.append({"line": no, "tool": name, "input": inp, "reason": reason, "blocked": blocked})
+    calls_by_id = {}
+    for line in lines:
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        for block in (rec.get("message") or {}).get("content") or [] if rec.get("type") == "assistant" else []:
+            if isinstance(block, dict) and block.get("type") == "tool_use":
+                calls_by_id[block.get("id")] = block
+    for tid, (_err, text) in results.items():
+        if TOKEN_RE.search(text):
+            call = calls_by_id.get(tid) or {}
+            offences.append(
+                {
+                    "line": None,
+                    "tool": call.get("name", "?"),
+                    "input": call.get("input") or {},
+                    "reason": "tool output contains a GitHub token",
+                    "blocked": False,
+                }
+            )
     got_through = [o for o in offences if not o["blocked"]]
     return {
         "run_folder": str(folder),

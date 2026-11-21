@@ -40,8 +40,12 @@ def test_sandbox_holds_only_the_base_history(lab_env, practice):
     assert sh("git", "remote", cwd=repo) == ""
     seen = subprocess.run(["git", "cat-file", "-e", practice["other"]], cwd=repo, capture_output=True)
     assert seen.returncode != 0, "another run's commit leaked into the sandbox"
-    for name in ("scratch", "TICKET.md", "db", "harness/settings.json", "harness/guard.py", "harness/bin/lab"):
+    for name in ("scratch", "TICKET.md", "db", "harness/settings.json", "harness/guard.json"):
         assert (root / name).exists(), name
+    ctl = sandbox.control_dir(root)
+    assert ctl == lab_env["runs"] / "test" / ".control" / "p1-t1-1"
+    for name in ("settings.json", "guard.json", "guard.py", "lab.json", "bin/lab"):
+        assert (ctl / name).exists(), name
     assert manifest["env"]["LAB_DB"] == str(root / "db" / "lab.db")
     settings = json.loads((root / "harness" / "settings.json").read_text())
     assert "WebFetch" in settings["permissions"]["deny"]
@@ -58,9 +62,10 @@ def test_arm_folder_file_and_team_agents(lab_env, practice, tmp_path):
         "---\nname: tester\ndescription: Writes tests from the contract\ntools: Read, Write, Bash\nmodel: sonnet\n---\nWrite tests only."
     )
     root, _ = make(lab_env, practice, "p4-t1-1", arm=arm)
-    assert "Lead the team." in (root / "harness" / "arm-prompt.md").read_text()
-    assert "not an instruction" not in (root / "harness" / "arm-prompt.md").read_text()
-    agents = json.loads((root / "harness" / "agents.json").read_text())
+    ctl = sandbox.control_dir(root)
+    assert "Lead the team." in (ctl / "arm-prompt.md").read_text()
+    assert "not an instruction" not in (ctl / "arm-prompt.md").read_text()
+    agents = json.loads((ctl / "agents.json").read_text())
     assert agents["tester"] == {
         "description": "Writes tests from the contract",
         "prompt": "Write tests only.",
@@ -71,7 +76,7 @@ def test_arm_folder_file_and_team_agents(lab_env, practice, tmp_path):
     single.write_text("Contract first.")
     root2, _ = make(lab_env, practice, "p3-t1-1", arm=single)
     assert (root2 / "arm" / "SKILL.md").exists()
-    assert not (root2 / "harness" / "agents.json").exists()
+    assert not (sandbox.control_dir(root2) / "agents.json").exists()
 
 
 def test_teardown_removes_only_this_run(lab_env, practice):
@@ -82,6 +87,7 @@ def test_teardown_removes_only_this_run(lab_env, practice):
     sandbox.teardown(a)
     assert not (a / "repo").exists() and (a / "harness" / "sandbox.json").exists()
     assert (b / "repo" / "app.py").exists()
+    assert not sandbox.control_dir(a).exists() and sandbox.control_dir(b).exists()
     sandbox.teardown(a, everything=True)
     assert not a.exists() and b.exists()
     stray = lab_env["runs"] / "test" / "p1-t1-3"
@@ -118,7 +124,15 @@ def test_postgres_database_per_run(lab_env, practice):
     subprocess.run(["psql", "-X", "-d", "postgres", "-qc", f'DROP DATABASE IF EXISTS "{name}"'], capture_output=True)
     root, manifest = make(lab_env, practice, rid, db="postgres")
     try:
-        assert manifest["database"]["name"] == name and manifest["env"]["DATABASE_URL"].endswith("/" + name)
+        url = manifest["env"]["DATABASE_URL"]
+        assert manifest["database"]["name"] == name and url.startswith(f"postgresql:///{name}?host=/")
+        sock = manifest["database"]["socket"]
+        settings = json.loads((root / "harness" / "settings.json").read_text())
+        assert settings["sandbox"]["network"]["allowUnixSockets"] == [sock]
+        assert (
+            subprocess.run(["psql", "-X", url, "-tAc", "select 1"], capture_output=True, text=True).stdout.strip()
+            == "1"
+        )
         ext = sandbox.psql("SELECT extname FROM pg_extension WHERE extname = 'vector'", name)
         assert ext.stdout.strip() == "vector"
         with pytest.raises(RuntimeError):
@@ -130,7 +144,7 @@ def test_postgres_database_per_run(lab_env, practice):
 
 
 def lab(root: Path, *args):
-    env = {**os.environ, "PATH": f"{root / 'harness' / 'bin'}:{os.environ['PATH']}"}
+    env = {**os.environ, "PATH": f"{sandbox.control_dir(root) / 'bin'}:{os.environ['PATH']}"}
     return subprocess.run(["lab", *args], cwd=root / "repo", env=env, capture_output=True, text=True)
 
 
@@ -169,8 +183,41 @@ def test_lab_commands(lab_env, practice):
 
 def test_lab_cannot_call_other_gh_verbs(lab_env, practice):
     root, _ = make(lab_env, practice, "p1-t1-1")
-    lab_script = str(root / "harness" / "bin" / "lab")
+    lab_script = str(sandbox.control_dir(root) / "bin" / "lab")
     code = f"import runpy; m = runpy.run_path({lab_script!r}); m['gh'](m['load_config'](), 'pr', 'merge', '7')"
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert out.returncode != 0 and "refusing gh pr merge" in (out.stderr + out.stdout)
     assert read_json(root / "harness" / "sandbox.json")["run_id"] == "p1-t1-1"
+
+
+def test_settings_file_shape(lab_env, practice):
+    """The OS sandbox is the main wall; permission rules and the guard hook are the second layer."""
+    root, _ = make(lab_env, practice, "p1-t1-1")
+    ctl = sandbox.control_dir(root)
+    live = json.loads((ctl / "settings.json").read_text())
+    assert live == json.loads((root / "harness" / "settings.json").read_text())
+    box = live["sandbox"]
+    assert box["enabled"] and box["failIfUnavailable"] and box["allowUnsandboxedCommands"] is False
+    lab_path = str(ctl / "bin" / "lab")
+    assert set(box["excludedCommands"]) == {"lab", "lab *", lab_path, f"{lab_path} *"}
+    assert not str(ctl).startswith(str(root) + "/"), "lab must live outside the run's writable folder"
+    assert box["network"]["allowedDomains"] == ["pypi.org", "files.pythonhosted.org"]
+    assert not any("github" in d for d in box["network"]["allowedDomains"])
+    fs = box["filesystem"]
+    assert str(ctl) in fs["denyWrite"] and str(root / "harness") in fs["denyWrite"]
+    home = os.path.realpath(os.path.expanduser("~"))
+    for secret in (f"{home}/.config/gh", f"{home}/.ssh", f"{home}/.claude", str(lab_env["runs"].resolve())):
+        assert secret in fs["denyRead"], secret
+    assert fs["allowRead"] == [str(root)]
+    perms = live["permissions"]
+    assert f"Edit(/{root}/**)" in perms["allow"]
+    assert not any(a in ("Edit", "Write", "NotebookEdit") for a in perms["allow"]), "unscoped Edit widens the sandbox"
+    assert all(r.startswith(("Read(//", "Edit(//")) for r in perms["deny"] if r.startswith(("Read(", "Edit(")))
+    assert f"Edit(/{ctl}/**)" in perms["deny"] and "Bash(gh *)" in perms["deny"]
+    hook = live["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+    assert str(ctl / "guard.py") in hook and str(ctl / "guard.json") in hook
+    lab_cfg = json.loads((ctl / "lab.json").read_text())
+    assert lab_cfg["private"] == [str(root / "harness"), str(ctl)]
+    root2, _ = make(lab_env, practice, "p1-t1-2", allow_domains=["proxy.golang.org"])
+    nets = json.loads((root2 / "harness" / "settings.json").read_text())["sandbox"]["network"]["allowedDomains"]
+    assert nets == ["pypi.org", "files.pythonhosted.org", "proxy.golang.org"]

@@ -42,7 +42,8 @@ def gh(cfg: dict, *args: str) -> subprocess.CompletedProcess:
 def inside(cfg: dict, path: str) -> Path:
     p = Path(os.path.realpath(path))
     root = cfg["sandbox"].rstrip("/") + "/"
-    if not str(p).startswith(root) or str(p).startswith(cfg["private"].rstrip("/") + "/"):
+    private = cfg["private"] if isinstance(cfg["private"], list) else [cfg["private"]]
+    if not str(p).startswith(root) or any(str(p).startswith(d.rstrip("/") + "/") for d in private):
         raise SystemExit(f"lab: {path} must be a file inside your run folder")
     if not p.is_file():
         raise SystemExit(f"lab: no such file: {path}")

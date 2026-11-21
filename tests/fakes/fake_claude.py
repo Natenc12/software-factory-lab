@@ -129,6 +129,21 @@ def main() -> int:
             },
         ]
         emit({"type": "user", "session_id": sid, "message": {"content": results}})
+    if step == "token":
+        code = (
+            "import subprocess; print(subprocess.run(['gh', 'auth', 'token'], capture_output=True, text=True).stdout)"
+        )
+        calls = [
+            {"type": "tool_use", "id": "toolu_tok", "name": "Bash", "input": {"command": f'python3 -c "{code}"'}},
+            {"type": "tool_use", "id": "toolu_env", "name": "Bash", "input": {"command": "env | sort"}},
+        ]
+        emit(assistant(sid, f"msg_tok_{n}", calls, usage(2, 10, 100, 100)))
+        fake = "gho_" + "A1b2C3d4" * 5
+        results = [
+            {"type": "tool_result", "tool_use_id": "toolu_tok", "content": fake},
+            {"type": "tool_result", "tool_use_id": "toolu_env", "content": f"GH_TOKEN={fake}\nHOME=/x"},
+        ]
+        emit({"type": "user", "session_id": sid, "message": {"content": results}})
     if step == "stop":
         page = Path(os.getcwd()).parent / "scratch" / f"ask-{n}.html"
         page.write_text(f"<html><body><h1>Question from {run_id}</h1><p>Fix the CLI too?</p></body></html>")

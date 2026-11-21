@@ -18,17 +18,25 @@ flags, the clean room and resume.
 1. **Sandbox** at `~/factory-runs/<stage>/<run-id>/` (`sandbox.py`): `repo/` holds only the base ref's
    history on branch `<run-id>/work`, with no remote; `scratch/`, `TICKET.md`, `arm/`, and an SQLite
    file (`db/lab.db`, as `LAB_DB` and `DATABASE_URL`) or a Postgres database `run_<run_id>` with
-   `vector` (as `DATABASE_URL`). Records and controls live in `harness/`, which the run cannot touch.
+   `vector`, reached through its Unix socket (`DATABASE_URL`, `PGHOST`). Records live in `harness/`.
+   The run's controls (settings, guard hook, `lab`) live outside the run folder, in
+   `~/factory-runs/<stage>/.control/<run-id>/`. The session can neither read nor write either one.
 2. **Clean room** (`run.py`): `--setting-sources ""` (no user, project or local settings, so no user
    skills, hooks, plugins or output style), `--disable-slash-commands`, `--strict-mcp-config`,
    `--tools` with a fixed list, `--permission-mode dontAsk`, auto-memory off, and a minimal
    environment. The arm's instruction files are appended to the system prompt; an arm's
    `agents/*.md` become `--agents`.
-3. **Fence**: the run's own `settings.json` holds deny rules and a PreToolUse hook (`guard.py`) that
-   blocks web tools, `gh`, `curl`, `git fetch/pull/clone/ls-remote/remote/push`, and any path outside
-   the sandbox in this repo, `~/repos`, `~/.claude`, other runs, or anything named `answers` or
-   `hidden`. GitHub is reachable only through `lab` (`lab.py`): ticket, open or update this run's one
+3. **Fence, first layer: the OS sandbox** in the run's `settings.json`. Every Bash command, and every
+   program it starts, may reach only PyPI (`pypi.org`, `files.pythonhosted.org`, plus any
+   `--allow-domain`) and the Postgres socket; it may write only in the run folder, its temp folder and
+   the shared uv cache; it may not read `~/.config/gh`, `~/.ssh`, `~/.claude`, `~/repos`, this repo or
+   other runs. `allowUnsandboxedCommands: false` removes the escape hatch and `failIfUnavailable`
+   stops the run if the sandbox can't start. The one exception is `lab` (`lab.py`), which runs outside
+   the sandbox only when a call is `lab ...` and nothing else: ticket, open or update this run's one
    pull request, and its checks. `lab` never merges, labels or comments.
+   **Second layer:** deny rules (absolute paths written `//...`; `Edit(...)` also covers Write) and a
+   PreToolUse hook (`guard.py`) that blocks web tools, `gh`, `curl`, git's remote commands, and paths
+   outside the sandbox. They also cover the Read, Edit and Write tools, which the OS sandbox does not.
 4. **Stop and reply** (`owner.py`): a turn ending in a `STOP:` line is saved with its page, stripped of
    the arm's name and run id, and given to a reply judge (`claude -p`, no tools) with the reply sheet.
    The judge's reply id picks the exact text sent back with `--resume`. Every reply goes to
@@ -40,9 +48,11 @@ flags, the clean room and resume.
 
 ## Known limits
 
-- The guard reads command text. A determined run could still reach the network from inside a program
-  (for example Python's `urllib`). The leak scan catches the obvious cases; Claude Code's OS sandbox
-  (`sandbox` in settings) is the stronger wall and is the next thing to add once its network list for
-  PyPI and Postgres is trialled.
+- The sandbox is checked on macOS (trials 3–5 in `TRIALS.md`). A repo that downloads from somewhere
+  other than PyPI (a Python build from GitHub, model weights, npm) needs `--allow-domain`; uv's own
+  Python downloads come from GitHub and will fail, so the Python a repo needs must already be installed.
+- Postgres over TCP is blocked; runs must use the socket URL the harness sets.
+- The leak scan also flags GitHub tokens in any tool output and `gh auth` or git credential calls made
+  from inside a program.
 - Live counts use the usage on each streamed message, which under-counts output until the call ends;
   the final figures come from the result record.

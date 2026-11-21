@@ -4,8 +4,9 @@ You are working one ticket. The repository is checked out in your current folder
 - Scratch space: `{scratch}`. Database for this work: `{database}` (already set in your environment).
 - GitHub is reachable only through the `lab` command: `lab pr open --title "..." --body-file <file>` pushes
   your branch and opens its pull request, `lab pr update` pushes again (add `--title` or `--body-file` to
-  change them), and `lab pr checks` shows its CI. There is no web access, no `gh`, and no git fetch, pull or
-  push. Stay inside `{run_folder}`.
+  change them), and `lab pr checks` shows its CI. Run each `lab` command on its own, not joined to other
+  commands, with no `cd` or redirect in the same call. There is no web access, no `gh`, and no git fetch,
+  pull or push. Commands run in a sandbox that allows only package downloads. Stay inside `{run_folder}`.
 - To ask the owner something, end your turn with one line that starts `STOP:` followed by your question. You
   may point to a page you wrote for them inside your folder with `page: <path>` on that line. You will get a
   reply. When you end a turn without a `STOP:` line, your work is over.
