@@ -6,26 +6,26 @@
   "base_sha": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "s3_base_ref": "base/T6-s3",
   "s3_sha": "40417fcd9bf00476969e218bd6522b7e60507b56",
-  "started": "2026-11-21T20:37:03+00:00",
-  "finished": "2026-11-21T20:40:59+00:00",
+  "started": "2026-11-21T22:06:34+00:00",
+  "finished": "2026-11-21T22:10:26+00:00",
   "databases_dropped": [
-    "author_gct_t6_base_81581",
-    "author_gct_t6_ref_81581",
-    "author_gct_t6_naive_81581",
-    "author_gct_t6_s3base_81581",
-    "author_gct_t6_s3ref_81581",
-    "author_gct_t6_s3naive_81581"
+    "author_gct_t6_base_69043",
+    "author_gct_t6_ref_69043",
+    "author_gct_t6_naive_69043",
+    "author_gct_t6_s3base_69043",
+    "author_gct_t6_s3ref_69043",
+    "author_gct_t6_s3naive_69043"
   ],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "1175 passed, 1 deselected in 49.74s",
+      "note": "1175 passed, 1 deselected in 48.45s",
       "counts": {
         "passed": 1175
       },
-      "seconds": 51.4,
+      "seconds": 49.9,
       "log_tail": ""
     },
     {
@@ -38,13 +38,13 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "2 failed in 1.40s",
+      "note": "2 failed in 0.96s",
       "outcomes": {
         "tests.hidden.test_hidden_t6::test_an_over_limit_file_is_refused_whole_and_its_status_says_how_long_it_is": "failed",
         "tests.hidden.test_hidden_t6::test_the_count_is_the_files_own_and_small_files_are_unaffected": "failed"
       },
       "not_failing": [],
-      "seconds": 2.2
+      "seconds": 1.6
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -73,12 +73,12 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "1178 passed, 1 deselected in 46.28s",
+      "note": "1178 passed, 1 deselected in 47.18s",
       "counts": {
         "passed": 1178
       },
       "failing": [],
-      "seconds": 47.2,
+      "seconds": 48.1,
       "log_tail": ""
     },
     {
@@ -116,7 +116,7 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "1.6s"
+      "note": "1.7s"
     },
     {
       "name": "naive.patch: at least one hidden test fails",
@@ -142,7 +142,7 @@
     {
       "name": "s3: acceptance tests fail on the S3 branch",
       "ok": true,
-      "note": "1 failed, 1 passed in 0.91s",
+      "note": "1 failed, 1 passed in 0.88s",
       "outcomes": {
         "tests.acceptance.test_over_long_uploads::test_example_1_message_names_the_file_count_and_the_limit": "failed",
         "tests.acceptance.test_over_long_uploads::test_example_3_a_small_file_is_ready_as_usual": "passed"
@@ -151,7 +151,7 @@
     {
       "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
       "ok": true,
-      "note": "1180 passed, 1 deselected in 47.02s",
+      "note": "1180 passed, 1 deselected in 45.98s",
       "failing": [],
       "log_tail": ""
     },

@@ -5,28 +5,29 @@
   "base_ref": "base/T4",
   "base_sha": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "s3_base_ref": "base/T4-s3",
-  "s3_sha": "24c74362dacda09d214e38383f9118a34cc20857",
-  "started": "2026-11-21T20:28:06+00:00",
-  "finished": "2026-11-21T20:32:31+00:00",
+  "s3_sha": "cdaa136cea259a32b28f094de71cbee2d91bd570",
+  "started": "2026-11-21T21:55:32+00:00",
+  "finished": "2026-11-21T22:00:39+00:00",
   "databases_dropped": [
-    "author_gct_t4_base_41344",
-    "author_gct_t4_ref_41344",
-    "author_gct_t4_naive_s3_41344",
-    "author_gct_t4_naive_41344",
-    "author_gct_t4_s3base_41344",
-    "author_gct_t4_s3ref_41344",
-    "author_gct_t4_s3naive_41344"
+    "author_gct_t4_base_47675",
+    "author_gct_t4_ref_47675",
+    "author_gct_t4_naive_failed_47675",
+    "author_gct_t4_naive_s3_47675",
+    "author_gct_t4_naive_47675",
+    "author_gct_t4_s3base_47675",
+    "author_gct_t4_s3ref_47675",
+    "author_gct_t4_s3naive_47675"
   ],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "1175 passed, 1 deselected in 49.85s",
+      "note": "1175 passed, 1 deselected in 49.56s",
       "counts": {
         "passed": 1175
       },
-      "seconds": 51.5,
+      "seconds": 51.1,
       "log_tail": ""
     },
     {
@@ -39,7 +40,7 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "6 failed in 0.84s",
+      "note": "6 failed in 1.58s",
       "outcomes": {
         "tests.hidden.test_hidden_t4::test_deleting_a_ready_file_removes_its_rows_and_bytes_and_nothing_else": "failed",
         "tests.hidden.test_hidden_t4::test_delete_is_scoped_to_the_owner_and_reports_a_missing_file": "failed",
@@ -49,7 +50,7 @@
         "tests.hidden.test_hidden_t4::test_the_delete_route": "failed"
       },
       "not_failing": [],
-      "seconds": 1.5
+      "seconds": 2.3
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -81,12 +82,12 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "1187 passed, 1 deselected in 47.36s",
+      "note": "1187 passed, 1 deselected in 45.36s",
       "counts": {
         "passed": 1187
       },
       "failing": [],
-      "seconds": 48.3,
+      "seconds": 46.3,
       "log_tail": ""
     },
     {
@@ -127,6 +128,19 @@
       "note": "1.6s"
     },
     {
+      "name": "naive-failed.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t4::test_deleting_a_ready_file_removes_its_rows_and_bytes_and_nothing_else"
+      ],
+      "note": "1/6 hidden fail"
+    },
+    {
+      "name": "naive-failed.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
       "name": "naive-s3.patch: at least one hidden test fails",
       "ok": true,
       "failing": [
@@ -165,7 +179,7 @@
     {
       "name": "s3: acceptance tests fail on the S3 branch",
       "ok": true,
-      "note": "1 error in 0.45s",
+      "note": "1 error in 0.61s",
       "outcomes": {
         "tests.acceptance.test_delete_a_file": "error"
       }
@@ -173,7 +187,7 @@
     {
       "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
       "ok": true,
-      "note": "1191 passed, 1 deselected in 47.69s",
+      "note": "1191 passed, 1 deselected in 46.09s",
       "failing": [],
       "log_tail": ""
     },

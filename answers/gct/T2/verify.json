@@ -6,27 +6,28 @@
   "base_sha": "fb1814e5de96e150bd18c619b5b32ef92a35182c",
   "s3_base_ref": "base/T2-s3",
   "s3_sha": "e71d702cf100a75a26021a5f4f3e8c4c1def8388",
-  "started": "2026-11-21T21:09:56+00:00",
-  "finished": "2026-11-21T21:14:10+00:00",
+  "started": "2026-11-21T21:47:42+00:00",
+  "finished": "2026-11-21T21:52:31+00:00",
   "databases_dropped": [
-    "author_gct_t2_base_67225",
-    "author_gct_t2_ref_67225",
-    "author_gct_t2_naive_s3_67225",
-    "author_gct_t2_naive_67225",
-    "author_gct_t2_s3base_67225",
-    "author_gct_t2_s3ref_67225",
-    "author_gct_t2_s3naive_67225"
+    "author_gct_t2_base_37807",
+    "author_gct_t2_ref_37807",
+    "author_gct_t2_naive_nested_37807",
+    "author_gct_t2_naive_s3_37807",
+    "author_gct_t2_naive_37807",
+    "author_gct_t2_s3base_37807",
+    "author_gct_t2_s3ref_37807",
+    "author_gct_t2_s3naive_37807"
   ],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "1048 passed, 1 deselected in 50.96s",
+      "note": "1048 passed, 1 deselected in 47.43s",
       "counts": {
         "passed": 1048
       },
-      "seconds": 53.8,
+      "seconds": 49.0,
       "log_tail": ""
     },
     {
@@ -39,7 +40,7 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "9 failed in 0.63s",
+      "note": "9 failed in 0.52s",
       "outcomes": {
         "tests.hidden.test_hidden_t2::test_one_undecodable_byte_is_a_422_with_its_field_list[None]": "failed",
         "tests.hidden.test_hidden_t2::test_one_undecodable_byte_is_a_422_with_its_field_list[application/octet-stream]": "failed",
@@ -52,7 +53,7 @@
         "tests.hidden.test_hidden_t2::test_classes_route_multi_megabyte_multipart_body_is_not_echoed_back": "failed"
       },
       "not_failing": [],
-      "seconds": 1.4
+      "seconds": 1.1
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -85,12 +86,12 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "1079 passed, 1 deselected in 44.58s",
+      "note": "1079 passed, 1 deselected in 43.62s",
       "counts": {
         "passed": 1079
       },
       "failing": [],
-      "seconds": 45.5,
+      "seconds": 44.4,
       "log_tail": ""
     },
     {
@@ -128,7 +129,21 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "1.2s"
+      "note": "1.0s"
+    },
+    {
+      "name": "naive-nested.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t2::test_a_long_string_inside_a_json_body_is_bounded_and_the_boundary_is_exact",
+        "tests.hidden.test_hidden_t2::test_a_multi_megabyte_body_is_refused_without_being_echoed_back"
+      ],
+      "note": "2/9 hidden fail"
+    },
+    {
+      "name": "naive-nested.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
     },
     {
       "name": "naive-s3.patch: at least one hidden test fails",
@@ -171,7 +186,7 @@
     {
       "name": "s3: acceptance tests fail on the S3 branch",
       "ok": true,
-      "note": "2 failed, 1 passed in 0.58s",
+      "note": "2 failed, 1 passed in 0.48s",
       "outcomes": {
         "tests.acceptance.test_error_reply_echo::test_example_1_one_undecodable_byte_is_a_422": "failed",
         "tests.acceptance.test_error_reply_echo::test_example_3_a_two_megabyte_multipart_body_is_not_echoed_back": "failed",
@@ -181,7 +196,7 @@
     {
       "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
       "ok": true,
-      "note": "1082 passed, 1 deselected in 44.04s",
+      "note": "1082 passed, 1 deselected in 44.20s",
       "failing": [],
       "log_tail": ""
     },

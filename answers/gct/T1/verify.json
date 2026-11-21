@@ -6,27 +6,27 @@
   "base_sha": "5dc0d6429c6900a428b421e80ca7d97a0b118b83",
   "s3_base_ref": "base/T1-s3",
   "s3_sha": "bd5a187dc173743985e0182ddfed5952ff952ab0",
-  "started": "2026-11-21T21:09:10+00:00",
-  "finished": "2026-11-21T21:09:56+00:00",
+  "started": "2026-11-21T21:46:56+00:00",
+  "finished": "2026-11-21T21:47:42+00:00",
   "databases_dropped": [
-    "author_gct_t1_base_65440",
-    "author_gct_t1_ref_65440",
-    "author_gct_t1_naive_s3_65440",
-    "author_gct_t1_naive_65440",
-    "author_gct_t1_s3base_65440",
-    "author_gct_t1_s3ref_65440",
-    "author_gct_t1_s3naive_65440"
+    "author_gct_t1_base_36332",
+    "author_gct_t1_ref_36332",
+    "author_gct_t1_naive_s3_36332",
+    "author_gct_t1_naive_36332",
+    "author_gct_t1_s3base_36332",
+    "author_gct_t1_s3ref_36332",
+    "author_gct_t1_s3naive_36332"
   ],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "396 passed, 1 deselected in 7.36s",
+      "note": "396 passed, 1 deselected in 7.51s",
       "counts": {
         "passed": 396
       },
-      "seconds": 8.9,
+      "seconds": 9.0,
       "log_tail": ""
     },
     {
@@ -39,7 +39,7 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "9 failed in 0.73s",
+      "note": "9 failed in 0.78s",
       "outcomes": {
         "tests.hidden.test_hidden_t1::test_reindex_refreshes_filename_owner_and_class_from_the_incoming_call": "failed",
         "tests.hidden.test_hidden_t1::test_each_scope_column_is_refreshed_on_its_own[filename]": "failed",
@@ -52,7 +52,7 @@
         "tests.hidden.test_hidden_t1::test_a_real_transient_failure_after_a_half_bury_leaves_processing_with_no_reason": "failed"
       },
       "not_failing": [],
-      "seconds": 1.4
+      "seconds": 1.5
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -85,12 +85,12 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "420 passed, 1 deselected in 5.02s",
+      "note": "420 passed, 1 deselected in 4.70s",
       "counts": {
         "passed": 420
       },
       "failing": [],
-      "seconds": 5.8,
+      "seconds": 5.5,
       "log_tail": ""
     },
     {
@@ -178,7 +178,7 @@
     {
       "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
       "ok": true,
-      "note": "423 passed, 1 deselected in 4.46s",
+      "note": "423 passed, 1 deselected in 4.48s",
       "failing": [],
       "log_tail": ""
     },
