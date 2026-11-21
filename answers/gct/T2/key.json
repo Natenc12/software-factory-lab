@@ -1,0 +1,26 @@
+{
+  "hidden_test_cmd": "uv run pytest -q -m 'not live' tests/hidden",
+  "unchanged_paths": [
+    "migrations/0001_init.sql",
+    "migrations/0002_lease_token.sql",
+    "migrations/0003_failed_reason_too_long.sql",
+    "src/gct/api/limits.py"
+  ],
+  "scope_out_paths": ["src/gct/api/limits.py", "src/gct/staging.py", "src/gct/api/routers/files.py", "web/", "migrations/"],
+  "traps": [
+    {"id": "request-bound-changed", "check": "unchanged_paths", "paths": ["src/gct/api/limits.py"]},
+    {"id": "applied-migration-edited", "check": "unchanged_paths", "paths": ["migrations/"]}
+  ],
+  "replay": {
+    "source": "Natenc12/grounded-class-tutor issue #134",
+    "fix_commits": ["4ba290691583cf311ebc24808dad59646f3f6b82"],
+    "reference_note": "the fix's diff minus its docstring-only edit to src/gct/api/limits.py, which the ticket puts out of scope",
+    "hidden_tests_from": "tests/gct/api/test_errors.py from the fix, rewritten to drive create_app() and to avoid private names"
+  },
+  "naive_patches": {
+    "naive.patch": "decodes bytes with replacement inside the encoder only: no more 500, but replies are still unbounded",
+    "naive-s3.patch": "decodes bytes and truncates long strings, but appends the marker after 512 characters, so echoed strings exceed the bound"
+  },
+  "planted_bugs": [],
+  "not_bugs": []
+}

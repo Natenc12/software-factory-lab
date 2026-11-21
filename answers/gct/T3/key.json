@@ -1,0 +1,25 @@
+{
+  "hidden_test_cmd": "uv run pytest -q -m 'not live' tests/hidden",
+  "unchanged_paths": [
+    "migrations/0001_init.sql",
+    "migrations/0002_lease_token.sql",
+    "migrations/0003_failed_reason_too_long.sql"
+  ],
+  "scope_out_paths": ["src/gct/jobs/queue.py", "migrations/", "web/"],
+  "traps": [
+    {"id": "applied-migration-edited", "check": "unchanged_paths", "paths": ["migrations/"]},
+    {"id": "enqueue-touched", "check": "scope_out_paths", "paths": ["src/gct/jobs/queue.py"]}
+  ],
+  "replay": {
+    "source": "Natenc12/grounded-class-tutor issue #126",
+    "fix_commits": ["9fa6eb4f"],
+    "reference_note": "the fix minus its docstring-only edits to src/gct/jobs/queue.py and src/gct/api/routers/ask.py",
+    "hidden_tests_from": "the fix's tests in test_classes.py, test_files.py, test_retrieve.py, test_index.py and test_pipeline.py, merged into one test per site"
+  },
+  "naive_patches": {
+    "naive.patch": "widens the two excepts and canonicalises class_id in retrieve with a bare parse; index_file and ingest_file untouched, None escapes retrieve as TypeError",
+    "naive-s3.patch": "widens the excepts and canonicalises class_id in retrieve and index_file, but leaves index_file's file_id lenient-by-Postgres and lets ingest_file pay for embeddings before the refusal"
+  },
+  "planted_bugs": [],
+  "not_bugs": []
+}

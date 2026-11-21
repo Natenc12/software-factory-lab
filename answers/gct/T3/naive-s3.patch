@@ -1,0 +1,103 @@
+diff --git a/src/gct/classes.py b/src/gct/classes.py
+index 1f76f62..7d9410a 100644
+--- a/src/gct/classes.py
++++ b/src/gct/classes.py
+@@ -205,7 +205,7 @@ def class_exists(conn: psycopg.Connection, *, class_id: str, owner_id: str) -> b
+     """
+     try:
+         canonical = str(uuid.UUID(class_id))
+-    except ValueError as exc:
++    except (ValueError, TypeError, AttributeError) as exc:
+         raise ValueError(
+             f"class_exists() requires a uuid class_id; got {class_id!r}. An id that is not a "
+             "uuid cannot name any class - reject it at the boundary rather than asking the "
+diff --git a/src/gct/files.py b/src/gct/files.py
+index f2a7b21..8086644 100644
+--- a/src/gct/files.py
++++ b/src/gct/files.py
+@@ -83,7 +83,7 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+     """
+     try:
+         canonical = str(uuid.UUID(file_id))
+-    except ValueError as exc:
++    except (ValueError, TypeError, AttributeError) as exc:
+         raise ValueError(
+             f"get_file_status() requires a uuid file_id; got {file_id!r}. An id that is not a "
+             "uuid cannot name any file - reject it at the boundary rather than asking the "
+diff --git a/src/gct/ingest/index.py b/src/gct/ingest/index.py
+index 58bbc39..96ed6ff 100644
+--- a/src/gct/ingest/index.py
++++ b/src/gct/ingest/index.py
+@@ -24,6 +24,7 @@ needs when the row pre-exists - wrap, not rewrite; PM-4 seam).
+ 
+ from __future__ import annotations
+ 
++import uuid
+ from collections.abc import Callable
+ from typing import TYPE_CHECKING
+ 
+@@ -57,6 +58,13 @@ if TYPE_CHECKING:
+     from gct.ingest.pipeline import PreparedChunk
+ 
+ 
++def _canonical_class_id(class_id: object) -> str:
++    try:
++        return str(uuid.UUID(class_id))  # type: ignore[arg-type]
++    except (ValueError, TypeError, AttributeError) as exc:
++        raise ValueError(f"a uuid class_id is required; got {class_id!r}") from exc
++
++
+ def index_file(
+     conn: psycopg.Connection,
+     *,
+@@ -111,6 +119,7 @@ def index_file(
+     # Connection guard first: a wiring error outranks a payload error, and both must fire before
+     # the transaction opens so a refused call writes nothing at all.
+     require_idle(conn, "index_file")
++    class_id = _canonical_class_id(class_id)
+ 
+     # Empty-set guard: `executemany` over an empty sequence is a no-op, so steps 1-2 below would
+     # commit alone and publish a `ready` file with zero chunks. Raise (not assert): this guard must
+@@ -226,7 +235,7 @@ def index_file(
+                     {
+                         "file_id": file_id,
+                         "owner_id": chunk.owner_id,
+-                        "class_id": chunk.class_id,
++                        "class_id": _canonical_class_id(chunk.class_id),
+                         "text": chunk.text,
+                         "file": chunk.file,
+                         "page_or_slide": str(chunk.page_or_slide),
+diff --git a/src/gct/retriever/retrieve.py b/src/gct/retriever/retrieve.py
+index fabe882..ad83389 100644
+--- a/src/gct/retriever/retrieve.py
++++ b/src/gct/retriever/retrieve.py
+@@ -25,6 +25,7 @@ exempt from the isolation filter (F6/F12).
+ 
+ from __future__ import annotations
+ 
++import uuid
+ from dataclasses import dataclass
+ 
+ import psycopg
+@@ -143,6 +144,13 @@ def _to_score(distance: float) -> float:
+     return max(0.0, 1.0 - distance)
+ 
+ 
++def _canonical_class_id(class_id: object) -> str:
++    try:
++        return str(uuid.UUID(class_id))  # type: ignore[arg-type]
++    except (ValueError, TypeError, AttributeError) as exc:
++        raise ValueError(f"a uuid class_id is required; got {class_id!r}") from exc
++
++
+ def retrieve(
+     conn: psycopg.Connection,
+     question: str,
+@@ -182,6 +190,7 @@ def retrieve(
+     # 1. Guard FIRST (ADR 0018) - before the paid embed call, so an empty class costs nothing
+     #    and a mismatched class fails before it can produce garbage similarity. A mismatch
+     #    raises out of here; only the empty-class case returns False.
++    class_id = _canonical_class_id(class_id)
+     if not _assert_embedding_consistency(
+         conn, owner_id=owner_id, class_id=class_id, embedder=embedder
+     ):

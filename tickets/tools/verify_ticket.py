@@ -175,7 +175,10 @@ class Verifier:
         self.steps: list[dict] = []
         self.tmp = Path(tempfile.mkdtemp(prefix=f"verify-{tid}-"))
         self.env_base = {k: v for k, v in os.environ.items() if k not in ("VIRTUAL_ENV", "OPENAI_API_KEY")}
-        self.env_base.update({"CI": "1", "OPENAI_API_KEY": "", "GCT_STAGING_DIR": str(self.tmp / "staging")})
+        # UV_PYTHON matches the practice repo's own CI. gct-lab does not compile on Python 3.13+ (a lone
+        # surrogate in a docstring), and with no .python-version uv would otherwise pick the newest one.
+        self.env_base.update({"CI": "1", "OPENAI_API_KEY": "", "GCT_STAGING_DIR": str(self.tmp / "staging"),
+                              "UV_PYTHON": os.environ.get("VERIFY_UV_PYTHON", "3.10")})
 
     def step(self, name: str, ok: bool, **detail) -> bool:
         self.steps.append({"name": name, "ok": bool(ok), **detail})

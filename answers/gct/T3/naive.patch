@@ -1,0 +1,57 @@
+diff --git a/src/gct/classes.py b/src/gct/classes.py
+index 1f76f62..7d9410a 100644
+--- a/src/gct/classes.py
++++ b/src/gct/classes.py
+@@ -205,7 +205,7 @@ def class_exists(conn: psycopg.Connection, *, class_id: str, owner_id: str) -> b
+     """
+     try:
+         canonical = str(uuid.UUID(class_id))
+-    except ValueError as exc:
++    except (ValueError, TypeError, AttributeError) as exc:
+         raise ValueError(
+             f"class_exists() requires a uuid class_id; got {class_id!r}. An id that is not a "
+             "uuid cannot name any class - reject it at the boundary rather than asking the "
+diff --git a/src/gct/files.py b/src/gct/files.py
+index f2a7b21..8086644 100644
+--- a/src/gct/files.py
++++ b/src/gct/files.py
+@@ -83,7 +83,7 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+     """
+     try:
+         canonical = str(uuid.UUID(file_id))
+-    except ValueError as exc:
++    except (ValueError, TypeError, AttributeError) as exc:
+         raise ValueError(
+             f"get_file_status() requires a uuid file_id; got {file_id!r}. An id that is not a "
+             "uuid cannot name any file - reject it at the boundary rather than asking the "
+diff --git a/src/gct/retriever/retrieve.py b/src/gct/retriever/retrieve.py
+index fabe882..cb9a4f6 100644
+--- a/src/gct/retriever/retrieve.py
++++ b/src/gct/retriever/retrieve.py
+@@ -25,6 +25,7 @@ exempt from the isolation filter (F6/F12).
+ 
+ from __future__ import annotations
+ 
++import uuid
+ from dataclasses import dataclass
+ 
+ import psycopg
+@@ -143,6 +144,10 @@ def _to_score(distance: float) -> float:
+     return max(0.0, 1.0 - distance)
+ 
+ 
++def _canonical_class_id(class_id: object) -> str:
++    return str(uuid.UUID(class_id))  # type: ignore[arg-type]
++
++
+ def retrieve(
+     conn: psycopg.Connection,
+     question: str,
+@@ -182,6 +187,7 @@ def retrieve(
+     # 1. Guard FIRST (ADR 0018) - before the paid embed call, so an empty class costs nothing
+     #    and a mismatched class fails before it can produce garbage similarity. A mismatch
+     #    raises out of here; only the empty-class case returns False.
++    class_id = _canonical_class_id(class_id)
+     if not _assert_embedding_consistency(
+         conn, owner_id=owner_id, class_id=class_id, embedder=embedder
+     ):

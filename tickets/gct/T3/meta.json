@@ -1,0 +1,11 @@
+{
+  "id": "T3",
+  "kind": "replay",
+  "title": "Library functions pass a caller's id spelling straight to Postgres, or catch too little of a bad one",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T3",
+  "s3_base_ref": "base/T3-s3",
+  "db": "postgres",
+  "deliverable": "pull_request",
+  "spec_words": {"S0": 0, "S1": 0, "S2": 0, "S3": 0}
+}
