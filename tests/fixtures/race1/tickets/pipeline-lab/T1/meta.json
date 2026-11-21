@@ -1,0 +1,8 @@
+{
+  "id": "T1", "kind": "replay", "title": "Question list: page 2 repeats the last question of page 1",
+  "repo": "Natenc12/pipeline-lab",
+  "base_ref": "main", "s3_base_ref": null,
+  "db": "sqlite",
+  "deliverable": "pull_request",
+  "spec_words": {"S1": 347}
+}

@@ -19,8 +19,17 @@ def main() -> int:
         print("https://github.com/example/lab/pull/7")
     elif args[:2] == ["pr", "edit"]:
         print("https://github.com/example/lab/pull/7")
+    elif args[:2] == ["pr", "checks"] and "--json" in args:
+        print(json.dumps([{"name": "ci", "state": "SUCCESS", "bucket": "pass", "workflow": "ci", "link": "x"}]))
     elif args[:2] == ["pr", "checks"]:
         print("ci\tpass\t1m\thttps://example.invalid/run/1")
+    elif args[:2] == ["pr", "view"]:
+        body = "Fixed the pagination. All tests pass."
+        print(
+            json.dumps(
+                {"title": "Fix pagination", "body": body, "url": "https://example.invalid/pull/7", "state": "OPEN"}
+            )
+        )
     else:
         print(f"fake gh: unsupported {args}", file=sys.stderr)
         return 1
