@@ -41,6 +41,7 @@ from grader.common import (
     transcript_records,
     write_json,
 )
+from grader.grade import find_review_report
 from harness.owner import JUDGE_FLAGS, page_text
 from harness.stream import Usage, find_page
 
@@ -210,9 +211,19 @@ def owner_log(hdir: Path) -> list[dict]:
 
 def review_inputs(info: dict, grade: dict, key: dict, terms: list[str]) -> str:
     folder, hdir = info["folder"], info["hdir"]
-    review = folder / "scratch" / "review.md"
-    report = review.read_text(encoding="utf-8", errors="replace") if review.is_file() else "(no report was written)"
-    key_view = {"planted_bugs": key.get("planted_bugs", []), "not_bugs": key.get("not_bugs", [])}
+    found = grade.get("review_report") if "review_report" in grade else find_review_report(folder)["review_report"]
+    review = Path(found) if found else None
+    inside = review is not None and str(Path(os.path.realpath(review))).startswith(str(folder) + "/")
+    report = (
+        review.read_text(encoding="utf-8", errors="replace")
+        if inside and review.is_file()
+        else "(no report was written)"
+    )
+    key_view = {
+        "planted_bugs": key.get("planted_bugs", []),
+        "not_bugs": key.get("not_bugs", []),
+        "other_real_defects": key.get("other_real_defects", []),
+    }
     parts = [
         "THE REPORT",
         cap(report, 40000),

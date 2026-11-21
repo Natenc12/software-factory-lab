@@ -293,3 +293,47 @@ def test_dryrun_goes_red_when_the_reference_edits_a_test_the_key_does_not_allow(
     (practice["ans"] / "key.json").write_text(json.dumps(key))
     report = dryrun.dry_run(practice["config"], practice["tickets"], practice["answers"])
     assert report["green"], report["tickets"]["T1"]["problems"]
+
+
+def review_folder(practice, tmp_path):
+    meta = json.loads((practice["tickets"] / "tiny" / "T1" / "meta.json").read_text())
+    (practice["tickets"] / "tiny" / "T1" / "meta.json").write_text(json.dumps({**meta, "deliverable": "review_report"}))
+    return make_run_folder(tmp_path, practice, "p0-t1-1", practice["base"], pr_number=None)
+
+
+def grade_review(practice, folder):
+    return grade.grade_run(folder, "gh", tickets_root=practice["tickets"], answers_root=practice["answers"])
+
+
+def test_review_report_written_from_inside_repo_is_found(practice, tmp_path):
+    folder = review_folder(practice, tmp_path)
+    (folder / "repo" / "scratch").mkdir()
+    (folder / "repo" / "scratch" / "review.md").write_text("# Review\nBlocking: bug.\n")
+    g = grade_review(practice, folder)
+    assert g["review_report"] == str(folder / "repo" / "scratch" / "review.md")
+    assert g["review_report_found_by"] == "repo/scratch/review.md" and g["review_report_words"] == 4
+    # The expected place wins over the fallback.
+    (folder / "scratch" / "review.md").write_text("# Review\n")
+    assert grade_review(practice, folder)["review_report_found_by"] == "scratch/review.md"
+
+
+def test_review_report_search_takes_the_newest(practice, tmp_path):
+    import os
+
+    folder = review_folder(practice, tmp_path)
+    old, new = folder / "scratch" / "notes" / "review.md", folder / "repo" / "scratch" / "x" / "review.md"
+    for p in (old, new):
+        p.parent.mkdir(parents=True)
+        p.write_text("# Review\n")
+    os.utime(old, (1_000_000_000, 1_000_000_000))
+    g = grade_review(practice, folder)
+    assert g["review_report"] == str(new) and g["review_report_found_by"] == "search (newest)"
+    assert g["review_report_candidates"] == ["repo/scratch/x/review.md", "scratch/notes/review.md"]
+
+
+def test_missing_review_report_is_recorded_not_a_crash(practice, tmp_path):
+    folder = review_folder(practice, tmp_path)
+    shutil.rmtree(folder / "repo")
+    g = grade_review(practice, folder)
+    assert g["review_report"] is None and g["review_report_missing"] is True and "error" not in g
+    assert g["script_pass"] is None and g["files_changed"] is None
