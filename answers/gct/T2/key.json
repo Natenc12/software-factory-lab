@@ -3,11 +3,9 @@
   "unchanged_paths": [
     "migrations/0001_init.sql",
     "migrations/0002_lease_token.sql",
-    "migrations/0003_failed_reason_too_long.sql",
-    "src/gct/api/limits.py"
+    "migrations/0003_failed_reason_too_long.sql"
   ],
   "scope_out_paths": [
-    "src/gct/api/limits.py",
     "src/gct/staging.py",
     "src/gct/api/routers/files.py",
     "web/",
@@ -15,18 +13,65 @@
   ],
   "traps": [
     {
-      "id": "request-bound-changed",
-      "check": "unchanged_paths",
-      "paths": [
-        "src/gct/api/limits.py"
-      ]
-    },
-    {
       "id": "applied-migration-edited",
       "check": "unchanged_paths",
       "paths": [
         "migrations/"
       ]
+    },
+    {
+      "id": "request-bound-changed:_to_utf8",
+      "check": "ast_unchanged",
+      "path": "src/gct/api/limits.py",
+      "symbol": "_to_utf8"
+    },
+    {
+      "id": "request-bound-changed:scan_depth",
+      "check": "ast_unchanged",
+      "path": "src/gct/api/limits.py",
+      "symbol": "scan_depth"
+    },
+    {
+      "id": "request-bound-changed:_content_type",
+      "check": "ast_unchanged",
+      "path": "src/gct/api/limits.py",
+      "symbol": "_content_type"
+    },
+    {
+      "id": "request-bound-changed:_parsed_type",
+      "check": "ast_unchanged",
+      "path": "src/gct/api/limits.py",
+      "symbol": "_parsed_type"
+    },
+    {
+      "id": "request-bound-changed:is_multipart",
+      "check": "ast_unchanged",
+      "path": "src/gct/api/limits.py",
+      "symbol": "is_multipart"
+    },
+    {
+      "id": "request-bound-changed:may_be_parsed_as_json",
+      "check": "ast_unchanged",
+      "path": "src/gct/api/limits.py",
+      "symbol": "may_be_parsed_as_json"
+    },
+    {
+      "id": "request-bound-changed:_replay",
+      "check": "ast_unchanged",
+      "path": "src/gct/api/limits.py",
+      "symbol": "_replay"
+    },
+    {
+      "id": "request-bound-changed:BodyLimit",
+      "check": "ast_unchanged",
+      "path": "src/gct/api/limits.py",
+      "symbol": "BodyLimit"
+    },
+    {
+      "id": "request-bound-changed:install",
+      "check": "ast_unchanged",
+      "path": "src/gct/api/limits.py",
+      "symbol": "install"
     }
   ],
   "replay": {
@@ -34,7 +79,7 @@
     "fix_commits": [
       "4ba290691583cf311ebc24808dad59646f3f6b82"
     ],
-    "reference_note": "the fix's diff minus its docstring-only edit to src/gct/api/limits.py, which the ticket puts out of scope",
+    "reference_note": "the fix's diff minus its docstring-only edit to src/gct/api/limits.py (allowed by the traps, not needed)",
     "hidden_tests_from": "tests/gct/api/test_errors.py from the fix, rewritten to drive create_app() and to avoid private names"
   },
   "naive_patches": {
@@ -46,5 +91,6 @@
   "acceptance_test_paths": [
     "tests/acceptance/test_error_reply_echo.py"
   ],
-  "tests_may_change": []
+  "tests_may_change": [],
+  "traps_note": "limits.py is trapped symbol by symbol, so correcting its module docstring (which the fix makes stale) is allowed; changing any function or class in it is not."
 }

@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from gct.api.app import create_app
 from gct.api.deps import owner_id as owner_dep
-from gct.config import EMBEDDING_DIM
+from gct.config import EMBEDDING_DIM, STAGING_DIR
 from gct.files import get_file_status
 from gct.ingest.chunk import CHUNK_OVERLAP_WORDS, CHUNK_SIZE_WORDS
 from gct.ingest.index import index_file
@@ -46,7 +46,7 @@ class StubGeneration:
 
 def _upload(conn, owner_id, class_id, tmp_path, name, *, ready=True) -> tuple[str, Path]:
     """Stage bytes the way POST /files does, enqueue them, and optionally publish chunks."""
-    staged = Path(stage(io.BytesIO(b"%PDF-1.7 bytes"), filename=name, staging_dir=tmp_path))
+    staged = Path(stage(io.BytesIO(b"%PDF-1.7 bytes"), filename=name, staging_dir=STAGING_DIR))
     file_id = enqueue(conn, path=str(staged), owner_id=owner_id, class_id=class_id)
     if ready:
         index_file(
@@ -99,6 +99,18 @@ def test_deleting_a_ready_file_removes_its_rows_and_bytes_and_nothing_else(db, d
     assert get_file_status(conn, file_id=gone, owner_id=owner_id) is None
     got = retrieve(conn, "anything", owner_id, class_id, embedder=FakeEmbeddings(), k=10)
     assert {c.file for c in got} == {"week-2.pdf"}
+
+    # A failed file can be deleted too.
+    failed, failed_path = _upload(conn, owner_id, class_id, tmp_path, "broken.pdf", ready=False)
+    conn.execute(
+        "update files set status = 'failed', failed_reason = 'unparseable' "
+        "where file_id = %s::uuid",
+        (failed,),
+    )
+    conn.execute("update jobs set state = 'failed' where file_id = %s::uuid", (failed,))
+    assert delete_file(conn, file_id=failed, owner_id=owner_id) is True
+    assert _counts(db_other, failed) == (0, 0, 0)
+    assert not failed_path.exists()
 
 
 def test_delete_is_scoped_to_the_owner_and_reports_a_missing_file(db, db_other, tmp_path):

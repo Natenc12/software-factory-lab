@@ -32,10 +32,15 @@
     "The route imports the private `_FAILED_MESSAGE`, `_STATUS_MESSAGE` and `_UNKNOWN_FAILURE` maps from the files router. A style point, not a defect: the messages match GET /files/{file_id} as intended.",
     "Newest first with `file_id` as the tie-breaker is the intended order, not a mistake.",
     "Another owner's class answers 404 class_not_found, the same as a missing class. Intended (owners must not learn of each other's classes).",
-    "`per_page` is capped at 100 and `page` must be at least 1; FastAPI answers 422 outside those bounds. Intended.",
+    "The lower bound of `page` (at least 1) and both bounds of `per_page` (1 to 100) are intended; FastAPI answers 422 outside them. This does not cover a huge `page`, which is a real defect (see other_real_defects).",
     "No migration or index is added; `files_class_idx` on files(class_id) already exists.",
     "`list_class_files` calls `class_exists` and then a second query, so a class deleted in between could give an empty list. There is no class deletion in the app, so this cannot happen.",
     "`status` is limited by a Literal in the route, so an unknown status answers 422 before reaching the library.",
     "`created_at.isoformat()` includes the timezone offset; that is valid ISO 8601."
+  ],
+  "other_real_defects": [
+    "A very large `page` (for example ?page=9223372036854775807) answers 500: `page` has no upper bound and the offset overflows bigint in Postgres.",
+    "web/src/api/schema.gen.ts is not regenerated for the new route, though web/scripts/api-types.test.ts pins it to web/openapi.json.",
+    "No test exercises the route or the status filter; the feature's tests cover only the library function without a filter, which is why all three planted bugs survive a green suite."
   ]
 }

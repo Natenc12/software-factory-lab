@@ -5,3 +5,7 @@ line-length = 100
 
 [lint.isort]
 known-first-party = ["gct"]
+
+[lint]
+# gct-lab enforces E501 at 100; this repo's pyproject ignores it, so turn it back on here.
+extend-select = ["E501"]

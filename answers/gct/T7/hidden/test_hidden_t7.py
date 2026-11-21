@@ -145,6 +145,16 @@ def test_a_bad_existing_value_stops_the_migration_and_changes_nothing(scratch):
     assert _pages(scratch) == {cid: int(p) for cid, p in fixed.items()}
 
 
+@pytest.mark.parametrize("bad", ["3a", "2.7", "p. 12"])
+def test_a_value_that_only_looks_like_a_number_is_not_guessed(scratch, bad):
+    """Stripping stray characters or rounding is guessing: the migration must stop instead."""
+    seeded = _seed(scratch, ["1", bad, "7"])
+    out = _migrate(scratch)
+    assert out.returncode != 0, f"{bad!r} must stop the migration, not become a number"
+    assert _column_type(scratch) == "text"
+    assert _pages(scratch) == seeded
+
+
 def test_the_database_refuses_a_page_below_one(db):
     conn, owner_id, class_id = db
     conn.autocommit = True

@@ -1,0 +1,119 @@
+diff --git a/src/gct/api/routers/classes.py b/src/gct/api/routers/classes.py
+index 90b44c1..bd5dbee 100644
+--- a/src/gct/api/routers/classes.py
++++ b/src/gct/api/routers/classes.py
+@@ -55,7 +55,7 @@ from pydantic import BaseModel, ConfigDict
+ 
+ from gct.api.deps import Conn, OwnerId
+ from gct.api.errors import ApiError
+-from gct.classes import ClassNameError, create_class
++from gct.classes import ClassNameError, ClassNameTaken, create_class
+ 
+ router = APIRouter(prefix="/classes", tags=["classes"])
+ 
+@@ -173,4 +173,11 @@ def create(conn: Conn, owner: OwnerId, body: NewClass) -> ClassCreated:
+     except ClassNameError as exc:
+         kind, message = _NAME_REFUSAL[exc.reason]
+         raise ApiError(400, kind, message) from exc
++    except ClassNameTaken as exc:
++        raise ApiError(
++            409,
++            "class_name_taken",
++            "You already have a class with this name. Pick a different name, or upload to the "
++            "class you already have.",
++        ) from exc
+     return ClassCreated(class_id=class_id, name=body.name)
+diff --git a/src/gct/classes.py b/src/gct/classes.py
+index 34516fd..b31ab80 100644
+--- a/src/gct/classes.py
++++ b/src/gct/classes.py
+@@ -121,6 +121,30 @@ def validate_name(name: str) -> str:
+     return name
+ 
+ 
++class ClassNameTaken(ValueError):
++    """`create_class` was asked for a name this owner already uses.
++
++    Not a `ClassNameError`: that set is closed and describes names no class may have. This one
++    is about the owner's other classes, and an adapter answers it differently (409, not 400).
++    """
++
++    def __init__(self, name: str) -> None:
++        super().__init__(
++            f"this owner already has a class named {name!r} - pick a different name, or use the "
++            "existing class"
++        )
++        self.name = name
++
++
++def name_key(name: str) -> str:
++    """What two class names are compared on: case-insensitive, whitespace trimmed and collapsed.
++
++    `"Biology 101"`, `" biology  101 "` and `"BIOLOGY\t101"` share a key; `"Biology-101"` does
++    not. The stored name is still exactly what was typed - this is only the comparison.
++    """
++    return "".join(name.split()).casefold()
++
++
+ def create_class(conn: psycopg.Connection, *, owner_id: str, name: str) -> str:
+     """Create one `classes` row for `owner_id`; commit; return its `class_id` as a `str`.
+ 
+@@ -163,6 +187,14 @@ def create_class(conn: psycopg.Connection, *, owner_id: str, name: str) -> str:
+     name = validate_name(name)
+ 
+     with conn.transaction():
++        # One create per owner at a time, so two requests cannot both pass the check below.
++        conn.execute("select pg_advisory_xact_lock(hashtext(%(owner_id)s))", {"owner_id": owner_id})
++        taken = conn.execute(
++            "select name from classes where owner_id = %(owner_id)s", {"owner_id": owner_id}
++        ).fetchall()
++        key = name_key(name)
++        if any(name_key(existing) == key for (existing,) in taken):
++            raise ClassNameTaken(name)
+         row = conn.execute(
+             """
+             insert into classes (owner_id, name)
+diff --git a/tests/gct/test_class_name_taken.py b/tests/gct/test_class_name_taken.py
+new file mode 100644
+index 0000000..1c0ae8b
+--- /dev/null
++++ b/tests/gct/test_class_name_taken.py
+@@ -0,0 +1,38 @@
++"""One owner cannot have two classes with the same name (case and spacing ignored)."""
++
++from __future__ import annotations
++
++import pytest
++
++from gct.classes import ClassNameTaken, create_class, name_key
++
++
++@pytest.mark.parametrize(
++    "variant", ["Biology 101", "biology 101", " Biology   101 ", "BIOLOGY\t101"]
++)
++def test_a_name_differing_only_in_case_or_spacing_is_taken(db, variant):
++    conn, owner_id, _ = db
++    conn.autocommit = True
++    create_class(conn, owner_id=owner_id, name="Biology 101")
++    with pytest.raises(ClassNameTaken):
++        create_class(conn, owner_id=owner_id, name=variant)
++
++
++def test_other_names_and_other_owners_are_free(db, db_other):
++    conn, owner_id, _ = db
++    conn.autocommit = True
++    create_class(conn, owner_id=owner_id, name="Biology 101")
++    create_class(conn, owner_id=owner_id, name="Biology-101")
++    create_class(conn, owner_id=f"{owner_id}-other", name="biology 101")
++    try:
++        names = db_other.execute(
++            "select name from classes where owner_id = %s order by name", (owner_id,)
++        ).fetchall()
++        assert names == [("Biology 101",), ("Biology-101",), ("test class",)]
++    finally:
++        conn.execute("delete from classes where owner_id = %s", (f"{owner_id}-other",))
++
++
++def test_name_key():
++    assert name_key("  Biology \n 101 ") == name_key("biology 101")
++    assert name_key("Biology-101") != name_key("Biology 101")

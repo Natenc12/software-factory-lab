@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from gct.api.app import create_app
 from gct.api.deps import owner_id as owner_dep
-from gct.config import EMBEDDING_DIM
+from gct.config import EMBEDDING_DIM, STAGING_DIR
 from gct.files import delete_file, get_file_status
 from gct.ingest.index import index_file
 from gct.ingest.pipeline import PreparedChunk
@@ -37,7 +37,7 @@ class StubGeneration:
 
 
 def ready_file(conn, owner_id, class_id, tmp_path, name):
-    staged = Path(stage(io.BytesIO(b"bytes"), filename=name, staging_dir=tmp_path))
+    staged = Path(stage(io.BytesIO(b"bytes"), filename=name, staging_dir=STAGING_DIR))
     file_id = enqueue(conn, path=str(staged), owner_id=owner_id, class_id=class_id)
     index_file(
         conn,
@@ -117,7 +117,7 @@ def test_example_5_delete_route_then_status_is_404(http, db, tmp_path):
 def test_example_8_a_processing_file_is_409(http, db, db_other, tmp_path):
     conn, owner, class_id = db
     conn.autocommit = True
-    staged = stage(io.BytesIO(b"bytes"), filename="busy.pdf", staging_dir=tmp_path)
+    staged = stage(io.BytesIO(b"bytes"), filename="busy.pdf", staging_dir=STAGING_DIR)
     file_id = enqueue(conn, path=staged, owner_id=owner, class_id=class_id)
     conn.execute("update files set status = 'processing' where file_id = %s::uuid", (file_id,))
     response = http.delete(f"/files/{file_id}")

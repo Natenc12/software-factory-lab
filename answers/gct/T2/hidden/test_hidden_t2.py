@@ -140,6 +140,14 @@ def test_a_long_string_inside_a_json_body_is_bounded_and_the_boundary_is_exact(p
     assert len(response.content) < 4096
     assert all(len(s) <= BOUND for s in _strings(response.json()))
 
+    # Strings nested inside a rejected object are bounded too: a missing required field echoes the
+    # whole body object as `input`.
+    for body in ({"nome": big}, {"k" * 5_000: 1}):
+        response = probe.post("/probe", json=body)
+        assert response.status_code == 422
+        assert len(response.content) < 4096
+        assert all(len(s) <= BOUND for s in _strings(response.json()))
+
 
 def test_a_client_sized_key_is_bounded_where_it_is_echoed(probe):
     key = "k" * 5_000

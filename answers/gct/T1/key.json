@@ -34,7 +34,7 @@
     "source": "Natenc12/grounded-class-tutor issue #24",
     "fix_commits": [
       "c05d4fb5c533961f74843e8132fb4714892d9178",
-      "8d8866f"
+      "8d8866f3d880f1472fbfdc20a00e1e287916aeda"
     ],
     "hidden_tests_from": "tests added by the fix in tests/gct/ingest/test_index.py and tests/gct/jobs/test_worker.py; only the ones that fail on the base, some folded together"
   },

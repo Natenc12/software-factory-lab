@@ -196,6 +196,19 @@ def test_index_file_refuses_a_non_canonical_file_id_or_a_bad_class_id_and_writes
         "select count(*) from chunks where file_id = %s::uuid", (target,)
     ).fetchone() == (0,)
 
+    # The standard hyphenated form is accepted in either letter case.
+    index_file(
+        conn,
+        file_id=target.upper(),
+        filename="lecture.pdf",
+        owner_id=owner_id,
+        class_id=class_id,
+        chunks=[chunk(owner_id, class_id, "one")],
+    )
+    assert db_other.execute(
+        "select status from files where file_id = %s::uuid", (target,)
+    ).fetchone() == ("ready",)
+
 
 def test_ingest_file_refuses_a_bad_class_id_before_paying_for_embeddings(db, db_other, tmp_path):
     conn, owner_id, class_id = db

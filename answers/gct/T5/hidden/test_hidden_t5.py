@@ -53,7 +53,14 @@ SAME = [
     "Biology  101 ",
     "Biology\t101",
 ]
-DIFFERENT = ["Biology 102", "Biology-101", "Biologie 101", "Biology 1010"]
+DIFFERENT = [
+    "Biology 102",
+    "Biology-101",
+    "Biologie 101",
+    "Biology 1010",
+    "Biology101",
+    "Biólogy 101",
+]
 
 
 def test_a_name_that_differs_only_in_case_or_spacing_is_refused(db, db_other):
