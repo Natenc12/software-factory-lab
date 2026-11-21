@@ -16,6 +16,8 @@ Read first, in this order:
 
 Models: runners use Opus 5.5 (claude-opus-5-5) unless the arm says Fable 5.2 (claude-fable-5-2). You are Fable 5.2.
 
+The owner's decisions (Nov 21, 2026), already settled: run the full stage 1, all 72 runs (process arms plus spec levels); a separate blind judge agent picks each stand-in reply from the frozen sheet; freeze GCT at today's main; the research agent shortlists 3–5 other repos and the owner picks 1–2; after stage 3 the winner replaces work-ticket through a reviewed pull request.
+
 Your first stop: write a plan page and publish it as an artifact. Make it visual first, in plain English, using the 4-slot strip (Status | From you | Risk | Updated). It shows: the design you will freeze, anything in the charter you would change and why, the exact GitHub actions you will take (starting with creating the private repo Natenc12/software-factory-lab), the token budget for setup and stage 1, and the run schedule. Then stop and wait for the owner's yes. Nothing costly runs before it.
 
 After the yes, in order, stopping at each gate the charter names:
