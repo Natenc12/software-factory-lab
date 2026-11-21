@@ -6,22 +6,22 @@
   "base_sha": "169f391941558d26bbc0a91df8f8db824d2fef8e",
   "s3_base_ref": null,
   "s3_sha": null,
-  "started": "2026-11-21T20:17:45+00:00",
-  "finished": "2026-11-21T20:19:35+00:00",
+  "started": "2026-11-21T20:45:25+00:00",
+  "finished": "2026-11-21T20:47:17+00:00",
   "databases_dropped": [
-    "author_gct_t8_base_25123",
-    "author_gct_t8_ref_25123"
+    "author_gct_t8_base_16835",
+    "author_gct_t8_ref_16835"
   ],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "1179 passed, 1 deselected in 50.38s",
+      "note": "1179 passed, 1 deselected in 51.27s",
       "counts": {
         "passed": 1179
       },
-      "seconds": 52.1,
+      "seconds": 53.0,
       "log_tail": ""
     },
     {
@@ -34,14 +34,14 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "3 failed in 0.53s",
+      "note": "3 failed in 0.70s",
       "outcomes": {
         "tests.hidden.test_hidden_t8::test_bug_1_page_one_is_the_first_page": "failed",
         "tests.hidden.test_hidden_t8::test_bug_2_an_empty_class_is_an_empty_list_not_a_404": "failed",
         "tests.hidden.test_hidden_t8::test_bug_3_the_status_filter_runs": "failed"
       },
       "not_failing": [],
-      "seconds": 1.2
+      "seconds": 1.5
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -66,12 +66,12 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "1182 passed, 1 deselected in 47.76s",
+      "note": "1182 passed, 1 deselected in 47.42s",
       "counts": {
         "passed": 1182
       },
       "failing": [],
-      "seconds": 48.7,
+      "seconds": 48.4,
       "log_tail": ""
     },
     {
@@ -109,7 +109,7 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "1.2s"
+      "note": "1.3s"
     }
   ]
 }

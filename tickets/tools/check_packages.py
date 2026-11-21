@@ -2,16 +2,25 @@
 
     python3 tickets/tools/check_packages.py gct
 
-Static checks only (no database, no practice repo): required files exist, `meta.json` and
-`key.json` carry the fields the format names, `spec_words` matches the ticket files, every reply in
-`replies.md` parses with the harness's own parser and carries the ticket's prefix, and the latest
-`verify.json` is green. Exits 1 and lists every problem it finds.
+Static checks (no database): required files exist, `meta.json` and `key.json` carry the fields the
+format names, `spec_words` matches the ticket files, every reply in `replies.md` parses with the
+harness's own parser and carries the ticket's prefix, and the latest `verify.json` is green.
+
+With `--lab <clone of the practice repo>` it also applies each `reference.patch` to its `base_ref` in a
+temporary worktree and checks that every existing test function the patch modifies or removes is
+covered by `key.json`'s `tests_may_change` (a `path` or `path::name` pattern).
+
+Exits 1 and lists every problem it finds.
 """
 
 from __future__ import annotations
 
+import argparse
+import ast
 import json
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -88,10 +97,65 @@ def check(codebase: str) -> list[str]:
     return problems
 
 
+def _test_functions(src: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for node in ast.parse(src).body:
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            out[node.name] = ast.dump(node)
+        elif isinstance(node, ast.ClassDef):
+            for m in node.body:
+                if isinstance(m, ast.FunctionDef | ast.AsyncFunctionDef):
+                    out[f"{node.name}::{m.name}"] = ast.dump(m)
+    return out
+
+
+def touched_existing_tests(lab: Path, base_ref: str, patch: Path) -> list[str]:
+    """`path::name` of every function in an existing test file that `patch` modifies or removes."""
+    touched: list[str] = []
+    with tempfile.TemporaryDirectory() as tmp:
+        wt = Path(tmp) / "wt"
+        subprocess.run(["git", "-C", str(lab), "worktree", "add", "-q", "--detach", str(wt), base_ref], check=True)
+        try:
+            subprocess.run(["git", "apply", str(patch)], cwd=wt, check=True)
+            changed = subprocess.run(["git", "diff", "--name-only"], cwd=wt, capture_output=True, text=True)
+            for path in changed.stdout.split():
+                if not (path.startswith("tests/") and path.endswith(".py")):
+                    continue
+                old = subprocess.run(["git", "show", f"HEAD:{path}"], cwd=wt, capture_output=True, text=True).stdout
+                new = (wt / path).read_text() if (wt / path).exists() else ""
+                before, after = _test_functions(old), _test_functions(new)
+                touched += [f"{path}::{n}" for n, dump in before.items() if after.get(n) != dump]
+        finally:
+            subprocess.run(["git", "-C", str(lab), "worktree", "remove", "--force", str(wt)], check=False)
+    return touched
+
+
+def check_tests_may_change(codebase: str, lab: Path) -> list[str]:
+    problems: list[str] = []
+    for tid in [f"T{i}" for i in range(1, 8)]:
+        meta = json.loads((ROOT / "tickets" / codebase / tid / "meta.json").read_text())
+        key = json.loads((ROOT / "answers" / codebase / tid / "key.json").read_text())
+        if "tests_may_change" not in key:
+            problems.append(f"{tid}: key.json lacks tests_may_change")
+            continue
+        allowed = key["tests_may_change"]
+        patch = ROOT / "answers" / codebase / tid / "reference.patch"
+        for name in touched_existing_tests(lab, meta["base_ref"], patch):
+            path = name.split("::")[0]
+            if not any(name == a or path == a for a in allowed):
+                problems.append(f"{tid}: reference.patch changes {name}, not in tests_may_change")
+    return problems
+
+
 def main(argv: list[str] | None = None) -> int:
-    argv = sys.argv[1:] if argv is None else argv
-    codebase = argv[0] if argv else "gct"
+    ap = argparse.ArgumentParser()
+    ap.add_argument("codebase", nargs="?", default="gct")
+    ap.add_argument("--lab", help="local clone of the practice repo, to check tests_may_change")
+    args = ap.parse_args(argv)
+    codebase = args.codebase
     problems = check(codebase)
+    if args.lab:
+        problems += check_tests_may_change(codebase, Path(args.lab).expanduser())
     for p in problems:
         print(p)
     print(f"{codebase}: {'OK' if not problems else f'{len(problems)} problem(s)'}")

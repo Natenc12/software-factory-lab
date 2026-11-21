@@ -7,15 +7,36 @@
     "src/gct/jobs/worker.py",
     "src/gct/retriever/retrieve.py"
   ],
-  "scope_out_paths": ["src/gct/jobs/worker.py", "src/gct/retriever/", "migrations/", "web/src/"],
+  "scope_out_paths": [
+    "src/gct/jobs/worker.py",
+    "src/gct/retriever/",
+    "migrations/",
+    "web/src/"
+  ],
   "traps": [
-    {"id": "worker-changed", "check": "unchanged_paths", "paths": ["src/gct/jobs/worker.py"]},
-    {"id": "applied-migration-edited", "check": "unchanged_paths", "paths": ["migrations/"]}
+    {
+      "id": "worker-changed",
+      "check": "unchanged_paths",
+      "paths": [
+        "src/gct/jobs/worker.py"
+      ]
+    },
+    {
+      "id": "applied-migration-edited",
+      "check": "unchanged_paths",
+      "paths": [
+        "migrations/"
+      ]
+    }
   ],
   "naive_patches": {
     "naive.patch": "deletes rows correctly but leaves the staged bytes on disk, and treats only files.status = 'processing' as busy",
     "naive-s3.patch": "complete except the busy check reads only files.status, so a job the worker has just claimed can be deleted under it"
   },
   "planted_bugs": [],
-  "not_bugs": []
+  "not_bugs": [],
+  "acceptance_test_paths": [
+    "tests/acceptance/test_delete_a_file.py"
+  ],
+  "tests_may_change": []
 }

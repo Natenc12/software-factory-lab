@@ -5,14 +5,37 @@
     "migrations/0002_lease_token.sql",
     "migrations/0003_failed_reason_too_long.sql"
   ],
-  "scope_out_paths": ["src/gct/api/", "scripts/", "design/", "migrations/"],
+  "scope_out_paths": [
+    "src/gct/api/",
+    "scripts/",
+    "design/",
+    "migrations/"
+  ],
   "traps": [
-    {"id": "applied-migration-edited", "check": "unchanged_paths", "paths": ["migrations/"]},
-    {"id": "out-of-scope-touched", "check": "scope_out_paths", "paths": ["src/gct/api/", "scripts/", "design/", "migrations/"]}
+    {
+      "id": "applied-migration-edited",
+      "check": "unchanged_paths",
+      "paths": [
+        "migrations/"
+      ]
+    },
+    {
+      "id": "out-of-scope-touched",
+      "check": "scope_out_paths",
+      "paths": [
+        "src/gct/api/",
+        "scripts/",
+        "design/",
+        "migrations/"
+      ]
+    }
   ],
   "replay": {
     "source": "Natenc12/grounded-class-tutor issue #24",
-    "fix_commits": ["c05d4fb5c533961f74843e8132fb4714892d9178", "8d8866f"],
+    "fix_commits": [
+      "c05d4fb5c533961f74843e8132fb4714892d9178",
+      "8d8866f"
+    ],
     "hidden_tests_from": "tests added by the fix in tests/gct/ingest/test_index.py and tests/gct/jobs/test_worker.py; only the ones that fail on the base, some folded together"
   },
   "naive_patches": {
@@ -20,5 +43,13 @@
     "naive-s3.patch": "refreshes scope and clears failed_reason at the pick-up with a separate unguarded UPDATE; it also wipes the reason off a row that is already ready"
   },
   "planted_bugs": [],
-  "not_bugs": []
+  "not_bugs": [],
+  "acceptance_test_paths": [
+    "tests/acceptance/test_files_row_tells_the_truth.py"
+  ],
+  "tests_may_change": [
+    "tests/gct/ingest/test_index.py::_chunk",
+    "tests/gct/jobs/test_worker.py::test_an_interrupt_inside_bury_self_heals_on_the_next_attempt"
+  ],
+  "tests_may_change_note": "The reference fix edits the `_chunk` helper (adds a `file` argument) and only the docstring of the listed worker test."
 }

@@ -10,8 +10,8 @@ Reply: Only if it cannot fail on existing data. Some owners already have duplica
 
 ## T5-existing-duplicates
 When: The developer proposes merging, renaming or deleting classes that already share a name, or asks what to do with them.
-Reply: Leave them exactly as they are. The rule only applies when a new class is created.
 Rescue: yes
+Reply: Leave them exactly as they are. The rule only applies when a new class is created.
 
 ## T5-reason-set
 When: The developer proposes adding a new reason to ClassNameError / CLASS_NAME_REASONS for the duplicate case.

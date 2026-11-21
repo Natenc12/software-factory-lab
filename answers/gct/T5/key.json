@@ -5,9 +5,20 @@
     "migrations/0003_failed_reason_too_long.sql",
     "migrations/0004_one_worker.sql"
   ],
-  "scope_out_paths": ["migrations/0001_init.sql", "migrations/0003_failed_reason_too_long.sql", "migrations/0004_one_worker.sql", "web/src/"],
+  "scope_out_paths": [
+    "migrations/0001_init.sql",
+    "migrations/0003_failed_reason_too_long.sql",
+    "migrations/0004_one_worker.sql",
+    "web/src/"
+  ],
   "traps": [
-    {"id": "applied-migration-edited", "check": "unchanged_paths", "paths": ["migrations/"]}
+    {
+      "id": "applied-migration-edited",
+      "check": "unchanged_paths",
+      "paths": [
+        "migrations/"
+      ]
+    }
   ],
   "open_decision": {
     "what": "When two class names count as the same name. S0 and S1 leave it open (S1 says so in its Decisions); S2 and S3 state the answer.",
@@ -20,5 +31,9 @@
     "naive-s3.patch": "ignores case but not spacing, so '  Biology   101 ' and 'Biology\\t101' get through"
   },
   "planted_bugs": [],
-  "not_bugs": []
+  "not_bugs": [],
+  "acceptance_test_paths": [
+    "tests/acceptance/test_class_names_are_unique.py"
+  ],
+  "tests_may_change": []
 }

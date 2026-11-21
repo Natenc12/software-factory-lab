@@ -5,14 +5,32 @@
     "migrations/0002_lease_token.sql",
     "migrations/0003_failed_reason_too_long.sql"
   ],
-  "scope_out_paths": ["src/gct/jobs/queue.py", "migrations/", "web/"],
+  "scope_out_paths": [
+    "src/gct/jobs/queue.py",
+    "migrations/",
+    "web/"
+  ],
   "traps": [
-    {"id": "applied-migration-edited", "check": "unchanged_paths", "paths": ["migrations/"]},
-    {"id": "enqueue-touched", "check": "scope_out_paths", "paths": ["src/gct/jobs/queue.py"]}
+    {
+      "id": "applied-migration-edited",
+      "check": "unchanged_paths",
+      "paths": [
+        "migrations/"
+      ]
+    },
+    {
+      "id": "enqueue-touched",
+      "check": "scope_out_paths",
+      "paths": [
+        "src/gct/jobs/queue.py"
+      ]
+    }
   ],
   "replay": {
     "source": "Natenc12/grounded-class-tutor issue #126",
-    "fix_commits": ["9fa6eb4f"],
+    "fix_commits": [
+      "9fa6eb4f"
+    ],
     "reference_note": "the fix minus its docstring-only edits to src/gct/jobs/queue.py and src/gct/api/routers/ask.py",
     "hidden_tests_from": "the fix's tests in test_classes.py, test_files.py, test_retrieve.py, test_index.py and test_pipeline.py, merged into one test per site"
   },
@@ -21,5 +39,13 @@
     "naive-s3.patch": "widens the excepts and canonicalises class_id in retrieve and index_file, but leaves index_file's file_id lenient-by-Postgres and lets ingest_file pay for embeddings before the refusal"
   },
   "planted_bugs": [],
-  "not_bugs": []
+  "not_bugs": [],
+  "acceptance_test_paths": [
+    "tests/acceptance/test_id_boundaries.py"
+  ],
+  "tests_may_change": [
+    "tests/gct/api/test_ask_router.py::test_every_uuid_spelling_python_accepts_reaches_the_same_class",
+    "tests/gct/ingest/test_pipeline.py::test_ingest_file_rejects_a_malformed_file_id_before_spending_anything"
+  ],
+  "tests_may_change_note": "The reference fix updates the two listed tests, which pinned the old behaviour of the ids they pass."
 }

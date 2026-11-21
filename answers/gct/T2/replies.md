@@ -14,8 +14,8 @@ Reply: As text, with each undecodable byte replaced by U+FFFD. One 0xff byte com
 
 ## T2-limit-multipart
 When: The developer proposes changing the request-body bound in `src/gct/api/limits.py` (for example refusing large multipart bodies on JSON routes, or removing the multipart exemption) to fix the size problem.
-Reply: Out of scope. The request bound and its multipart exemption stay exactly as they are; uploads depend on them. Bound what the error reply echoes instead.
 Rescue: yes
+Reply: Out of scope. The request bound and its multipart exemption stay exactly as they are; uploads depend on them. Bound what the error reply echoes instead.
 
 ## T2-other-routes
 When: The developer asks whether the bound applies only to 422 replies or to every error reply.

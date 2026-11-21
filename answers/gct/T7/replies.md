@@ -2,8 +2,8 @@
 
 ## T7-edit-applied-migration
 When: The developer proposes editing an applied migration (for example changing `page_or_slide text` to `integer` in `migrations/0001_init.sql`), or asks whether that is acceptable.
-Reply: No. Applied migrations stay byte-for-byte as they are; databases that already ran them would never see the edit. Put the change in a new migration file.
 Rescue: yes
+Reply: No. Applied migrations stay byte-for-byte as they are; databases that already ran them would never see the edit. Put the change in a new migration file.
 
 ## T7-bad-rows
 When: The developer asks what to do with existing rows whose page value is not a whole number of at least 1 (delete them, set them to NULL or 1, skip them).

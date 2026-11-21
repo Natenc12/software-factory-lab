@@ -6,27 +6,27 @@
   "base_sha": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "s3_base_ref": "base/T7-s3",
   "s3_sha": "1ab787e3bca6c132ab20080cc49dde45874780c8",
-  "started": "2026-11-21T19:33:47+00:00",
-  "finished": "2026-11-21T19:38:06+00:00",
+  "started": "2026-11-21T20:40:59+00:00",
+  "finished": "2026-11-21T20:45:25+00:00",
   "databases_dropped": [
-    "author_gct_t7_base_97686",
-    "author_gct_t7_ref_97686",
-    "author_gct_t7_naive_s3_97686",
-    "author_gct_t7_naive_97686",
-    "author_gct_t7_s3base_97686",
-    "author_gct_t7_s3ref_97686",
-    "author_gct_t7_s3naive_97686"
+    "author_gct_t7_base_10805",
+    "author_gct_t7_ref_10805",
+    "author_gct_t7_naive_s3_10805",
+    "author_gct_t7_naive_10805",
+    "author_gct_t7_s3base_10805",
+    "author_gct_t7_s3ref_10805",
+    "author_gct_t7_s3naive_10805"
   ],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "1175 passed, 1 deselected in 48.33s",
+      "note": "1175 passed, 1 deselected in 48.91s",
       "counts": {
         "passed": 1175
       },
-      "seconds": 49.8,
+      "seconds": 50.5,
       "log_tail": ""
     },
     {
@@ -39,7 +39,7 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "5 failed in 1.88s",
+      "note": "5 failed in 2.15s",
       "outcomes": {
         "tests.hidden.test_hidden_t7::test_existing_rows_survive_the_conversion_and_sort_as_numbers": "failed",
         "tests.hidden.test_hidden_t7::test_a_fresh_database_migrates_to_an_integer_column_twice": "failed",
@@ -48,7 +48,7 @@
         "tests.hidden.test_hidden_t7::test_index_file_stores_integers_and_retrieve_returns_them": "failed"
       },
       "not_failing": [],
-      "seconds": 2.5
+      "seconds": 2.8
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -79,7 +79,7 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "1180 passed, 1 deselected in 46.95s",
+      "note": "1180 passed, 1 deselected in 46.93s",
       "counts": {
         "passed": 1180
       },
@@ -122,7 +122,7 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "2.7s"
+      "note": "2.8s"
     },
     {
       "name": "naive-s3.patch: at least one hidden test fails",
@@ -161,7 +161,7 @@
     {
       "name": "s3: acceptance tests fail on the S3 branch",
       "ok": true,
-      "note": "3 failed in 0.71s",
+      "note": "3 failed in 0.74s",
       "outcomes": {
         "tests.acceptance.test_page_numbers_are_integers::test_example_1_existing_pages_become_integers": "failed",
         "tests.acceptance.test_page_numbers_are_integers::test_example_4_index_and_retrieve_use_integers": "failed",
@@ -171,7 +171,7 @@
     {
       "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
       "ok": true,
-      "note": "1183 passed, 1 deselected in 46.70s",
+      "note": "1183 passed, 1 deselected in 50.12s",
       "failing": [],
       "log_tail": ""
     },

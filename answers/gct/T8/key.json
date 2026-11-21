@@ -4,7 +4,16 @@
   "unchanged_paths": [],
   "scope_out_paths": [],
   "traps": [
-    {"id": "code-changed-in-review", "check": "unchanged_paths", "paths": ["src/", "tests/", "migrations/", "web/"]}
+    {
+      "id": "code-changed-in-review",
+      "check": "unchanged_paths",
+      "paths": [
+        "src/",
+        "tests/",
+        "migrations/",
+        "web/"
+      ]
+    }
   ],
   "planted_bugs": [
     {
