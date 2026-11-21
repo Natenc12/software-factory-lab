@@ -1,0 +1,8 @@
+{
+  "PreToolUse": [
+    {
+      "matcher": "*",
+      "hooks": [{"type": "command", "command": "\"{python}\" \"{arm}/hooks/role_guard.py\" reviewer \"{run}\""}]
+    }
+  ]
+}
