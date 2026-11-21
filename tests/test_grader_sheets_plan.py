@@ -140,6 +140,7 @@ def test_make_plan_three_parts_and_ceilings(tmp_path):
     assert runs["p0s3-t3-1"]["base"] == "base/T3-s3" and runs["p0s3-t3-1"]["ticket"].endswith("gct/T3/S3.md")
     assert runs["p0-t3-1"]["base"] == "base/T3" and "arm" not in runs["p0-t3-1"]
     assert runs["p3-t3-1"]["arm"].endswith("arms/P3") and runs["p3-t3-1"]["db"] == "postgres"
+    assert runs["p3-t3-1"]["env"] == ["UV_PYTHON=3.10"], "run_env from grader/codebases/gct.json"
     sheet = Path(runs["p3-t3-1"]["reply_sheet"])
     assert sheet.name == "gct-T3.md" and "T3-q" in sheet.read_text()
 

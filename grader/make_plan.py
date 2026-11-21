@@ -27,7 +27,16 @@ import sys
 from pathlib import Path
 
 from grader.build_sheet import build as build_sheet
-from grader.common import ANSWERS_ROOT, ARM_ORDER, LAB_ROOT, TICKETS_ROOT, now_iso, read_json, write_json
+from grader.common import (
+    ANSWERS_ROOT,
+    ARM_ORDER,
+    LAB_ROOT,
+    TICKETS_ROOT,
+    load_config,
+    now_iso,
+    read_json,
+    write_json,
+)
 
 STAGE_BUDGET = 24_000_000
 CEILINGS = {"P0": 400_000, "P1": 500_000, "P1R": 600_000, "P2": 700_000, "P3": 700_000, "P4": 1_600_000}
@@ -67,6 +76,11 @@ def plan_runs(codebase: str, tickets_root: Path, arms_root: Path, sheets: dict, 
         if arm != "P0" and arm_dir(arm, arms_root) is None:
             problems.append(f"arm {arm}: folder {arms_root / arm} missing")
 
+    try:
+        run_env = load_config(codebase).get("run_env") or {}
+    except SystemExit:
+        run_env = {}
+
     def spec_ok(t: str, spec: str) -> bool:
         meta = metas[t]
         return meta.get("deliverable", "pull_request") == "pull_request" or spec == "S1"
@@ -96,6 +110,8 @@ def plan_runs(codebase: str, tickets_root: Path, arms_root: Path, sheets: dict, 
         }
         if spec_arm:
             r["arm"] = spec_arm
+        if run_env:
+            r["env"] = [f"{k}={v}" for k, v in sorted(run_env.items())]
         return r
 
     meter = [one(arm, METER_TICKET, "S1") for arm in ARM_ORDER]

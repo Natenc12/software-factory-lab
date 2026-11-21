@@ -199,7 +199,12 @@ def settings(root: Path, cfg: dict, allow_domains: list[str] = NET_ALLOW, unix_s
             ),
             "allowRead": [str(root)],
         },
-        "network": {"allowedDomains": list(allow_domains), "allowUnixSockets": list(unix_sockets)},
+        # allowLocalBinding: a project's own tests may start a server on localhost and talk to it.
+        "network": {
+            "allowedDomains": list(allow_domains),
+            "allowUnixSockets": list(unix_sockets),
+            "allowLocalBinding": True,
+        },
     }
     file_tools = [t for t in ALLOWED_TOOLS.split() if t not in ("Edit", "Write", "NotebookEdit")]
     return {
@@ -229,6 +234,7 @@ def create(
     pg_bin: str = "psql",
     extra_forbidden: list[str] = (),
     allow_domains: list[str] = (),
+    extra_env: dict | None = None,
 ) -> dict:
     """Build the sandbox. Raises if the folder exists; cleans up after itself if a step fails."""
     parse_run_id(run_id)
@@ -278,6 +284,8 @@ def create(
                 "DATABASE_URL": manifest["database"]["url"],
                 "PGHOST": manifest["database"]["socket"].rsplit("/", 1)[0],
             }
+        # Codebase settings the run needs (for example UV_PYTHON); the database variables always win.
+        env = {**(extra_env or {}), **env}
         write_json(hdir / "sandbox.json", manifest)
 
         ctl.mkdir(parents=True)
