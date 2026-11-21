@@ -1,0 +1,17 @@
+[project]
+name = "software-factory-lab"
+version = "0.1.0"
+description = "Harness, tickets and graders for a controlled experiment on agent ticket work"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["races"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
