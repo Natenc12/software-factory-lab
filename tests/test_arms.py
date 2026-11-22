@@ -13,7 +13,9 @@ from harness import run, sandbox
 from tests.conftest import ROOT, run_args, scenario
 
 ARMS = ROOT / "arms"
-NAMES = ["P0", "P1", "P1R", "P3", "P2", "P4"]
+STAGE_1 = ["P0", "P1", "P1R", "P3", "P2", "P4"]
+STAGE_2 = ["P1T", "P1L", "P1A", "P5", "P5P"]
+NAMES = STAGE_1 + STAGE_2
 spec = importlib.util.spec_from_file_location("role_guard", ARMS / "P4" / "hooks" / "role_guard.py")
 rg = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(rg)
@@ -315,3 +317,72 @@ def test_tester_is_blind_end_to_end_with_fake_claude(lab_env, practice):
     # src/app.py, tests/test_app.py, Grep over the checkout, and writing src/app.py are refused
     assert denied == {"toolu_probe_0", "toolu_probe_1", "toolu_probe_2", "toolu_probe_6"}
     assert "in the checkout the tester may read only" in results["toolu_probe_0"]["content"]
+
+
+# ---- stage 2: P1 plus exactly one addition ----
+
+POINTED = (
+    "Use check-the-ask after you read the ticket and the code it touches.\n"
+    "Use prove-each-claim before you write the pull request.\n"
+)
+SKILLS = {
+    "check-the-ask",
+    "prove-each-claim",
+    "test-that-bites",
+    "find-the-cause",
+    "stay-in-scope",
+    "fresh-eyes-review",
+}
+
+
+@pytest.mark.parametrize("name", STAGE_2)
+def test_stage_2_arm_is_p1_unchanged_plus_one_addition(name):
+    p1 = (ARMS / "P1" / "GUIDE.md").read_text()
+    guide = (ARMS / name / "GUIDE.md").read_text()
+    assert guide.startswith(p1) and len(guide) > len(p1)
+    instructions, agents = sandbox.arm_files(ARMS / name)
+    assert not agents
+    expected = ["GUIDE.md", "SYSTEM-MAP.md"] if name == "P1A" else ["GUIDE.md"]
+    assert [p.name for p in instructions] == expected
+    for f, text in run_texts(name).items():
+        for later in ("STOP", "merge brief", "contract", "reviewer"):
+            assert later not in text, f"{f} borrows {later!r}"
+
+
+def test_p1t_p1l_and_p1a_add_one_short_section():
+    p1 = (ARMS / "P1" / "GUIDE.md").read_text()
+    for name, heading in (("P1T", "## Tests first"), ("P1L", "## Small slices"), ("P1A", "## Before you plan")):
+        added = (ARMS / name / "GUIDE.md").read_text()[len(p1) :]
+        assert added.strip().startswith(heading) and added.count("## ") == 1
+        assert len(added.split()) < 50, name
+    assert "150" in (ARMS / "P1L" / "GUIDE.md").read_text()
+    assert "system map that follows" in (ARMS / "P1A" / "GUIDE.md").read_text()
+
+
+def test_p1a_map_is_one_page_and_points_to_the_decision_records():
+    text = (ARMS / "P1A" / "SYSTEM-MAP.md").read_text()
+    assert len(text.split()) < 700
+    for part in ("## The parts", "## How a request flows", "## Where rules and decisions are recorded"):
+        assert part in text
+    assert "decision records" in text.split("## Before you plan a change")[1]
+    listed = re.findall(r"\b00(\d\d)\b", text.split("## Where rules")[1].split("- **`design/architecture")[0])
+    assert sorted(int(n) for n in listed) == list(range(1, 33)), "every decision record is listed, each once"
+
+
+def test_p5_ships_the_six_skills_and_one_sentence():
+    p1 = (ARMS / "P1" / "GUIDE.md").read_text()
+    assert (ARMS / "P5" / "GUIDE.md").read_text() == p1 + "\nSkills are available.\n"
+    skills = {p.parent.name: sandbox.parse_skill(p) for p in sandbox.skill_files(ARMS / "P5")}
+    assert set(skills) == SKILLS
+    for name, skill in skills.items():
+        assert "../" not in skill["body"] and "./" not in skill["body"], name
+
+
+def test_p5p_is_p5_plus_the_two_pointing_lines():
+    assert (ARMS / "P5P" / "GUIDE.md").read_text() == (ARMS / "P5" / "GUIDE.md").read_text() + POINTED
+    p5 = sorted(p.relative_to(ARMS / "P5") for p in (ARMS / "P5").rglob("*") if p.is_file())
+    p5p = sorted(p.relative_to(ARMS / "P5P") for p in (ARMS / "P5P").rglob("*") if p.is_file())
+    assert p5 == p5p
+    for rel in p5:
+        if rel.name != "GUIDE.md":
+            assert (ARMS / "P5" / rel).read_bytes() == (ARMS / "P5P" / rel).read_bytes(), rel
