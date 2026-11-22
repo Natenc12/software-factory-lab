@@ -1,7 +1,14 @@
-"""Write the stage-1 plan files that `python -m harness.stage` runs.
+"""Write the plan files that `python -m harness.stage` runs.
 
     python -m grader.make_plan stage-1 [--codebase gct] [--best-process P3] [--tickets-root ...]
                                        [--answers-root ...] [--out-dir results/stage-1]
+    python -m grader.make_plan stage-2 [--ticket-ceiling T9=900000 ...] [--budget N] [--out-dir ...]
+
+Stage 2 (gate 3): the five add-on arms P1T, P1L, P1A, P5 and P5P on T2, T5, T6, T7, T9, T10, T11 and
+T12 at S1, repeats 1 and 2 (80 runs), plus P1 on T9 to T12, repeats 1 and 2 (8 runs; P1's runs on the
+other four come from stage 1 and the confirm round). Ceilings are P1's for every add-on;
+`--ticket-ceiling` sets one ticket's ceiling for every arm on it, P1 included. Writes `plan.json` and
+`sheets/`, and nothing at all if a ticket, its answers or an arm folder is missing.
 
 Stage 1 (gate 1): six arms on the eight tickets at S1, P0 on S0, S2 and S3 for the seven tickets that
 are not the review ticket, and later the best process arm on S3 for the same seven. Three parts:
@@ -28,9 +35,11 @@ from pathlib import Path
 
 from grader.build_sheet import build as build_sheet
 from grader.common import (
+    ADDON_ARMS,
     ANSWERS_ROOT,
     ARM_ORDER,
     LAB_ROOT,
+    STAGE2_TICKETS,
     TICKETS_ROOT,
     load_config,
     now_iso,
@@ -40,6 +49,9 @@ from grader.common import (
 
 STAGE_BUDGET = 24_000_000
 CEILINGS = {"P0": 400_000, "P1": 500_000, "P1R": 600_000, "P2": 700_000, "P3": 700_000, "P4": 1_600_000}
+CEILINGS.update({arm: CEILINGS["P1"] for arm in ADDON_ARMS})  # stage 2: the same as P1 (gate 3)
+STAGE2_P1_TICKETS = ["T9", "T10", "T11", "T12"]  # P1 has three runs of the others from stage 1 and the confirm round
+STAGE2_REPEATS = (1, 2)
 TICKETS = [f"T{i}" for i in range(1, 9)]
 METER_TICKET = "T1"
 SPEC_LEVELS = ("S0", "S2", "S3")
@@ -124,9 +136,124 @@ def plan_runs(codebase: str, tickets_root: Path, arms_root: Path, sheets: dict, 
     return meter, wave1, wave2, problems
 
 
+def parse_ticket_ceilings(items) -> dict[str, int]:
+    out = {}
+    for item in items or []:
+        t, _, n = item.partition("=")
+        if not t.strip().upper().startswith("T") or not n.strip().isdigit():
+            raise SystemExit(f"--ticket-ceiling wants T<n>=<tokens>, got {item!r}")
+        out[t.strip().upper()] = int(n)
+    return out
+
+
+def write_sheets(codebase: str, tickets, answers_root: Path, out_dir: Path) -> tuple[dict, dict, list[str]]:
+    """Each ticket's reply sheet text and the path it will be written to; nothing is written here."""
+    texts, paths, problems = {}, {}, []
+    for t in tickets:
+        path = out_dir / "sheets" / f"{codebase}-{t}.md"
+        try:
+            texts[t] = build_sheet(codebase, t, answers_root)
+        except (OSError, ValueError) as e:
+            problems.append(f"{t}: reply sheet: {e}")
+            continue
+        try:
+            paths[t] = str(path.relative_to(LAB_ROOT))
+        except ValueError:
+            paths[t] = str(path)
+        if not (answers_root / codebase / t / "replies.md").is_file():
+            problems.append(f"{t}: no replies.md; its sheet has only the common replies")
+    return texts, paths, problems
+
+
+def plan_stage2(a) -> int:
+    """Stage 2 (gate 3): the five add-on arms on eight tickets at S1, two repeats; P1 on the new tickets."""
+    out_dir = Path(a.out_dir or LAB_ROOT / "results" / a.stage)
+    tickets_root, answers_root, arms_root = Path(a.tickets_root), Path(a.answers_root), Path(a.arms_root)
+    overrides = parse_ticket_ceilings(a.ticket_ceiling)
+    texts, sheets, problems = write_sheets(a.codebase, STAGE2_TICKETS, answers_root, out_dir)
+    metas = {}
+    for t in STAGE2_TICKETS:
+        meta = read_json(tickets_root / a.codebase / t / "meta.json")
+        if not meta:
+            problems.append(f"{t}: {tickets_root / a.codebase / t / 'meta.json'} missing")
+        if not (tickets_root / a.codebase / t / "S1.md").is_file():
+            problems.append(f"{t}: {tickets_root / a.codebase / t / 'S1.md'} missing")
+        for need in ("key.json", "reference.patch"):
+            if not (answers_root / a.codebase / t / need).is_file():
+                problems.append(f"{t}: answers: {answers_root / a.codebase / t / need} missing")
+        metas[t] = meta or {}
+    for arm in ["P1", *ADDON_ARMS]:
+        if arm_dir(arm, arms_root) is None:
+            problems.append(f"arm {arm}: folder {arms_root / arm} missing")
+    try:
+        run_env = load_config(a.codebase).get("run_env") or {}
+    except SystemExit:
+        run_env = {}
+    unknown = sorted(set(overrides) - set(STAGE2_TICKETS))
+    if unknown:
+        problems.append(f"--ticket-ceiling names tickets not on the stage 2 plan: {unknown}")
+
+    def one(arm: str, t: str, repeat: int) -> dict:
+        meta = metas[t]
+        ticket = tickets_root / a.codebase / t / "S1.md"
+        try:
+            ticket_path = str(ticket.relative_to(LAB_ROOT))
+        except ValueError:
+            ticket_path = str(ticket)
+        r = {
+            "run_id": run_id(arm, t, "S1", repeat),
+            "ticket": ticket_path,
+            "base": meta.get("base_ref"),
+            "repo": meta.get("repo"),
+            "db": meta.get("db"),
+            "ceiling": overrides.get(t, CEILINGS[arm]),
+            "reply_sheet": sheets.get(t),
+            "redact": [arm, arm.lower()],
+        }
+        if run_env:
+            r["env"] = [f"{k}={v}" for k, v in sorted(run_env.items())]
+        if arm_dir(arm, arms_root):
+            r["arm"] = arm_dir(arm, arms_root)
+        return r
+
+    addons = [one(arm, t, n) for n in STAGE2_REPEATS for t in STAGE2_TICKETS for arm in ADDON_ARMS]
+    p1 = [one("P1", t, n) for n in STAGE2_REPEATS for t in STAGE2_P1_TICKETS]
+    if problems and not a.force:
+        for p in problems:
+            print(f"problem: {p}", file=sys.stderr)
+        print(f"{len(problems)} problems; nothing written (use --force to write anyway)", file=sys.stderr)
+        return 1
+    for t, text in texts.items():
+        path = out_dir / "sheets" / f"{a.codebase}-{t}.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    plan = {
+        "stage": a.stage,
+        "budget_tokens": a.budget or STAGE_BUDGET,
+        "parallel": 4,
+        "written": now_iso(),
+        "codebase": a.codebase,
+        "defaults": {"model": MODEL, "judge_model": REPLY_JUDGE, "effort": EFFORT},
+        "ceilings": {arm: CEILINGS[arm] for arm in ["P1", *ADDON_ARMS]},
+        "ticket_ceilings": overrides,
+        "tickets": STAGE2_TICKETS,
+        "repeats": list(STAGE2_REPEATS),
+        "parts": {"addons": [r["run_id"] for r in addons], "p1": [r["run_id"] for r in p1]},
+        "runs": addons + p1,
+        "problems": problems,
+    }
+    out_dir.mkdir(parents=True, exist_ok=True)
+    write_json(out_dir / "plan.json", plan)
+    print(
+        f"wrote {out_dir / 'plan.json'} ({len(plan['runs'])} runs: add-ons {len(addons)}, P1 {len(p1)}); "
+        f"ticket ceilings {overrides or 'none'}" + (f"; {len(problems)} problems" if problems else "")
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m grader.make_plan", description=__doc__.split("\n\n")[0])
-    ap.add_argument("stage", choices=["stage-1"], help="only stage 1 is planned so far")
+    ap.add_argument("stage", choices=["stage-1", "stage-2"])
     ap.add_argument("--codebase", default="gct")
     ap.add_argument("--best-process", choices=["P1", "P1R", "P3", "P2", "P4"], help="fill wave 2 with this arm on S3")
     ap.add_argument("--tickets-root", default=str(TICKETS_ROOT))
@@ -134,7 +261,20 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--arms-root", default=str(LAB_ROOT / "arms"))
     ap.add_argument("--out-dir", help="default results/<stage> in this repo")
     ap.add_argument("--force", action="store_true", help="write the plan even when tickets or arms are missing")
+    ap.add_argument("--ticket-ceiling", action="append", default=[], metavar="T9=900000",
+                    help="stage 2: ceiling for every arm on that ticket (repeatable)")  # fmt: skip
+    ap.add_argument("--budget", type=int, help="stage 2: the stage's token figure (default 24,000,000)")
     a = ap.parse_args(argv)
+    if a.stage == "stage-2":
+        if a.best_process:
+            ap.error("--best-process is for stage 1")
+        try:
+            return plan_stage2(a)
+        except SystemExit as e:
+            print(str(e), file=sys.stderr)
+            return 2
+    if a.ticket_ceiling or a.budget:
+        ap.error("--ticket-ceiling and --budget are for stage 2")
     out_dir = Path(a.out_dir or LAB_ROOT / "results" / a.stage)
     tickets_root, answers_root = Path(a.tickets_root), Path(a.answers_root)
 
@@ -166,7 +306,7 @@ def main(argv: list[str] | None = None) -> int:
         "written": now_iso(),
         "codebase": a.codebase,
         "defaults": defaults,
-        "ceilings": CEILINGS,
+        "ceilings": {arm: CEILINGS[arm] for arm in ARM_ORDER},
         "parts": {
             "meter": [r["run_id"] for r in meter],
             "wave1": [r["run_id"] for r in wave1],

@@ -23,6 +23,10 @@ ANSWERS_ROOT = LAB_ROOT / "answers"
 # with `s<level>` appended for a spec-level row (`p0s2`).
 ARM_ORDER = ["P0", "P1", "P1R", "P3", "P2", "P4"]
 PROCESS_ARMS = ["P1", "P1R", "P3", "P2", "P4"]
+# Stage 2 (gate 3): habit add-ons built on P1 Loose. Tests first, small slices, architecture brief,
+# skills library (pure discretion) and skills library (pointed).
+ADDON_ARMS = ["P1T", "P1L", "P1A", "P5", "P5P"]
+STAGE2_TICKETS = ["T2", "T5", "T6", "T7", "T9", "T10", "T11", "T12"]
 
 # List prices in US dollars per million tokens. Source: the claude-api skill's model table (cached
 # 2026-11-03): Opus 5.5 $4 / $20, cache reads $0.20; Fable 5.2 $8 / $40, cache reads $0.20; Sonnet 5.5

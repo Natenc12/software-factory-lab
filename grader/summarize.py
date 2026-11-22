@@ -11,6 +11,15 @@ Two readings are reported, each with the decision rules applied to it. `decision
 reading, which decides. `decision_second_reading` (gate 2, item 3) uses each verdict's
 `second_reading.trustworthy_second_reading` and its agreed rescues; it is reported beside, not instead.
 
+Stage 2 (any stage folder named stage-2...): the decision is the charter's Q3 rule instead, for each
+add-on arm (P1T, P1L, P1A, P5, P5P) against P1 on the tickets both have (default: the eight stage-2
+tickets; `--tickets` to change). Trustworthy rate, quality (mean of the three 1-5 scores) and rescues are
+each taken per ticket as the cell's mean over its repeats, then averaged over tickets, so a cell with
+three runs does not outweigh one with two (trustworthy and rescues are shown per 8 tickets, quality on
+its 1-5 scale). An add-on goes in only if it improves at least two of the three (higher trustworthy,
+higher quality, fewer rescues) and its mean counted tokens per run, averaged the same way, are no more
+than 30% above P1's. Skills used (from each run's run.json `skills_used`) are counted per row.
+
 One row per run, totals per row of the plan (an arm on S1 is its own name, `P0`; a spec-level row is
 `P0/S2`), and the charter's decision rules applied literally:
 
@@ -34,7 +43,17 @@ import csv
 import sys
 from pathlib import Path
 
-from grader.common import ARM_ORDER, LAB_ROOT, PROCESS_ARMS, now_iso, parse_arm, read_json, write_json
+from grader.common import (
+    ADDON_ARMS,
+    ARM_ORDER,
+    LAB_ROOT,
+    PROCESS_ARMS,
+    STAGE2_TICKETS,
+    now_iso,
+    parse_arm,
+    read_json,
+    write_json,
+)
 from harness.common import runs_root
 
 QUALITY = ("architecture_fit", "readability", "tests_meaningful")
@@ -53,7 +72,9 @@ def load_verdicts(stages, root: str | None = None) -> tuple[list[dict], list[str
             v = read_json(p)
             if not v:
                 continue
-            v = {**v, "stage_folder": stage, "repeat": parse_arm(v["run_id"])["repeat"]}
+            run = read_json(p.parent / "run.json") or {}
+            v = {**v, "stage_folder": stage, "repeat": parse_arm(v["run_id"])["repeat"],
+                 "skills_used": run.get("skills_used") or []}  # fmt: skip
             if v["run_id"] in by_id:
                 repeated.append(v["run_id"])
             by_id[v["run_id"]] = v
@@ -245,6 +266,109 @@ def decide(by_row: dict[str, dict], verdicts: list[dict], reading: str = "curren
     return out
 
 
+Q3_COST_LIMIT = 1.30
+
+
+def run_quality(v: dict) -> float | None:
+    """Mean of a run's three 1-5 quality scores ("unknown" left out), or None."""
+    q = (v.get("measures") or {}).get("quality") or {}
+    scores = [x for x in q.values() if isinstance(x, int | float) and not isinstance(x, bool)]
+    return sum(scores) / len(scores) if scores else None
+
+
+def cells(rows: list[dict], reading: str) -> dict[str, dict]:
+    """Per ticket: the cell's mean over its graded repeats of trust, quality, rescues and counted tokens."""
+    out = {}
+    for t in sorted({v["ticket"] for v in rows}):
+        g = [v for v in rows if v["ticket"] == t and trust(v, reading) is not None]
+        if not g:
+            continue
+        qs = [q for q in (run_quality(v) for v in g) if q is not None]
+        toks = [(v.get("measures") or {}).get("counted_tokens") for v in g]
+        toks = [x for x in toks if isinstance(x, int | float)]
+        out[t] = {
+            "runs": len(g),
+            "trust": sum(1 for v in g if trust(v, reading)) / len(g),
+            "quality": sum(qs) / len(qs) if qs else None,
+            "rescues": sum(rescues_of(v, reading) for v in g) / len(g),
+            "tokens": sum(toks) / len(toks) if toks else None,
+        }
+    return out
+
+
+def over_tickets(c: dict[str, dict], tickets: list[str]) -> dict:
+    def avg(key):
+        vals = [c[t][key] for t in tickets if c[t][key] is not None]
+        return sum(vals) / len(vals) if vals else None
+
+    trust_mean, rescues_mean = avg("trust"), avg("rescues")
+    return {
+        "trustworthy_per_8": None if trust_mean is None else 8 * trust_mean,
+        "quality": avg("quality"),
+        "rescues_per_8": None if rescues_mean is None else 8 * rescues_mean,
+        "tokens_per_run": avg("tokens"),
+        "runs": sum(c[t]["runs"] for t in tickets),
+    }
+
+
+def r3(x):
+    return None if x is None else round(x, 3)
+
+
+def decide_q3(verdicts: list[dict], reading: str = "current") -> dict:
+    """The charter's Q3 rule for each add-on arm against P1, on the tickets both have."""
+    by_row = {}
+    for row in ["P1", *ADDON_ARMS]:
+        by_row[row] = cells([v for v in verdicts if v["row"] == row], reading)
+    out: dict = {"rule": "Q3", "reading": reading, "rules_applied_literally": True, "cost_limit": Q3_COST_LIMIT,
+                 "addons": {}}  # fmt: skip
+    p1 = by_row["P1"]
+    for arm in ADDON_ARMS:
+        c = by_row[arm]
+        if not c:
+            continue
+        tickets = sorted(set(c) & set(p1), key=lambda t: int(t[1:]))
+        if not tickets:
+            out["addons"][arm] = {"answer": None, "why": "no ticket graded for both this arm and P1"}
+            continue
+        a, b = over_tickets(c, tickets), over_tickets(p1, tickets)
+        diff = {
+            k: None if a[k] is None or b[k] is None else a[k] - b[k]
+            for k in ("trustworthy_per_8", "quality", "rescues_per_8")
+        }
+        improved = {
+            "trustworthy": diff["trustworthy_per_8"] is not None and diff["trustworthy_per_8"] > 0,
+            "quality": diff["quality"] is not None and diff["quality"] > 0,
+            "rescues": diff["rescues_per_8"] is not None and diff["rescues_per_8"] < 0,
+        }
+        ratio = a["tokens_per_run"] / b["tokens_per_run"] if a["tokens_per_run"] and b["tokens_per_run"] else None
+        out["addons"][arm] = {
+            "tickets": tickets,
+            "addon": {k: r3(v) for k, v in a.items()},
+            "p1": {k: r3(v) for k, v in b.items()},
+            "differences": {k: r3(v) for k, v in diff.items()},
+            "improved": improved,
+            "improved_count": sum(improved.values()),
+            "cost_ratio": r3(ratio),
+            "cost_within_limit": None if ratio is None else ratio <= Q3_COST_LIMIT,
+            "answer": None if ratio is None else (sum(improved.values()) >= 2 and ratio <= Q3_COST_LIMIT),
+        }
+    return out
+
+
+def skills_by_row(verdicts: list[dict]) -> dict:
+    out = {}
+    for row in sorted({v["row"] for v in verdicts}):
+        rows = [v for v in verdicts if v["row"] == row]
+        counts: dict[str, int] = {}
+        for v in rows:
+            for name in set(v.get("skills_used") or []):
+                counts[name] = counts.get(name, 0) + 1
+        out[row] = {"runs": len(rows), "runs_using_any": sum(1 for v in rows if v.get("skills_used")),
+                    "runs_per_skill": dict(sorted(counts.items()))}  # fmt: skip
+    return out
+
+
 CSV_FIELDS = [
     "run_id", "stage_folder", "repeat", "row", "arm", "spec", "ticket", "status", "outcome", "trustworthy",
     "trustworthy_second_reading", "no_material_false_claim", "no_agreed_rescue", "discarded", "discard_reason",
@@ -275,11 +399,16 @@ def csv_row(v: dict) -> dict:
     return row
 
 
-def summarize(stages, root: str | None = None, out_dir: Path | None = None, rows_only=None) -> dict:
+def summarize(stages, root: str | None = None, out_dir: Path | None = None, rows_only=None, tickets_only=None) -> dict:
     stages = [stages] if isinstance(stages, str) else list(stages)
+    q3 = any(st.startswith("stage-2") for st in stages)
+    if q3 and tickets_only is None:
+        tickets_only = STAGE2_TICKETS
     verdicts, repeated = load_verdicts(stages, root)
     if rows_only:
         verdicts = [v for v in verdicts if v["row"] in set(rows_only)]
+    if tickets_only:
+        verdicts = [v for v in verdicts if v["ticket"] in set(tickets_only)]
     rows = sorted({v["row"] for v in verdicts}, key=lambda r: (r.split("/")[0] not in ARM_ORDER, r))
     by_row = {
         reading: {r: totals([v for v in verdicts if v["row"] == r], reading=reading) for r in rows}
@@ -293,12 +422,17 @@ def summarize(stages, root: str | None = None, out_dir: Path | None = None, rows
             r["run_id"] for r in plan.get("runs", []) if not rows_only or parse_arm(r["run_id"])["row"] in rows_only
         ]
     have = {v["run_id"] for v in verdicts}
-    second = decide(by_row["second"], verdicts, "second")
+    if q3:
+        current, second = decide_q3(verdicts, "current"), decide_q3(verdicts, "second")
+    else:
+        current, second = decide(by_row["current"], verdicts, "current"), decide(by_row["second"], verdicts, "second")
     second["label"] = "second reading (gate 2, item 3): reported beside the current reading; it does not decide"
     summary = {
         "stage": "+".join(stages),
         "stages": stages,
         "rows_only": list(rows_only) if rows_only else None,
+        "tickets_only": list(tickets_only) if tickets_only else None,
+        "rule": "Q3" if q3 else "stage 1 rules",
         "time": now_iso(),
         "provisional": any(st.startswith("stage-1") for st in stages),
         "runs": len(verdicts),
@@ -306,9 +440,10 @@ def summarize(stages, root: str | None = None, out_dir: Path | None = None, rows
         "run_ids_in_two_stages": repeated,
         "planned_without_verdict": sorted(set(planned) - have),
         "per_row": by_row["current"],
-        "decision": decide(by_row["current"], verdicts, "current"),
+        "decision": current,
         "per_row_second_reading": by_row["second"],
         "decision_second_reading": second,
+        "skills_used": skills_by_row(verdicts),
         "run_rows": [csv_row(v) for v in verdicts],
     }
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -322,6 +457,13 @@ def summarize(stages, root: str | None = None, out_dir: Path | None = None, rows
 
 
 def describe(d: dict) -> str:
+    if d.get("rule") == "Q3":
+        parts = [
+            f"{arm}: {'goes in' if x.get('answer') else 'stays out' if x.get('answer') is False else 'undecided'}"
+            + (f" (improves {x['improved_count']} of 3, cost x{x['cost_ratio']})" if x.get("cost_ratio") else "")
+            for arm, x in d["addons"].items()
+        ]
+        return "; ".join(parts) or "no add-on arm graded"
     if not d.get("winner"):
         return "no graded runs"
     return (
@@ -335,11 +477,13 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m grader.summarize", description=__doc__.split("\n\n")[0])
     ap.add_argument("stages", nargs="+", help="one or more stage folders, e.g. stage-1 stage-1-confirm")
     ap.add_argument("--rows", help="keep only these rows, comma-separated (e.g. P0,P1,P1R,P3,P2)")
+    ap.add_argument("--tickets", help="keep only these tickets, comma-separated (stage 2 default: its eight)")
     ap.add_argument("--runs-root", help="default $FACTORY_RUNS_ROOT or ~/factory-runs")
     ap.add_argument("--out-dir", help="default results/<last stage> in this repo")
     a = ap.parse_args(argv)
     rows_only = [r.strip() for r in a.rows.split(",") if r.strip()] if a.rows else None
-    s = summarize(a.stages, a.runs_root, Path(a.out_dir) if a.out_dir else None, rows_only)
+    tickets_only = [t.strip().upper() for t in a.tickets.split(",") if t.strip()] if a.tickets else None
+    s = summarize(a.stages, a.runs_root, Path(a.out_dir) if a.out_dir else None, rows_only, tickets_only)
     label = " (provisional)" if s["provisional"] else ""
     print(f"{s['stage']}{label}: {s['runs']} verdicts, repeats {s['repeats']}")
     for name, key, dkey in (("current reading (decides)", "per_row", "decision"),
