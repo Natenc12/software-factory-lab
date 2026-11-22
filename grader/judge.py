@@ -1,6 +1,6 @@
 """Blind judges: one `claude -p` call in a clean room with no tools, scoring one thing for one run.
 
-    python -m grader.judge <run folder> --kind quality|honesty|judgement [--model claude-fable-5-2] [--claude claude]
+    python -m grader.judge <run folder> --kind quality|honesty|judgement|claim-severity [--pass 2] [--model claude-fable-5-2] [--claude claude]
 
 - quality sees only the run's diff (grade.diff, written by grader.grade), with the run id, arm names and
   branch names redacted, and scores architecture fit, readability and meaningful tests, 1 to 5 or
@@ -15,6 +15,10 @@
   which a maintainer would prefer, rates fit, cost later and proportion, and lists the decisions each made.
   A second small call checks which of the run's consequential decisions its brief mentions
   (grader/judgement.py, grader/briefs/judgement.md and surfaced.md).
+
+Second reading (gate 2): `--kind honesty --pass 2` runs the honesty judge again into
+judge-honesty-2.json (pass 1's file is untouched), and `--kind claim-severity` marks every false claim
+either pass found as material or a slip (grader/second_reading.py, grader/briefs/claim-severity.md).
 
 Output: harness/judge-<kind>.json (the validated answer, model, tokens, cost), and the exact prompt in
 harness/judge-<kind>.prompt.txt for audit. The answer must be JSON of the brief's shape; an invalid
@@ -311,6 +315,10 @@ def validate(kind: str, data, key: dict | None = None) -> list[str]:
         from grader.judgement import validate_surfaced
 
         errors += validate_surfaced(data, int((key or {}).get("n", 0)))
+    elif kind == "severity":
+        from grader.second_reading import validate_severity
+
+        errors += validate_severity(data, int((key or {}).get("n", 0)))
     elif kind == "review":
         ids = sorted(b.get("id") for b in (key or {}).get("planted_bugs", []))
         got = data.get("planted_bugs")
@@ -401,10 +409,21 @@ def run_judge(claude: str, model: str, kind: str, prompt: str, key: dict | None 
 
 
 def judge_run(
-    folder: Path, kind: str, model: str, claude: str, extra_terms=(), tickets_root=None, answers_root=None
+    folder: Path,
+    kind: str,
+    model: str,
+    claude: str,
+    extra_terms=(),
+    tickets_root=None,
+    answers_root=None,
+    pass_no: int = 1,
 ) -> dict:
     info = run_folder_info(folder)
     hdir, run = info["hdir"], info["run"]
+    if kind == "claim-severity":
+        from grader.second_reading import judge_claim_severity
+
+        return judge_claim_severity(info, model, claude, extra_terms)
     grade = read_json(hdir / "grade.json")
     if not grade:
         raise SystemExit(f"{hdir / 'grade.json'} missing: run `python -m grader.grade {info['folder']}` first")
@@ -433,7 +452,10 @@ def judge_run(
         brief = (BRIEFS / f"{check_kind}.md").read_text(encoding="utf-8").replace("{behaviour_tags}", tags_block())
         body = review_inputs(info, grade, t["key"], terms) if review else honesty_inputs(info, grade, terms)
     prompt = brief + "\n\n" + body + "\n"
-    (hdir / f"judge-{kind}.prompt.txt").write_text(prompt, encoding="utf-8")
+    suffix = f"-{pass_no}" if pass_no > 1 else ""
+    (hdir / f"judge-{kind}{suffix}.prompt.txt").write_text(prompt, encoding="utf-8")
+    if kind == "honesty":
+        out["pass"] = pass_no
     out["brief"] = check_kind
     out["prompt_sha256"] = hashlib.sha256(prompt.encode()).hexdigest()
     out["prompt_chars"] = len(prompt)
@@ -446,7 +468,9 @@ def judge_run(
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m grader.judge", description=__doc__.split("\n\n")[0])
     ap.add_argument("run_folder")
-    ap.add_argument("--kind", required=True, choices=("quality", "honesty", "judgement"))
+    ap.add_argument("--kind", required=True, choices=("quality", "honesty", "judgement", "claim-severity"))
+    ap.add_argument("--pass", dest="pass_no", type=int, choices=(1, 2), default=1,
+                    help="honesty only: 2 runs the same judge again into judge-honesty-2.json")  # fmt: skip
     ap.add_argument("--model", default=os.environ.get("GRADER_JUDGE_MODEL", DEFAULT_MODEL))
     ap.add_argument("--claude", default=os.environ.get("GRADER_CLAUDE", "claude"))
     ap.add_argument("--redact", action="append", default=[], help="extra term to remove from the judge's input")
@@ -454,12 +478,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--answers-root")
     a = ap.parse_args(argv)
     claude = shutil.which(a.claude) or a.claude
+    if a.pass_no != 1 and a.kind != "honesty":
+        ap.error("--pass 2 is for --kind honesty only")
     try:
-        out = judge_run(Path(a.run_folder), a.kind, a.model, claude, a.redact, a.tickets_root, a.answers_root)
+        out = judge_run(
+            Path(a.run_folder), a.kind, a.model, claude, a.redact, a.tickets_root, a.answers_root, a.pass_no
+        )
     except SystemExit as e:
         print(str(e), file=sys.stderr)
         return 2
-    path = Path(a.run_folder).resolve() / "harness" / f"judge-{a.kind}.json"
+    suffix = f"-{a.pass_no}" if a.pass_no > 1 else ""
+    path = Path(a.run_folder).resolve() / "harness" / f"judge-{a.kind}{suffix}.json"
     write_json(path, out)
     status = "not applicable" if not out.get("applicable") else ("valid" if out.get("valid") else "INVALID")
     print(f"{out['run_id']}: {a.kind} judge {status}; wrote {path}")
