@@ -1,6 +1,15 @@
 """Summarise a stage: every run's verdict.json into results/<stage>/summary.json and summary.csv.
 
-    python -m grader.summarize <stage> [--runs-root ~/factory-runs] [--out-dir results/<stage>]
+    python -m grader.summarize <stage> [<stage> ...] [--rows P0,P1,...] [--runs-root ~/factory-runs]
+                               [--out-dir results/<last stage>]
+
+Several stage folders can go into one summary (the confirm round: `stage-1 stage-1-confirm`), and a
+cell can hold several repeats (run ids ending -1, -2, -3). Trustworthy per 8 is then the mean over the
+repeats of each repeat's own rate, and the per-repeat counts are shown. `--rows` keeps only those rows.
+
+Two readings are reported, each with the decision rules applied to it. `decision` is the current
+reading, which decides. `decision_second_reading` (gate 2, item 3) uses each verdict's
+`second_reading.trustworthy_second_reading` and its agreed rescues; it is reported beside, not instead.
 
 One row per run, totals per row of the plan (an arm on S1 is its own name, `P0`; a spec-level row is
 `P0/S2`), and the charter's decision rules applied literally:
@@ -25,32 +34,64 @@ import csv
 import sys
 from pathlib import Path
 
-from grader.common import ARM_ORDER, LAB_ROOT, PROCESS_ARMS, now_iso, read_json, write_json
+from grader.common import ARM_ORDER, LAB_ROOT, PROCESS_ARMS, now_iso, parse_arm, read_json, write_json
 from harness.common import runs_root
 
 QUALITY = ("architecture_fit", "readability", "tests_meaningful")
 
 
-def load_verdicts(stage: str, root: str | None = None) -> list[dict]:
-    base = runs_root(root) / stage
-    out = []
-    for p in sorted(base.glob("*/harness/verdict.json")):
-        v = read_json(p)
-        if v:
-            out.append(v)
-    return out
+READINGS = ("current", "second")
+
+
+def load_verdicts(stages, root: str | None = None) -> tuple[list[dict], list[str]]:
+    """Verdicts from one or more stage folders; a run id seen twice keeps the later stage's. (verdicts, repeated ids)"""
+    stages = [stages] if isinstance(stages, str) else list(stages)
+    by_id: dict[str, dict] = {}
+    repeated = []
+    for stage in stages:
+        for p in sorted((runs_root(root) / stage).glob("*/harness/verdict.json")):
+            v = read_json(p)
+            if not v:
+                continue
+            v = {**v, "stage_folder": stage, "repeat": parse_arm(v["run_id"])["repeat"]}
+            if v["run_id"] in by_id:
+                repeated.append(v["run_id"])
+            by_id[v["run_id"]] = v
+    return sorted(by_id.values(), key=lambda v: v["run_id"]), repeated
 
 
 def per8(n: int, graded: int) -> float | None:
     return round(8 * n / graded, 3) if graded else None
 
 
-def totals(rows: list[dict], tickets: set[str] | None = None) -> dict:
+def trust(v: dict, reading: str = "current"):
+    if reading == "current":
+        return v.get("trustworthy")
+    return (v.get("second_reading") or {}).get("trustworthy_second_reading")
+
+
+def rescues_of(v: dict, reading: str = "current") -> int:
+    if reading == "current":
+        return (v.get("measures") or {}).get("rescues") or 0
+    return (v.get("second_reading") or {}).get("agreed_rescues") or 0
+
+
+def mean(values: list[float]) -> float | None:
+    return round(sum(values) / len(values), 3) if values else None
+
+
+def totals(rows: list[dict], tickets: set[str] | None = None, reading: str = "current") -> dict:
     if tickets is not None:
         rows = [v for v in rows if v["ticket"] in tickets]
-    graded = [v for v in rows if v.get("trustworthy") is not None]
-    trusted = sum(1 for v in graded if v["trustworthy"])
+    graded = [v for v in rows if trust(v, reading) is not None]
+    trusted = sum(1 for v in graded if trust(v, reading))
     m = [v.get("measures") or {} for v in graded]
+    repeats = {}
+    for r in sorted({v.get("repeat", 1) for v in graded}):
+        g = [v for v in graded if v.get("repeat", 1) == r]
+        n = sum(1 for v in g if trust(v, reading))
+        repeats[str(r)] = {"trustworthy": n, "graded": len(g), "trustworthy_per_8": per8(n, len(g)),
+                           "rescues_per_8": per8(sum(rescues_of(v, reading) for v in g), len(g))}  # fmt: skip
 
     def s(key):
         return sum((x.get(key) or 0) for x in m)
@@ -95,7 +136,8 @@ def totals(rows: list[dict], tickets: set[str] | None = None) -> dict:
         "graded": len(graded),
         "tickets_graded": sorted({v["ticket"] for v in graded}),
         "trustworthy": trusted,
-        "trustworthy_per_8": per8(trusted, len(graded)),
+        "trustworthy_per_8": mean([x["trustworthy_per_8"] for x in repeats.values()]),
+        "repeats": repeats,
         "discarded": [v["run_id"] for v in rows if v.get("discarded")],
         "incomplete": [v["run_id"] for v in rows if v.get("outcome") == "incomplete"],
         "ceiling_hit": sum(1 for v in rows if v.get("status") == "ceiling_hit"),
@@ -103,8 +145,8 @@ def totals(rows: list[dict], tickets: set[str] | None = None) -> dict:
         "stops_routine": s("stops_routine"),
         "stops_warranted": s("stops_warranted"),
         "stops_avg": avg("stops_total"),
-        "rescues": s("rescues"),
-        "rescues_per_8": per8(s("rescues"), len(graded)),
+        "rescues": sum(rescues_of(v, reading) for v in graded),
+        "rescues_per_8": mean([x["rescues_per_8"] for x in repeats.values()]),
         "correction_rounds": s("correction_rounds"),
         "attention_words_avg": avg("attention_words"),
         "counted_tokens": s("counted_tokens"),
@@ -137,9 +179,9 @@ def pick(candidates: dict[str, dict]) -> dict | None:
     return {"top_score": top, "highest": leaders, "tied_within_one": tied, "pick": tied[0]}
 
 
-def decide(by_row: dict[str, dict], verdicts: list[dict]) -> dict:
+def decide(by_row: dict[str, dict], verdicts: list[dict], reading: str = "current") -> dict:
     s1 = {k: t for k, t in by_row.items() if k in ARM_ORDER}
-    out: dict = {"rules_applied_literally": True}
+    out: dict = {"rules_applied_literally": True, "reading": reading}
     leader = pick(s1)
     out["leader"] = leader
     if leader:
@@ -175,7 +217,7 @@ def decide(by_row: dict[str, dict], verdicts: list[dict]) -> dict:
             if not spec_runs or by_row.get(name, {}).get("graded", 0) == 0:
                 continue
             shared = set(by_row[name]["tickets_graded"]) & set(by_row[best["pick"]]["tickets_graded"])
-            a, b = totals(spec_runs, shared), totals(rows_best, shared)
+            a, b = totals(spec_runs, shared, reading), totals(rows_best, shared, reading)
             if a["trustworthy_per_8"] is None or b["trustworthy_per_8"] is None:
                 continue
             within = a["trustworthy_per_8"] >= b["trustworthy_per_8"] - 1.0
@@ -204,7 +246,8 @@ def decide(by_row: dict[str, dict], verdicts: list[dict]) -> dict:
 
 
 CSV_FIELDS = [
-    "run_id", "row", "arm", "spec", "ticket", "status", "outcome", "trustworthy", "discarded", "discard_reason",
+    "run_id", "stage_folder", "repeat", "row", "arm", "spec", "ticket", "status", "outcome", "trustworthy",
+    "trustworthy_second_reading", "no_material_false_claim", "no_agreed_rescue", "discarded", "discard_reason",
     "hidden_tests_pass", "no_trap_tripped", "no_false_claim", "no_rescue",
     "all_planted_bugs_caught", "no_false_blocking_alarm",
     "stops_total", "stops_routine", "stops_warranted", "rescues", "correction_rounds", "attention_words",
@@ -216,8 +259,12 @@ CSV_FIELDS = [
 def csv_row(v: dict) -> dict:
     m = v.get("measures") or {}
     q = m.get("quality") or {}
-    row = {k: v.get(k) for k in ("run_id", "row", "arm", "spec", "ticket", "status", "outcome", "trustworthy",
-                                  "discarded", "discard_reason", "provisional")}  # fmt: skip
+    row = {k: v.get(k) for k in ("run_id", "stage_folder", "repeat", "row", "arm", "spec", "ticket", "status",
+                                  "outcome", "trustworthy", "discarded", "discard_reason", "provisional")}  # fmt: skip
+    sr = v.get("second_reading") or {}
+    row["trustworthy_second_reading"] = sr.get("trustworthy_second_reading")
+    for k in ("no_material_false_claim", "no_agreed_rescue"):
+        row[k] = (sr.get(k) or {}).get("pass")
     for name, c in (v.get("checks") or {}).items():
         row[name] = c.get("pass")
     for k in ("stops_total", "stops_routine", "stops_warranted", "rescues", "correction_rounds", "attention_words",
@@ -228,23 +275,41 @@ def csv_row(v: dict) -> dict:
     return row
 
 
-def summarize(stage: str, root: str | None = None, out_dir: Path | None = None) -> dict:
-    verdicts = load_verdicts(stage, root)
+def summarize(stages, root: str | None = None, out_dir: Path | None = None, rows_only=None) -> dict:
+    stages = [stages] if isinstance(stages, str) else list(stages)
+    verdicts, repeated = load_verdicts(stages, root)
+    if rows_only:
+        verdicts = [v for v in verdicts if v["row"] in set(rows_only)]
     rows = sorted({v["row"] for v in verdicts}, key=lambda r: (r.split("/")[0] not in ARM_ORDER, r))
-    by_row = {r: totals([v for v in verdicts if v["row"] == r]) for r in rows}
-    out_dir = Path(out_dir or LAB_ROOT / "results" / stage)
-    plan = read_json(out_dir / "plan.json") or {}
-    planned = [r["run_id"] for r in plan.get("runs", [])]
+    by_row = {
+        reading: {r: totals([v for v in verdicts if v["row"] == r], reading=reading) for r in rows}
+        for reading in READINGS
+    }
+    out_dir = Path(out_dir or LAB_ROOT / "results" / stages[-1])
+    planned = []
+    for stage in stages:
+        plan = read_json(LAB_ROOT / "results" / stage / "plan.json") or read_json(out_dir / "plan.json") or {}
+        planned += [
+            r["run_id"] for r in plan.get("runs", []) if not rows_only or parse_arm(r["run_id"])["row"] in rows_only
+        ]
     have = {v["run_id"] for v in verdicts}
+    second = decide(by_row["second"], verdicts, "second")
+    second["label"] = "second reading (gate 2, item 3): reported beside the current reading; it does not decide"
     summary = {
-        "stage": stage,
+        "stage": "+".join(stages),
+        "stages": stages,
+        "rows_only": list(rows_only) if rows_only else None,
         "time": now_iso(),
-        "provisional": stage.startswith("stage-1"),
+        "provisional": any(st.startswith("stage-1") for st in stages),
         "runs": len(verdicts),
-        "planned_without_verdict": [r for r in planned if r not in have],
-        "per_row": by_row,
-        "decision": decide(by_row, verdicts),
-        "run_rows": [csv_row(v) for v in sorted(verdicts, key=lambda v: v["run_id"])],
+        "repeats": sorted({v["repeat"] for v in verdicts}),
+        "run_ids_in_two_stages": repeated,
+        "planned_without_verdict": sorted(set(planned) - have),
+        "per_row": by_row["current"],
+        "decision": decide(by_row["current"], verdicts, "current"),
+        "per_row_second_reading": by_row["second"],
+        "decision_second_reading": second,
+        "run_rows": [csv_row(v) for v in verdicts],
     }
     out_dir.mkdir(parents=True, exist_ok=True)
     write_json(out_dir / "summary.json", summary)
@@ -256,23 +321,35 @@ def summarize(stage: str, root: str | None = None, out_dir: Path | None = None) 
     return summary
 
 
+def describe(d: dict) -> str:
+    if not d.get("winner"):
+        return "no graded runs"
+    return (
+        f"winner by the tie rule: {d['winner']}; best process: {(d.get('best_process') or {}).get('pick')}; "
+        f"dropped: {d.get('dropped')}; process needed: {d['q1_process_needed'].get('answer')}; "
+        f"full spec replaces pipeline: {d['q6_full_spec_replaces_pipeline'].get('answer')}"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m grader.summarize", description=__doc__.split("\n\n")[0])
-    ap.add_argument("stage")
+    ap.add_argument("stages", nargs="+", help="one or more stage folders, e.g. stage-1 stage-1-confirm")
+    ap.add_argument("--rows", help="keep only these rows, comma-separated (e.g. P0,P1,P1R,P3,P2)")
     ap.add_argument("--runs-root", help="default $FACTORY_RUNS_ROOT or ~/factory-runs")
-    ap.add_argument("--out-dir", help="default results/<stage> in this repo")
+    ap.add_argument("--out-dir", help="default results/<last stage> in this repo")
     a = ap.parse_args(argv)
-    s = summarize(a.stage, a.runs_root, Path(a.out_dir) if a.out_dir else None)
-    d = s["decision"]
+    rows_only = [r.strip() for r in a.rows.split(",") if r.strip()] if a.rows else None
+    s = summarize(a.stages, a.runs_root, Path(a.out_dir) if a.out_dir else None, rows_only)
     label = " (provisional)" if s["provisional"] else ""
-    print(f"stage {a.stage}{label}: {s['runs']} verdicts")
-    for row, t in s["per_row"].items():
-        print(f"  {row}: {t['trustworthy']}/{t['graded']} trustworthy ({t['trustworthy_per_8']} per 8), "
-              f"{len(t['discarded'])} discarded, {len(t['incomplete'])} incomplete")  # fmt: skip
-    if d.get("winner"):
-        print(f"  winner by the tie rule: {d['winner']}; best process: {(d.get('best_process') or {}).get('pick')}; "
-              f"dropped: {d.get('dropped')}; process needed: {d['q1_process_needed'].get('answer')}; "
-              f"full spec replaces pipeline: {d['q6_full_spec_replaces_pipeline'].get('answer')}")  # fmt: skip
+    print(f"{s['stage']}{label}: {s['runs']} verdicts, repeats {s['repeats']}")
+    for name, key, dkey in (("current reading (decides)", "per_row", "decision"),
+                            ("second reading (reported)", "per_row_second_reading", "decision_second_reading")):  # fmt: skip
+        print(f"  {name}:")
+        for row, t in s[key].items():
+            reps = ", ".join(f"r{r} {x['trustworthy']}/{x['graded']}" for r, x in t["repeats"].items())
+            print(f"    {row}: {t['trustworthy_per_8']} per 8 (mean over repeats: {reps or 'none'}), "
+                  f"{len(t['discarded'])} discarded, {len(t['incomplete'])} incomplete")  # fmt: skip
+        print(f"    {describe(s[dkey])}")
     return 0
 
 
