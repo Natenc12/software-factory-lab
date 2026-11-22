@@ -112,3 +112,34 @@ base (Script). For T8 the three hidden tests fail on the branch and pass with `r
 - Real runs under the arms, and S0, S2 and S3 runs: the blind fixes were S1 only, one attempt each,
   with a subagent that could not ask. Two of them collided once through a shared `git stash`; I
   restored the affected worktree before grading and the graded diffs contain only their own files.
+
+## Post-freeze corrections
+
+### 1. T2: the hidden test accepts the ticket's own number format (after `stage-1-frozen`)
+
+**What was wrong.** T2's S1 and S2 (line 53) give as their example of the truncation note
+`(2,000,000 characters in all)`, with thousands separators. The audit round reworded that example;
+the hidden test was not brought along. `test_a_multi_megabyte_body_is_refused_without_being_echoed_back`
+still asserted `str(len(body)) in entry["input"]` (frozen line 110), which needs the bare digits
+`2000000`, and `test_a_long_string_inside_a_json_body_is_bounded_and_the_boundary_is_exact` did the
+same for 513 (frozen line 135). A run that follows the ticket's example to the letter failed. (S2's
+worked-examples table, line 74, says "mentions `2000000`", so S2 carries both forms.)
+
+**How it was found.** The first six graded stage 1 runs on T2, one per arm, all failed that one
+hidden test, on that one assertion, and all six had written the note exactly as the ticket's example
+shows it.
+
+**The change.** Both assertions now call `states_length(text, n)`, which accepts `n` written bare
+(`2000000`) or grouped in threes with one separator used throughout: comma, full stop, space (plain,
+no-break, thin, narrow no-break), underscore, or apostrophe (straight or curly). Nothing looser: mixed
+separators, wrong grouping or words ("2 million") still fail. Every other assertion is unchanged, and
+anything the frozen test accepted is still accepted. Ticket texts and starting branches did not
+change.
+
+**Same class, swept.** Every hidden-test assertion in T1 to T8 was checked against the S1 and S2
+examples. T2 was the only one a run following the examples would fail. One near-miss was fixed the
+same narrow way: T6's ticket asks for numbers "written with thousands separators" (S1 and S2 line 35)
+without naming one, while its hidden test looked for commas only (frozen lines 99, 100, 119, 120). The
+assertions now accept any one of the separators above, still requiring the grouping the ticket asks
+for. The examples use commas, so no run that followed them could have failed this; a run writing
+`312 400` would have.

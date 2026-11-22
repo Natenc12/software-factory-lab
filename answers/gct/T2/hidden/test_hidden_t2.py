@@ -6,6 +6,7 @@ stub providers, so they hold however the fix is wired in.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 
 import pytest
@@ -17,6 +18,22 @@ from gct.config import EMBEDDING_DIM
 
 BOUND = 512
 ENTRY_KEYS = {"type", "loc", "msg", "input"}
+
+# Thousands separators a run may use when it states a length: comma, full stop, space (plain,
+# no-break, thin, narrow no-break), underscore, apostrophe (straight or curly).
+_SEPARATORS = ",. \u00a0\u2009\u202f_'\u2019"
+
+
+def states_length(text: str, n: int) -> bool:
+    """True if `text` contains `n` written bare (2000000) or grouped in threes with one separator
+    used throughout (2,000,000 / 2.000.000 / 2 000 000 / 2_000_000 / 2'000'000)."""
+    groups = f"{n:,}".split(",")
+    bare = re.escape(str(n))
+    if len(groups) == 1:
+        return re.search(bare, text) is not None
+    sep = "(?P<sep>[" + re.escape(_SEPARATORS) + "])"
+    grouped = groups[0] + sep + groups[1] + "".join("(?P=sep)" + g for g in groups[2:])
+    return re.search(f"{bare}|{grouped}", text) is not None
 
 
 class StubEmbeddings:
@@ -107,7 +124,7 @@ def test_a_multi_megabyte_body_is_refused_without_being_echoed_back(probe):
     assert entry["loc"] == ["body"]
     assert entry["input"].startswith("xxxx")
     assert len(entry["input"]) <= BOUND
-    assert str(len(body)) in entry["input"]
+    assert states_length(entry["input"], len(body))
 
     # An ordinary rejected value still comes back whole, in the same shape.
     response = probe.post("/probe", json={"nope": 1, "why": "because"})
@@ -132,7 +149,7 @@ def test_a_long_string_inside_a_json_body_is_bounded_and_the_boundary_is_exact(p
     assert entry["input"] != over
     assert len(entry["input"]) <= BOUND
     assert entry["input"].startswith("yyyy")
-    assert str(BOUND + 1) in entry["input"]
+    assert states_length(entry["input"], BOUND + 1)
 
     big = "z" * 60_000
     response = probe.post("/probe", json={"name": "ok", "count": big})
