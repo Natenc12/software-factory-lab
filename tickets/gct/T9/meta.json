@@ -1,0 +1,23 @@
+{
+  "id": "T9",
+  "kind": "feature",
+  "title": "Let a student replace an uploaded file, keep its versions, and restore an earlier one",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T9",
+  "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+  "s3_base_ref": "base/T9-s3",
+  "s3_base_commit": "4528b8c91e726a423b36d1b8cc94be93dd9b3718",
+  "db": "postgres",
+  "deliverable": "pull_request",
+  "long": true,
+  "spec_words": {
+    "S0": 149,
+    "S1": 1232,
+    "S2": 1810,
+    "S3": 1844
+  },
+  "not_for_spec_levels": [
+    "S0"
+  ],
+  "not_for_spec_levels_note": "S0 names none of the keys, routes, error kinds or reply shapes the hidden tests assert, and no reply supplies them, so no S0 run can pass. Stage 2 runs the standard level only."
+}

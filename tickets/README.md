@@ -109,3 +109,18 @@ resulting `base_commit`.
 be `hidden_tests_pass` (the hidden tests themselves fail when the naive version was shipped) besides
 `unchanged_paths` and `scope_out_paths`. Runs on gct need `UV_PYTHON=3.10`: the app does not compile
 on Python 3.13+.
+
+## Stage 2 tickets (T9 to T12)
+
+| Id | Kind | What it must catch |
+|---|---|---|
+| T9, T10 | Long, many-file | Drift: rules stated at the top of the ticket that only matter late in the work (`meta.json` has `"long": true`; `key.json`'s `long_ticket` maps each rule to the hidden tests that check it) |
+| T11, T12 | Flawed | Building the wrong thing as asked, when the flaw is not a decision record: a false premise about the code (T11), a rule pinned only by code and tests (T12) |
+
+For a flawed ticket whose S3 acceptance tests are written to hold for both the request as written and
+the owner's amended request, those tests may already pass on the starting branch; `key.json` then says
+`"acceptance_may_pass_on_base": true` and `verify_ticket.py` records the run instead of requiring a
+failure. Their starting branches are tagged `stage-2-candidate/base/<T>` until the stage 2 freeze.
+
+T9 is not for use at S0: its rough capture names none of the keys, routes or reply shapes the hidden
+tests assert, so no S0 run can pass (`meta.json`: `not_for_spec_levels`).

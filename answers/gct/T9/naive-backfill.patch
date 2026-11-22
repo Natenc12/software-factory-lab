@@ -1,0 +1,916 @@
+diff --git a/migrations/0005_file_replacement.sql b/migrations/0005_file_replacement.sql
+new file mode 100644
+index 0000000..eaa7251
+--- /dev/null
++++ b/migrations/0005_file_replacement.sql
+@@ -0,0 +1,34 @@
++-- 0005: replacing an uploaded file's contents (PUT /files/{file_id}).
++--
++-- `pending_staging_ref` points at the staged bytes of a replacement that has not been published yet;
++-- `staging_ref` keeps pointing at the bytes the file's current chunks came from until it is. When a
++-- replacement of a `ready` file fails, the file keeps its content and `replacement_failed_reason`
++-- says why (the same closed set as `failed_reason`). Both columns are NULL for every existing row.
++-- Re-runnable: scripts/migrate.py applies every file on every run.
++
++alter table files add column if not exists pending_staging_ref text;
++alter table files add column if not exists replacement_failed_reason text;
++
++alter table files drop constraint if exists files_replacement_failed_reason_check;
++alter table files add constraint files_replacement_failed_reason_check
++    check (replacement_failed_reason in
++        ('unparseable','protected','unsupported','empty','too_long','transient_exhausted'));
++
++-- Every upload of a file, first upload and replacements alike, is a numbered version: 1, 2, 3 ... per
++-- file, in upload order, with no gaps (failed versions keep their number). `outcome` is `pending`
++-- until the worker publishes the version or gives up on it.
++create table if not exists file_versions (
++    file_id        uuid not null references files(file_id) on delete cascade,
++    version        int  not null check (version >= 1),
++    filename       text not null,
++    staging_ref    text,
++    outcome        text not null default 'pending'
++                       check (outcome in ('pending','published','failed')),
++    failed_reason  text
++                       check (failed_reason in
++                           ('unparseable','protected','unsupported','empty','too_long','transient_exhausted')),
++    created_at     timestamptz not null default now(),
++    settled_at     timestamptz,
++    primary key (file_id, version)
++);
++
+diff --git a/src/gct/api/routers/files.py b/src/gct/api/routers/files.py
+index 121907a..7f200a3 100644
+--- a/src/gct/api/routers/files.py
++++ b/src/gct/api/routers/files.py
+@@ -36,7 +36,14 @@ from gct.api.deps import Conn, OwnerId
+ from gct.api.errors import ApiError
+ from gct.classes import class_exists
+ from gct.config import MAX_INGEST_WORDS
+-from gct.files import get_file_status
++from gct.files import (
++    FileBusy,
++    RestoreRefused,
++    get_file_status,
++    list_versions,
++    replace_file,
++    restore_version,
++)
+ from gct.jobs.queue import enqueue
+ from gct.staging import StagingError, stage
+ 
+@@ -239,6 +246,8 @@ class FileStatusResponse(BaseModel):
+     status: str
+     failed_reason: str | None
+     message: str
++    replacement: str | None = None
++    replacement_failed_reason: str | None = None
+ 
+ 
+ @router.get("/{file_id}")
+@@ -291,4 +300,145 @@ def file_status(conn: Conn, owner: OwnerId, file_id: str) -> FileStatusResponse:
+         status=result.status,
+         failed_reason=result.failed_reason,
+         message=message,
++        replacement=result.replacement,
++        replacement_failed_reason=result.replacement_failed_reason,
+     )
++
++
++@router.put("/{file_id}", status_code=202)
++def replace(
++    conn: Conn,
++    owner: OwnerId,
++    file_id: str,
++    file: Annotated[UploadFile, File()],
++) -> UploadAccepted:
++    """Upload new contents for an existing file; 202, and the client polls `GET /files/{file_id}`.
++
++    404 `file_not_found` for a missing file and for another owner's alike; 409 `file_busy` while
++    the file is queued or processing or a replacement is already pending. Both are checked before
++    anything is staged, and again under a row lock when the replacement is queued.
++    """
++    try:
++        current = get_file_status(conn, file_id=file_id, owner_id=owner)
++    except ValueError as exc:
++        raise ApiError(
++            400,
++            "bad_file_id",
++            "file_id must be a uuid. Use the file_id returned when the file was uploaded.",
++        ) from exc
++    if current is None:
++        raise ApiError(
++            404,
++            "file_not_found",
++            "No such file. Check the file id returned when the file was uploaded.",
++        )
++    busy = ApiError(
++        409,
++        "file_busy",
++        "This file is still being processed, or a replacement is already on its way. Try again "
++        "once it is ready or failed.",
++    )
++    if current.status not in ("ready", "failed") or current.replacement == "pending":
++        raise busy
++    try:
++        staged = stage(file.file, filename=file.filename)
++    except StagingError as exc:
++        raise ApiError(_STAGING_STATUS[exc.reason], exc.reason, str(exc)) from exc
++    try:
++        found = replace_file(conn, file_id=file_id, owner_id=owner, path=staged)
++    except FileBusy as exc:
++        raise busy from exc
++    if not found:
++        raise ApiError(
++            404,
++            "file_not_found",
++            "No such file. Check the file id returned when the file was uploaded.",
++        )
++    return UploadAccepted(file_id=str(uuid.UUID(file_id)), filename=Path(staged).name)
++
++
++class FileVersionOut(BaseModel):
++    version: int
++    filename: str
++    outcome: str
++    failed_reason: str | None
++    current: bool
++
++
++class FileVersions(BaseModel):
++    versions: list[FileVersionOut]
++
++
++@router.get("/{file_id}/versions")
++def file_versions(conn: Conn, owner: OwnerId, file_id: str) -> FileVersions:
++    """Every version of the file, newest first; 404 and 400 exactly as `GET /files/{file_id}`."""
++    try:
++        versions = list_versions(conn, file_id=file_id, owner_id=owner)
++    except ValueError as exc:
++        raise ApiError(
++            400,
++            "bad_file_id",
++            "file_id must be a uuid. Use the file_id returned when the file was uploaded.",
++        ) from exc
++    if versions is None:
++        raise ApiError(
++            404,
++            "file_not_found",
++            "No such file. Check the file id returned when the file was uploaded.",
++        )
++    return FileVersions(
++        versions=[
++            FileVersionOut(
++                version=v.version,
++                filename=v.filename,
++                outcome=v.outcome,
++                failed_reason=v.failed_reason,
++                current=v.current,
++            )
++            for v in versions
++        ]
++    )
++
++
++class RestoreAccepted(BaseModel):
++    file_id: str
++    filename: str
++    version: int
++
++
++_RESTORE_REFUSAL = {
++    "version_not_found": (404, "No such version of this file."),
++    "version_not_published": (409, "Only a version that was published can be restored."),
++    "version_is_current": (409, "This version is the one the file serves already."),
++}
++
++
++@router.post("/{file_id}/versions/{version}/restore", status_code=202)
++def restore(conn: Conn, owner: OwnerId, file_id: str, version: int) -> RestoreAccepted:
++    """Bring back an earlier published version as the file's next version; 202, then poll."""
++    try:
++        result = restore_version(conn, file_id=file_id, owner_id=owner, version=version)
++    except FileBusy as exc:
++        raise ApiError(
++            409,
++            "file_busy",
++            "This file is still being processed, or a replacement is already on its way. Try "
++            "again once it is ready or failed.",
++        ) from exc
++    except RestoreRefused as exc:
++        status, message = _RESTORE_REFUSAL[exc.reason]
++        raise ApiError(status, exc.reason, message) from exc
++    except ValueError as exc:
++        raise ApiError(
++            400,
++            "bad_file_id",
++            "file_id must be a uuid. Use the file_id returned when the file was uploaded.",
++        ) from exc
++    if result is None:
++        raise ApiError(
++            404,
++            "file_not_found",
++            "No such file. Check the file id returned when the file was uploaded.",
++        )
++    new_version, filename = result
++    return RestoreAccepted(file_id=str(uuid.UUID(file_id)), filename=filename, version=new_version)
+diff --git a/src/gct/files.py b/src/gct/files.py
+index d8f5115..4cfe0f3 100644
+--- a/src/gct/files.py
++++ b/src/gct/files.py
+@@ -18,9 +18,11 @@ one of the values the route knows how to render actionably. The membership test
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass
++from pathlib import Path
+ 
+ import psycopg
+ 
++from gct.db import require_idle
+ from gct.ids import canonical_uuid
+ 
+ 
+@@ -45,6 +47,10 @@ class FileStatus:
+     status: str
+     failed_reason: str | None
+     filename: str
++    # Only for a `ready` file: "pending" while a replacement waits to be published, "failed" when
++    # the last replacement failed (the file kept its content), otherwise None.
++    replacement: str | None = None
++    replacement_failed_reason: str | None = None
+ 
+ 
+ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) -> FileStatus | None:
+@@ -97,7 +103,8 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+ 
+     row = conn.execute(
+         """
+-        select status, failed_reason, filename
++        select status, failed_reason, filename, pending_staging_ref is not null,
++               replacement_failed_reason
+         from files
+         where file_id = %(file_id)s::uuid
+           and owner_id = %(owner_id)s
+@@ -106,4 +113,173 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+     ).fetchone()
+     if row is None:
+         return None
+-    return FileStatus(status=row[0], failed_reason=row[1], filename=row[2])
++    status, failed_reason, filename, pending, replacement_failed_reason = row
++    replacement = None
++    if status == "ready" and pending:
++        replacement = "pending"
++    elif status == "ready" and replacement_failed_reason:
++        replacement = "failed"
++    return FileStatus(
++        status=status,
++        failed_reason=failed_reason,
++        filename=filename,
++        replacement=replacement,
++        replacement_failed_reason=replacement_failed_reason if replacement == "failed" else None,
++    )
++
++
++class FileBusy(Exception):
++    """The file cannot be replaced now: it is queued or processing, or a replacement is pending."""
++
++
++def replace_file(
++    conn: psycopg.Connection, *, file_id: str, owner_id: str, path: str | Path
++) -> bool:
++    """Queue `path` (already staged) as the new contents of `file_id`. False if no such file.
++
++    A `ready` file stays `ready`, answering from its current chunks, until the worker publishes the
++    new version; if that fails the file keeps its content and records `replacement_failed_reason`.
++    A `failed` file goes back to `queued` and is processed like a new upload. Anything else, or a
++    file with a replacement already pending, raises `FileBusy` and changes nothing.
++    """
++    canonical = canonical_uuid(
++        file_id,
++        fn="replace_file",
++        param="file_id",
++        remedy="Pass the file_id returned when the file was uploaded.",
++    )
++    require_idle(conn, "replace_file")
++    with conn.transaction():
++        row = conn.execute(
++            """
++            select f.status, f.pending_staging_ref, f.class_id::text,
++                   exists (
++                       select 1 from jobs j
++                       where j.file_id = f.file_id and j.state in ('queued', 'processing')
++                   )
++            from files f
++            where f.file_id = %(file_id)s::uuid and f.owner_id = %(owner_id)s
++            for update of f
++            """,
++            {"file_id": canonical, "owner_id": owner_id},
++        ).fetchone()
++        if row is None:
++            return False
++        status, pending, class_id, job_active = row
++        if status not in ("ready", "failed") or pending is not None or job_active:
++            raise FileBusy(f"file {canonical} is {status} or already being replaced")
++        conn.execute(
++            """
++            update files
++            set pending_staging_ref = %(path)s,
++                replacement_failed_reason = null,
++                status = case when status = 'failed' then 'queued' else status end,
++                failed_reason = case when status = 'failed' then null else failed_reason end,
++                updated_at = now()
++            where file_id = %(file_id)s::uuid
++            """,
++            {"path": str(Path(path).resolve()), "file_id": canonical},
++        )
++        conn.execute(
++            """
++            insert into jobs (file_id, owner_id, class_id)
++            values (%(file_id)s::uuid, %(owner_id)s, %(class_id)s::uuid)
++            """,
++            {"file_id": canonical, "owner_id": owner_id, "class_id": class_id},
++        )
++        conn.execute(
++            """
++            insert into file_versions (file_id, version, filename, staging_ref)
++            select %(file_id)s::uuid, coalesce(max(version), 0) + 1, %(filename)s, %(path)s
++            from file_versions where file_id = %(file_id)s::uuid
++            """,
++            {"file_id": canonical, "filename": Path(path).name, "path": str(Path(path).resolve())},
++        )
++    return True
++
++
++@dataclass(frozen=True)
++class FileVersion:
++    version: int
++    filename: str
++    outcome: str  # pending, published or failed
++    failed_reason: str | None
++    current: bool  # the version the file's chunks come from now
++
++
++def list_versions(
++    conn: psycopg.Connection, *, file_id: str, owner_id: str
++) -> list[FileVersion] | None:
++    """Every version of `file_id`, newest first, or None if the owner has no such file."""
++    canonical = canonical_uuid(
++        file_id,
++        fn="list_versions",
++        param="file_id",
++        remedy="Pass the file_id returned when the file was uploaded.",
++    )
++    owned = conn.execute(
++        "select 1 from files where file_id = %(file_id)s::uuid and owner_id = %(owner_id)s",
++        {"file_id": canonical, "owner_id": owner_id},
++    ).fetchone()
++    if owned is None:
++        return None
++    rows = conn.execute(
++        """
++        select version, filename, outcome, failed_reason,
++               coalesce(version = max(version) filter (where outcome = 'published') over (), false)
++        from file_versions where file_id = %(file_id)s::uuid
++        order by version desc
++        """,
++        {"file_id": canonical},
++    ).fetchall()
++    return [
++        FileVersion(version=v, filename=n, outcome=o, failed_reason=r, current=bool(c))
++        for v, n, o, r, c in rows
++    ]
++
++
++class RestoreRefused(Exception):
++    """A version cannot be restored: `reason` is version_not_found, version_not_published or
++    version_is_current."""
++
++    def __init__(self, reason: str) -> None:
++        super().__init__(reason)
++        self.reason = reason
++
++
++def restore_version(
++    conn: psycopg.Connection, *, file_id: str, owner_id: str, version: int
++) -> tuple[int, str] | None:
++    """Queue an earlier published version's staged bytes as the file's next version.
++
++    Returns `(new_version, filename)`, or None if the owner has no such file. Raises `FileBusy` as
++    `replace_file` does, and `RestoreRefused` for a version that is missing, never published, or
++    already current. Nothing is staged: the version's bytes are still on disk (ADR 0010).
++    """
++    canonical = canonical_uuid(
++        file_id,
++        fn="restore_version",
++        param="file_id",
++        remedy="Pass the file_id returned when the file was uploaded.",
++    )
++    require_idle(conn, "restore_version")
++    with conn.transaction():
++        versions = list_versions(conn, file_id=canonical, owner_id=owner_id)
++        if versions is None:
++            return None
++        chosen = next((v for v in versions if v.version == version), None)
++        if chosen is None:
++            raise RestoreRefused("version_not_found")
++        if chosen.outcome != "published":
++            raise RestoreRefused("version_not_published")
++        if chosen.current:
++            raise RestoreRefused("version_is_current")
++        (staged,) = conn.execute(
++            "select staging_ref from file_versions where file_id = %(f)s::uuid and version = %(v)s",
++            {"f": canonical, "v": version},
++        ).fetchone()
++    if not replace_file(conn, file_id=canonical, owner_id=owner_id, path=staged):
++        return None
++    with conn.transaction():
++        newest = list_versions(conn, file_id=canonical, owner_id=owner_id)[0]
++    return newest.version, newest.filename
+diff --git a/src/gct/jobs/queue.py b/src/gct/jobs/queue.py
+index 9a9cab1..e246dda 100644
+--- a/src/gct/jobs/queue.py
++++ b/src/gct/jobs/queue.py
+@@ -45,6 +45,8 @@ class Job:
+     class_id: str
+     attempts: int
+     staging_ref: str
++    # True when this job ingests a replacement (`files.pending_staging_ref`), not the first upload.
++    replacing: bool = False
+ 
+ 
+ def enqueue(
+@@ -197,6 +199,13 @@ def enqueue(
+             """,
+             {"file_id": file_id, "owner_id": owner_id, "class_id": canonical_class_id},
+         )
++        conn.execute(
++            """
++            insert into file_versions (file_id, version, filename, staging_ref)
++            values (%(file_id)s::uuid, 1, %(filename)s, %(staging_ref)s)
++            """,
++            {"file_id": file_id, "filename": source.name, "staging_ref": str(source.resolve())},
++        )
+ 
+     return file_id
+ 
+@@ -271,12 +280,13 @@ def claim(conn: psycopg.Connection) -> Job | None:
+                   where q.state = 'queued' order by q.created_at limit 1
+               )
+             returning j.job_id::text, j.file_id::text, j.owner_id, j.class_id::text,
+-                      j.attempts, f.staging_ref
++                      j.attempts, coalesce(f.pending_staging_ref, f.staging_ref),
++                      f.pending_staging_ref is not null
+             """
+         ).fetchone()
+     if row is None:
+         return None
+-    job_id, file_id, owner_id, class_id, attempts, staging_ref = row
++    job_id, file_id, owner_id, class_id, attempts, staging_ref, replacing = row
+     return Job(
+         job_id=job_id,
+         file_id=file_id,
+@@ -284,6 +294,7 @@ def claim(conn: psycopg.Connection) -> Job | None:
+         class_id=class_id,
+         attempts=attempts,
+         staging_ref=staging_ref,
++        replacing=replacing,
+     )
+ 
+ 
+diff --git a/src/gct/jobs/worker.py b/src/gct/jobs/worker.py
+index 8c2c289..66367a5 100644
+--- a/src/gct/jobs/worker.py
++++ b/src/gct/jobs/worker.py
+@@ -57,14 +57,56 @@ def _bury(conn: psycopg.Connection, job: Job, *, reason: str, error: str) -> Non
+         conn.execute(
+             """
+             update files
+-            set status = 'failed', failed_reason = %(reason)s, updated_at = now()
++            set status = 'failed', failed_reason = %(reason)s, pending_staging_ref = null,
++                updated_at = now()
+             where file_id = %(file_id)s::uuid and status <> 'ready'
+             """,
+             {"reason": reason, "file_id": job.file_id},
+         )
++        # A replacement of a `ready` file failed: the file keeps its content and says why.
++        conn.execute(
++            """
++            update files
++            set replacement_failed_reason = %(reason)s, pending_staging_ref = null,
++                updated_at = now()
++            where file_id = %(file_id)s::uuid and status = 'ready'
++              and pending_staging_ref is not null
++            """,
++            {"reason": reason, "file_id": job.file_id},
++        )
++        _settle_version(conn, job, outcome="failed", reason=reason)
+     fail(conn, job_id=job.job_id, error=error)
+ 
+ 
++def _settle_version(
++    conn: psycopg.Connection, job: Job, *, outcome: str, reason: str | None
++) -> None:
++    """Record how the file's pending version ended (inside the caller's transaction)."""
++    conn.execute(
++        """
++        update file_versions
++        set outcome = %(outcome)s, failed_reason = %(reason)s, settled_at = now()
++        where file_id = %(file_id)s::uuid and outcome = 'pending'
++        """,
++        {"outcome": outcome, "reason": reason, "file_id": job.file_id},
++    )
++
++
++def _promote(conn: psycopg.Connection, job: Job) -> None:
++    """After a publish: the file's staged copy is now the one its chunks came from."""
++    with conn.transaction():
++        conn.execute(
++            """
++            update files
++            set staging_ref = coalesce(pending_staging_ref, staging_ref),
++                pending_staging_ref = null, replacement_failed_reason = null, updated_at = now()
++            where file_id = %(file_id)s::uuid
++            """,
++            {"file_id": job.file_id},
++        )
++        _settle_version(conn, job, outcome="published", reason=None)
++
++
+ def process_one(
+     conn: psycopg.Connection,
+     *,
+@@ -139,6 +181,7 @@ def process_one(
+         release(conn, job_id=job.job_id, error=f"transient: {exc}")
+         return True
+ 
++    _promote(conn, job)
+     complete(conn, job_id=job.job_id)
+     logger.info("job %s: done in %.1fs", job.job_id, time.perf_counter() - started)
+     return True
+diff --git a/tests/gct/api/test_files_router.py b/tests/gct/api/test_files_router.py
+index 97727d4..38ccfcb 100644
+--- a/tests/gct/api/test_files_router.py
++++ b/tests/gct/api/test_files_router.py
+@@ -354,6 +354,8 @@ def test_the_status_of_a_fresh_upload_is_queued_and_says_so_in_words(
+         "status": "queued",
+         "failed_reason": None,
+         "message": files_router._STATUS_MESSAGE["queued"],
++        "replacement": None,
++        "replacement_failed_reason": None,
+     }
+ 
+ 
+diff --git a/tests/gct/test_replace_file.py b/tests/gct/test_replace_file.py
+new file mode 100644
+index 0000000..7d818a3
+--- /dev/null
++++ b/tests/gct/test_replace_file.py
+@@ -0,0 +1,75 @@
++"""`replace_file`: new contents for an existing file, published only when the worker succeeds."""
++
++from __future__ import annotations
++
++import io
++from pathlib import Path
++
++import pytest
++from reportlab.pdfgen import canvas
++
++from gct.config import EMBEDDING_DIM
++from gct.files import FileBusy, get_file_status, replace_file
++from gct.ingest.chunk import CHUNK_OVERLAP_WORDS, CHUNK_SIZE_WORDS
++from gct.jobs.queue import enqueue
++from gct.jobs.worker import process_one
++
++
++class FakeEmbeddings:
++    model_id = "fake-embed-3"
++
++    def embed(self, texts):
++        return [[1.0] + [0.0] * (EMBEDDING_DIM - 1) for _ in texts]
++
++
++def _pdf(path: Path, text: str) -> Path:
++    buf = io.BytesIO()
++    c = canvas.Canvas(buf, pagesize=(612, 792))
++    c.drawString(72, 700, text)
++    c.showPage()
++    c.save()
++    path.write_bytes(buf.getvalue())
++    return path
++
++
++def _tick(conn) -> bool:
++    return process_one(
++        conn,
++        embedder=FakeEmbeddings(),
++        chunk_size=CHUNK_SIZE_WORDS,
++        chunk_overlap=CHUNK_OVERLAP_WORDS,
++    )
++
++
++def test_a_ready_file_stays_ready_while_its_replacement_is_pending(worker_db, tmp_path):
++    conn, owner_id, class_id = worker_db
++    conn.autocommit = True
++    file_id = enqueue(
++        conn, path=_pdf(tmp_path / "a.pdf", "one"), owner_id=owner_id, class_id=class_id
++    )
++    assert _tick(conn)
++
++    assert replace_file(
++        conn, file_id=file_id, owner_id=owner_id, path=_pdf(tmp_path / "b.pdf", "two")
++    )
++    status = get_file_status(conn, file_id=file_id, owner_id=owner_id)
++    assert (status.status, status.replacement, status.filename) == ("ready", "pending", "a.pdf")
++
++    with pytest.raises(FileBusy):
++        replace_file(conn, file_id=file_id, owner_id=owner_id, path=tmp_path / "b.pdf")
++
++    assert _tick(conn)
++    status = get_file_status(conn, file_id=file_id, owner_id=owner_id)
++    assert (status.status, status.replacement, status.filename) == ("ready", None, "b.pdf")
++
++
++def test_another_owners_file_is_not_replaced(db, tmp_path):
++    conn, owner_id, class_id = db
++    conn.autocommit = True
++    file_id = enqueue(
++        conn, path=_pdf(tmp_path / "a.pdf", "one"), owner_id=owner_id, class_id=class_id
++    )
++    assert (
++        replace_file(conn, file_id=file_id, owner_id="someone-else", path=tmp_path / "a.pdf")
++        is False
++    )
+diff --git a/web/openapi.json b/web/openapi.json
+index 63298b1..c669525 100644
+--- a/web/openapi.json
++++ b/web/openapi.json
+@@ -146,6 +146,142 @@
+             }
+           }
+         }
++      },
++      "put": {
++        "tags": [
++          "files"
++        ],
++        "operationId": "replace_files__file_id__put",
++        "parameters": [
++          {
++            "name": "file_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          }
++        ],
++        "requestBody": {
++          "required": true,
++          "content": {
++            "multipart/form-data": {
++              "schema": {
++                "$ref": "#/components/schemas/Body_replace_files__file_id__put"
++              }
++            }
++          }
++        },
++        "responses": {
++          "202": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/UploadAccepted"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
++      }
++    },
++    "/files/{file_id}/versions": {
++      "get": {
++        "tags": [
++          "files"
++        ],
++        "operationId": "file_versions_files__file_id__versions_get",
++        "parameters": [
++          {
++            "name": "file_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          }
++        ],
++        "responses": {
++          "200": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/FileVersions"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
++      }
++    },
++    "/files/{file_id}/versions/{version}/restore": {
++      "post": {
++        "tags": [
++          "files"
++        ],
++        "operationId": "restore_files__file_id__versions__version__restore_post",
++        "parameters": [
++          {
++            "name": "file_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          },
++          {
++            "name": "version",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "integer"
++            }
++          }
++        ],
++        "responses": {
++          "202": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/RestoreAccepted"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
+       }
+     },
+     "/ask": {
+@@ -251,6 +387,18 @@
+           "integrity"
+         ]
+       },
++      "Body_replace_files__file_id__put": {
++        "properties": {
++          "file": {
++            "type": "string",
++            "contentMediaType": "application/octet-stream"
++          }
++        },
++        "type": "object",
++        "required": [
++          "file"
++        ]
++      },
+       "Body_upload_file_files_post": {
+         "properties": {
+           "class_id": {
+@@ -343,6 +491,26 @@
+           },
+           "message": {
+             "type": "string"
++          },
++          "replacement": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ]
++          },
++          "replacement_failed_reason": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ]
+           }
+         },
+         "type": "object",
+@@ -353,6 +521,54 @@
+           "message"
+         ]
+       },
++      "FileVersionOut": {
++        "properties": {
++          "version": {
++            "type": "integer"
++          },
++          "filename": {
++            "type": "string"
++          },
++          "outcome": {
++            "type": "string"
++          },
++          "failed_reason": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ]
++          },
++          "current": {
++            "type": "boolean"
++          }
++        },
++        "type": "object",
++        "required": [
++          "version",
++          "filename",
++          "outcome",
++          "failed_reason",
++          "current"
++        ]
++      },
++      "FileVersions": {
++        "properties": {
++          "versions": {
++            "items": {
++              "$ref": "#/components/schemas/FileVersionOut"
++            },
++            "type": "array"
++          }
++        },
++        "type": "object",
++        "required": [
++          "versions"
++        ]
++      },
+       "HTTPValidationError": {
+         "properties": {
+           "detail": {
+@@ -394,6 +610,25 @@
+           "name"
+         ]
+       },
++      "RestoreAccepted": {
++        "properties": {
++          "file_id": {
++            "type": "string"
++          },
++          "filename": {
++            "type": "string"
++          },
++          "version": {
++            "type": "integer"
++          }
++        },
++        "type": "object",
++        "required": [
++          "file_id",
++          "filename",
++          "version"
++        ]
++      },
+       "UploadAccepted": {
+         "properties": {
+           "file_id": {

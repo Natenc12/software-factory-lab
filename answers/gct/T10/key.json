@@ -1,0 +1,80 @@
+{
+  "hidden_test_cmd": "uv run pytest -q -m 'not live' tests/hidden",
+  "unchanged_paths": [
+    "migrations/0001_init.sql",
+    "migrations/0003_failed_reason_too_long.sql",
+    "migrations/0004_one_worker.sql"
+  ],
+  "scope_out_paths": [
+    "web/src/",
+    "migrations/",
+    "src/gct/jobs/",
+    "src/gct/ingest/",
+    "src/gct/retriever/",
+    "src/gct/grounder/"
+  ],
+  "traps": [
+    {
+      "id": "below-the-api-touched",
+      "check": "scope_out_paths",
+      "paths": [
+        "migrations/",
+        "src/gct/jobs/",
+        "src/gct/ingest/",
+        "src/gct/retriever/",
+        "src/gct/grounder/"
+      ]
+    },
+    {
+      "id": "web-client-touched",
+      "check": "scope_out_paths",
+      "paths": [
+        "web/src/"
+      ]
+    }
+  ],
+  "tests_may_change": [],
+  "tests_may_change_note": "Rule 1 and the Done-when list say every existing test passes unchanged; the reference changes none.",
+  "acceptance_test_paths": [
+    "tests/acceptance/test_courses_in_the_api.py"
+  ],
+  "long_ticket": {
+    "early_rules": [
+      "1 old clients notice nothing (status, body, kind, message), apart from the rule 6 header",
+      "2 a request that names the course as a course is answered in course words, /courses routes included",
+      "3 two ids must agree, else 400 conflicting_ids before lookup and before staging",
+      "4 nothing below the API changes name; add only what part 5 needs",
+      "5 nothing is staged before the course is checked, on every upload route",
+      "6 every reply to an old-name request carries Deprecation: true, errors included; course requests never do"
+    ],
+    "checked_by": {
+      "1": "test_uploads_by_course_id_answer_in_course_words_and_old_replies_are_unchanged, test_ask_by_course_id_answers_in_course_words_and_old_replies_are_unchanged, test_post_courses_creates_a_course_that_old_routes_accept_as_a_class",
+      "2": "the same two tests",
+      "3": "test_conflicting_ids_are_refused_before_anything_is_staged",
+      "4": "trap below-the-api-touched and existing tests unchanged",
+      "5": "test_conflicting_ids_are_refused_before_anything_is_staged, test_course_scoped_upload_and_ask_follow_every_earlier_rule",
+      "6": "test_every_reply_to_an_old_name_request_carries_the_deprecation_header, test_requests_that_use_course_id_never_carry_the_deprecation_header",
+      "part 6": "test_course_scoped_upload_and_ask_follow_every_earlier_rule"
+    },
+    "parts": [
+      "1 id rules",
+      "2 POST /courses",
+      "3 course_id on the old routes",
+      "4 deprecation (schema flag and header)",
+      "5 GET /courses/{course_id}",
+      "6 course-scoped upload and ask"
+    ]
+  },
+  "naive_patches": {
+    "naive-noconflict.patch": "when both ids are sent, course_id silently wins (breaks rule 3)",
+    "naive-s3.patch": "forgets to mark POST /classes deprecated (breaks part 4); passes the acceptance tests",
+    "naive-askwords.patch": "the ask route forgets rule 2 late in the work: course_id requests to POST /ask are answered in class words (class_not_found, bad_class_id)",
+    "naive-headers.patch": "adds the Deprecation header only to successful replies, forgetting that rule 6 covers every error reply too",
+    "naive-stagefirst.patch": "the course-scoped upload stages the file before checking the course (breaks rule 5 in the last part)",
+    "naive-lateslips.patch": "the audit's careless variant: no Deprecation header on a malformed-class_id POST /ask (the flag is set after parsing), and /courses/biology/ask answers 404 instead of 400 bad_course_id"
+  },
+  "planted_bugs": [],
+  "not_bugs": [],
+  "naive_patches_note": "A variant that answers old class_id requests in course words was tried and dropped: the existing router tests already pin today's replies, so it breaks the repository's own suite.",
+  "traps_note": "Rule 4 lets a run add what GET /courses/{course_id} needs in gct.classes or gct.files, so those two are not trapped; renames there are left to the reviewers and judges."
+}

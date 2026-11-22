@@ -1,0 +1,249 @@
+{
+  "ticket": "T9",
+  "codebase": "gct",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T9",
+  "base_sha": "283ebf86add01478e5c92a5468b0e88148e5fb28",
+  "s3_base_ref": "base/T9-s3",
+  "s3_sha": "4528b8c91e726a423b36d1b8cc94be93dd9b3718",
+  "started": "2026-11-22T19:23:31+00:00",
+  "finished": "2026-11-22T19:30:43+00:00",
+  "databases_dropped": [
+    "author_gct_t9_base_21772",
+    "author_gct_t9_ref_21772",
+    "author_gct_t9_naive_backfill_21772",
+    "author_gct_t9_naive_deletebytes_21772",
+    "author_gct_t9_naive_failure_21772",
+    "author_gct_t9_naive_reupload_21772",
+    "author_gct_t9_naive_s3_21772",
+    "author_gct_t9_s3base_21772",
+    "author_gct_t9_s3ref_21772",
+    "author_gct_t9_s3naive_21772"
+  ],
+  "ok": true,
+  "steps": [
+    {
+      "name": "base: existing tests pass",
+      "ok": true,
+      "note": "1175 passed, 1 deselected in 50.70s",
+      "counts": {
+        "passed": 1175
+      },
+      "seconds": 52.4,
+      "log_tail": ""
+    },
+    {
+      "name": "hidden tests exist",
+      "ok": true,
+      "files": [
+        "tests/hidden/test_hidden_t9.py"
+      ]
+    },
+    {
+      "name": "base: every hidden test fails",
+      "ok": true,
+      "note": "9 failed in 2.18s",
+      "outcomes": {
+        "tests.hidden.test_hidden_t9::test_a_ready_file_keeps_answering_until_the_new_version_is_published": "failed",
+        "tests.hidden.test_hidden_t9::test_a_failed_replacement_leaves_the_file_as_it_was": "failed",
+        "tests.hidden.test_hidden_t9::test_replacing_a_failed_file_processes_it_like_a_new_upload": "failed",
+        "tests.hidden.test_hidden_t9::test_refusals_stage_nothing": "failed",
+        "tests.hidden.test_hidden_t9::test_a_transient_failure_keeps_the_replacement_pending_and_a_spent_budget_fails_it": "failed",
+        "tests.hidden.test_hidden_t9::test_every_upload_is_a_numbered_version_with_its_outcome": "failed",
+        "tests.hidden.test_hidden_t9::test_files_already_in_the_database_are_version_1": "failed",
+        "tests.hidden.test_hidden_t9::test_an_earlier_published_version_can_be_restored_as_the_next_version": "failed",
+        "tests.hidden.test_hidden_t9::test_restore_refusals": "failed"
+      },
+      "not_failing": [],
+      "seconds": 3.0
+    },
+    {
+      "name": "reference: leaves unchanged_paths alone",
+      "ok": true,
+      "touched": [],
+      "changed": [
+        "migrations/0005_file_replacement.sql",
+        "src/gct/api/routers/files.py",
+        "src/gct/files.py",
+        "src/gct/jobs/queue.py",
+        "src/gct/jobs/worker.py",
+        "tests/gct/api/test_files_router.py",
+        "tests/gct/test_replace_file.py",
+        "web/openapi.json"
+      ]
+    },
+    {
+      "name": "reference: every hidden test passes",
+      "ok": true,
+      "note": "9 hidden, 9 collected",
+      "outcomes": {
+        "tests.hidden.test_hidden_t9::test_a_ready_file_keeps_answering_until_the_new_version_is_published": "passed",
+        "tests.hidden.test_hidden_t9::test_a_failed_replacement_leaves_the_file_as_it_was": "passed",
+        "tests.hidden.test_hidden_t9::test_replacing_a_failed_file_processes_it_like_a_new_upload": "passed",
+        "tests.hidden.test_hidden_t9::test_refusals_stage_nothing": "passed",
+        "tests.hidden.test_hidden_t9::test_a_transient_failure_keeps_the_replacement_pending_and_a_spent_budget_fails_it": "passed",
+        "tests.hidden.test_hidden_t9::test_every_upload_is_a_numbered_version_with_its_outcome": "passed",
+        "tests.hidden.test_hidden_t9::test_files_already_in_the_database_are_version_1": "passed",
+        "tests.hidden.test_hidden_t9::test_an_earlier_published_version_can_be_restored_as_the_next_version": "passed",
+        "tests.hidden.test_hidden_t9::test_restore_refusals": "passed"
+      },
+      "not_passing": []
+    },
+    {
+      "name": "reference: existing tests pass",
+      "ok": true,
+      "note": "1186 passed, 1 deselected in 49.28s",
+      "counts": {
+        "passed": 1186
+      },
+      "failing": [],
+      "seconds": 50.2,
+      "log_tail": ""
+    },
+    {
+      "name": "base and reference ran the same hidden tests",
+      "ok": true,
+      "missing_on_base": [],
+      "base_collection_errors": []
+    },
+    {
+      "name": "reference: lint and format clean (tree and hidden tests)",
+      "ok": true,
+      "runs": [
+        {
+          "cmd": "ruff check",
+          "exit": 0,
+          "tail": "All checks passed!\n"
+        },
+        {
+          "cmd": "ruff format --check .",
+          "exit": 0,
+          "tail": "88 files already formatted\n"
+        },
+        {
+          "cmd": "ruff check tests/hidden/test_hidden_t9.py",
+          "exit": 0,
+          "tail": "All checks passed!\n"
+        },
+        {
+          "cmd": "ruff format --check tests/hidden/test_hidden_t9.py",
+          "exit": 0,
+          "tail": "1 file already formatted\n"
+        }
+      ]
+    },
+    {
+      "name": "hidden tests run in under about 2 minutes",
+      "ok": true,
+      "note": "2.7s"
+    },
+    {
+      "name": "naive-backfill.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t9::test_files_already_in_the_database_are_version_1"
+      ],
+      "note": "1/9 hidden fail"
+    },
+    {
+      "name": "naive-backfill.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive-deletebytes.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t9::test_a_ready_file_keeps_answering_until_the_new_version_is_published",
+        "tests.hidden.test_hidden_t9::test_an_earlier_published_version_can_be_restored_as_the_next_version"
+      ],
+      "note": "2/9 hidden fail"
+    },
+    {
+      "name": "naive-deletebytes.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive-failure.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t9::test_a_failed_replacement_leaves_the_file_as_it_was",
+        "tests.hidden.test_hidden_t9::test_a_transient_failure_keeps_the_replacement_pending_and_a_spent_budget_fails_it",
+        "tests.hidden.test_hidden_t9::test_an_earlier_published_version_can_be_restored_as_the_next_version",
+        "tests.hidden.test_hidden_t9::test_every_upload_is_a_numbered_version_with_its_outcome",
+        "tests.hidden.test_hidden_t9::test_restore_refusals"
+      ],
+      "note": "5/9 hidden fail"
+    },
+    {
+      "name": "naive-failure.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive-reupload.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t9::test_a_failed_replacement_leaves_the_file_as_it_was",
+        "tests.hidden.test_hidden_t9::test_a_ready_file_keeps_answering_until_the_new_version_is_published",
+        "tests.hidden.test_hidden_t9::test_a_transient_failure_keeps_the_replacement_pending_and_a_spent_budget_fails_it",
+        "tests.hidden.test_hidden_t9::test_an_earlier_published_version_can_be_restored_as_the_next_version"
+      ],
+      "note": "4/9 hidden fail"
+    },
+    {
+      "name": "naive-reupload.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive-s3.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t9::test_refusals_stage_nothing"
+      ],
+      "note": "1/9 hidden fail"
+    },
+    {
+      "name": "naive-s3.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "s3: branch is base_ref plus one commit that only adds tests",
+      "ok": true,
+      "files": [
+        "tests/acceptance/test_replace_a_file.py"
+      ]
+    },
+    {
+      "name": "s3: acceptance tests fail on the S3 branch",
+      "ok": true,
+      "note": "2 failed in 0.85s",
+      "outcomes": {
+        "tests.acceptance.test_replace_a_file::test_examples_1_2_3_replace_a_ready_file": "failed",
+        "tests.acceptance.test_replace_a_file::test_example_6_replace_a_failed_file": "failed"
+      }
+    },
+    {
+      "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
+      "ok": true,
+      "note": "1188 passed, 1 deselected in 48.33s",
+      "failing": [],
+      "log_tail": ""
+    },
+    {
+      "name": "s3: naive-s3.patch passes every acceptance test",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "s3: naive-s3.patch still fails a hidden test (hidden checks beyond acceptance)",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t9::test_refusals_stage_nothing"
+      ]
+    }
+  ]
+}

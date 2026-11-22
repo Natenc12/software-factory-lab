@@ -1,0 +1,83 @@
+diff --git a/src/gct/jobs/queue.py b/src/gct/jobs/queue.py
+index 9a9cab1..558988c 100644
+--- a/src/gct/jobs/queue.py
++++ b/src/gct/jobs/queue.py
+@@ -346,3 +346,36 @@ def release(conn: psycopg.Connection, *, job_id: str, error: str) -> bool:
+         assignments="state = 'queued', last_error = %(error)s",
+         params={"error": error},
+     )
++
++
++def requeue_exhausted(conn: psycopg.Connection) -> int:
++    """Give every file that failed as `transient_exhausted` a fresh retry budget. Returns how many.
++
++    For an outage that outlasted the budget: each such file goes back to `queued` with no reason,
++    and its most recent job goes back to `queued` with `attempts = 0`. Files that failed for any
++    other reason are bad input and are left alone. Safe while the worker runs: these jobs are
++    `failed`, so nothing is holding them.
++    """
++    require_idle(conn, "requeue_exhausted")
++    with conn.transaction():
++        rows = conn.execute(
++            """
++            update files
++            set status = 'queued', failed_reason = null, updated_at = now()
++            where status = 'failed' and failed_reason = 'transient_exhausted'
++            returning file_id
++            """
++        ).fetchall()
++        for (file_id,) in rows:
++            conn.execute(
++                """
++                update jobs
++                set state = 'queued', attempts = 0, updated_at = now()
++                where job_id = (
++                    select job_id from jobs where file_id = %(file_id)s
++                    order by created_at desc limit 1
++                )
++                """,
++                {"file_id": file_id},
++            )
++    return len(rows)
+diff --git a/tests/gct/jobs/test_requeue_exhausted.py b/tests/gct/jobs/test_requeue_exhausted.py
+new file mode 100644
+index 0000000..be87ced
+--- /dev/null
++++ b/tests/gct/jobs/test_requeue_exhausted.py
+@@ -0,0 +1,36 @@
++"""`requeue_exhausted`: a fresh retry budget for files an outage pushed past theirs."""
++
++from __future__ import annotations
++
++from gct.jobs.queue import enqueue, requeue_exhausted
++
++
++def test_only_transient_exhausted_files_are_requeued(db, db_other, tmp_path):
++    conn, owner_id, class_id = db
++    conn.autocommit = True
++    path = tmp_path / "a.pdf"
++    path.write_bytes(b"%PDF-1.7 x")
++    exhausted = enqueue(conn, path=path, owner_id=owner_id, class_id=class_id)
++    corrupt = enqueue(conn, path=path, owner_id=owner_id, class_id=class_id)
++    conn.execute(
++        "update files set status = 'failed', failed_reason = 'transient_exhausted' "
++        "where file_id = %s::uuid",
++        (exhausted,),
++    )
++    conn.execute(
++        "update files set status = 'failed', failed_reason = 'unparseable' "
++        "where file_id = %s::uuid",
++        (corrupt,),
++    )
++    conn.execute("update jobs set state = 'failed', attempts = 6 where owner_id = %s", (owner_id,))
++
++    assert requeue_exhausted(conn) == 1
++
++    assert db_other.execute(
++        "select f.status, f.failed_reason, j.state, j.attempts from files f join jobs j "
++        "using (file_id) where f.file_id = %s::uuid",
++        (exhausted,),
++    ).fetchone() == ("queued", None, "queued", 0)
++    assert db_other.execute(
++        "select status, failed_reason from files where file_id = %s::uuid", (corrupt,)
++    ).fetchone() == ("failed", "unparseable")

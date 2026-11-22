@@ -1,0 +1,108 @@
+diff --git a/src/gct/api/routers/files.py b/src/gct/api/routers/files.py
+index 121907a..ff02b3d 100644
+--- a/src/gct/api/routers/files.py
++++ b/src/gct/api/routers/files.py
+@@ -25,6 +25,7 @@ writer of this precondition, and a route that builds its own connection breaks t
+ 
+ from __future__ import annotations
+ 
++import logging
+ import uuid
+ from pathlib import Path
+ from typing import Annotated
+@@ -36,10 +37,12 @@ from gct.api.deps import Conn, OwnerId
+ from gct.api.errors import ApiError
+ from gct.classes import class_exists
+ from gct.config import MAX_INGEST_WORDS
+-from gct.files import get_file_status
++from gct.files import exists_for_another_owner, get_file_status
+ from gct.jobs.queue import enqueue
+ from gct.staging import StagingError, stage
+ 
++logger = logging.getLogger(__name__)
++
+ router = APIRouter(prefix="/files", tags=["files"])
+ 
+ # The HTTP status each request-time staging refusal renders as. `gct.staging.STAGING_REASONS` is
+@@ -276,6 +279,12 @@ def file_status(conn: Conn, owner: OwnerId, file_id: str) -> FileStatusResponse:
+             "file_id must be a uuid. Use the file_id returned when the file was uploaded.",
+         ) from exc
+     if result is None:
++        # Support can tell a typo from an access problem in the log; the client cannot (F12).
++        if exists_for_another_owner(conn, file_id=file_id, owner_id=owner):
++            logger.warning(
++                "GET /files/%s: answered 404, but the file exists under another owner",
++                uuid.UUID(file_id),
++            )
+         raise ApiError(
+             404,
+             "file_not_found",
+diff --git a/src/gct/files.py b/src/gct/files.py
+index d8f5115..648167c 100644
+--- a/src/gct/files.py
++++ b/src/gct/files.py
+@@ -107,3 +107,23 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+     if row is None:
+         return None
+     return FileStatus(status=row[0], failed_reason=row[1], filename=row[2])
++
++
++def exists_for_another_owner(conn: psycopg.Connection, *, file_id: str, owner_id: str) -> bool:
++    """True if `file_id` names a file that belongs to some owner other than `owner_id`.
++
++    For the SERVER LOG only. Callers must never let the answer change what a client sees: a
++    missing file and another owner's file stay one indistinguishable reply (F12). The other
++    owner's identity is not returned on purpose, so it cannot end up in a log line either.
++    """
++    canonical = canonical_uuid(
++        file_id,
++        fn="exists_for_another_owner",
++        param="file_id",
++        remedy="Pass the file_id the client asked about.",
++    )
++    row = conn.execute(
++        "select 1 from files where file_id = %(file_id)s::uuid and owner_id <> %(owner_id)s",
++        {"file_id": canonical, "owner_id": owner_id},
++    ).fetchone()
++    return row is not None
+diff --git a/tests/gct/api/test_file_status_log.py b/tests/gct/api/test_file_status_log.py
+new file mode 100644
+index 0000000..d51cfd0
+--- /dev/null
++++ b/tests/gct/api/test_file_status_log.py
+@@ -0,0 +1,35 @@
++"""A 404 for another owner's file is logged for support, and the reply stays the same."""
++
++from __future__ import annotations
++
++import logging
++import uuid
++
++from gct.jobs.queue import enqueue
++
++
++def test_another_owners_file_is_logged_but_answered_like_a_missing_one(api, db, tmp_path, caplog):
++    conn, _, _ = db
++    other_owner = f"other-{uuid.uuid4()}"
++    other_class = str(uuid.uuid4())
++    conn.autocommit = True
++    conn.execute(
++        "insert into classes (class_id, owner_id, name) values (%s::uuid, %s, 'c')",
++        (other_class, other_owner),
++    )
++    path = tmp_path / "x.pdf"
++    path.write_bytes(b"%PDF-1.7 x")
++    theirs = enqueue(conn, path=path, owner_id=other_owner, class_id=other_class)
++    try:
++        with caplog.at_level(logging.WARNING):
++            foreign = api.client.get(f"/files/{theirs}")
++            missing = api.client.get(f"/files/{uuid.uuid4()}")
++        assert foreign.status_code == missing.status_code == 404
++        assert foreign.json() == missing.json()
++        logged = [r.getMessage() for r in caplog.records]
++        assert sum(theirs in m for m in logged) == 1
++        assert not any(other_owner in m for m in logged)
++    finally:
++        conn.execute("delete from jobs where owner_id = %s", (other_owner,))
++        conn.execute("delete from files where owner_id = %s", (other_owner,))
++        conn.execute("delete from classes where owner_id = %s", (other_owner,))

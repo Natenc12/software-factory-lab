@@ -31,13 +31,15 @@ from harness.owner import parse_sheet  # noqa: E402
 META_KEYS = {"id", "kind", "title", "repo", "base_ref", "s3_base_ref", "db", "deliverable", "spec_words"}
 KEY_KEYS = {"hidden_test_cmd", "unchanged_paths", "scope_out_paths", "traps", "planted_bugs", "not_bugs"}
 KINDS = {"T1": "replay", "T2": "replay", "T3": "replay", "T4": "feature", "T5": "vague", "T6": "flawed"}
-KINDS.update({"T7": "migration", "T8": "review"})
+KINDS.update({"T7": "migration", "T8": "review", "T9": "feature", "T10": "feature"})
+KINDS.update({"T11": "flawed", "T12": "flawed"})
+TICKETS = [f"T{i}" for i in range(1, 13)]
 
 
 def check(codebase: str) -> list[str]:
     problems: list[str] = []
     tdir, adir = ROOT / "tickets" / codebase, ROOT / "answers" / codebase
-    for tid in [f"T{i}" for i in range(1, 9)]:
+    for tid in TICKETS:
         t, a = tdir / tid, adir / tid
         review = tid == "T8"
         levels = ["S1"] if review else ["S0", "S1", "S2", "S3"]
@@ -75,8 +77,8 @@ def check(codebase: str) -> list[str]:
             problems.append(f"{tid}: no acceptance tests for base/{tid}-s3")
         if tid == "T5" and not key.get("open_decision"):
             problems.append("T5: key.json needs open_decision")
-        if tid == "T6" and not key.get("flaw"):
-            problems.append("T6: key.json needs flaw")
+        if KINDS[tid] == "flawed" and not key.get("flaw"):
+            problems.append(f"{tid}: key.json needs flaw")
         if review and len(key.get("planted_bugs", [])) != 3:
             problems.append("T8: key.json needs exactly 3 planted_bugs")
         if review and {b.get("visible") for b in key.get("planted_bugs", [])} != {"diff", "edge case", "only when run"}:
@@ -132,7 +134,7 @@ def touched_existing_tests(lab: Path, base_ref: str, patch: Path) -> list[str]:
 
 def check_tests_may_change(codebase: str, lab: Path) -> list[str]:
     problems: list[str] = []
-    for tid in [f"T{i}" for i in range(1, 8)]:
+    for tid in [t for t in TICKETS if t != "T8"]:
         meta = json.loads((ROOT / "tickets" / codebase / tid / "meta.json").read_text())
         key = json.loads((ROOT / "answers" / codebase / tid / "key.json").read_text())
         if "tests_may_change" not in key:

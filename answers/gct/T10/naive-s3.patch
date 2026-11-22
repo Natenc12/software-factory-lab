@@ -1,0 +1,850 @@
+diff --git a/src/gct/api/app.py b/src/gct/api/app.py
+index 2ee7fbe..defcee8 100644
+--- a/src/gct/api/app.py
++++ b/src/gct/api/app.py
+@@ -13,8 +13,8 @@ from contextlib import asynccontextmanager
+ 
+ from fastapi import FastAPI
+ 
+-from gct.api import errors, limits
+-from gct.api.routers import ask, classes, files, health
++from gct.api import course_ids, errors, limits
++from gct.api.routers import ask, classes, courses, files, health
+ from gct.providers import active
+ from gct.providers.base import Embeddings, Generation
+ 
+@@ -59,9 +59,17 @@ def create_app(
+     # are not, which is why it renders its own refusals rather than raising - `limits`'s module
+     # docstring carries the mechanism.
+     limits.install(app)
++
++    @app.middleware("http")
++    async def _deprecation_header(request, call_next):
++        response = await call_next(request)
++        if course_ids.uses_old_names(request):
++            response.headers[course_ids.DEPRECATION_HEADER] = "true"
++        return response
++
+     # Mounted HERE, once, so #107/#108/#110 each edit only their own router module and never
+     # this file. `health` is the skeleton's own surface: the one route this ticket owns.
+-    for router in (health.router, classes.router, files.router, ask.router):
++    for router in (health.router, classes.router, courses.router, files.router, ask.router):
+         app.include_router(router)
+     return app
+ 
+diff --git a/src/gct/api/course_ids.py b/src/gct/api/course_ids.py
+new file mode 100644
+index 0000000..39ce042
+--- /dev/null
++++ b/src/gct/api/course_ids.py
+@@ -0,0 +1,81 @@
++"""Which course (class) a request names, and in which words to answer.
++
++The API now calls a class a "course". Old clients still send `class_id` and must get exactly the
++replies they always got; new clients send `course_id` and get replies in course words. The database
++and the library keep the name "class" throughout: a course IS a class.
++"""
++
++from __future__ import annotations
++
++import uuid
++from dataclasses import dataclass
++
++from starlette.requests import Request
++
++from gct.api.errors import ApiError
++
++
++@dataclass(frozen=True)
++class CourseRef:
++    raw: str
++    word: str  # "class" when only `class_id` was sent, otherwise "course"
++
++
++def pick(class_id: str | None, course_id: str | None) -> CourseRef | None:
++    """The id the request names, or None when it names none.
++
++    Both given: they must name the same id (any spelling uuid accepts), else 400 `conflicting_ids`.
++    """
++    if course_id is not None and class_id is not None:
++        try:
++            same = uuid.UUID(course_id) == uuid.UUID(class_id)
++        except (ValueError, AttributeError, TypeError):
++            same = False
++        if not same:
++            raise ApiError(
++                400,
++                "conflicting_ids",
++                "course_id and class_id name different courses. Send one of them, or the same id "
++                "in both.",
++            )
++    if course_id is not None:
++        return CourseRef(raw=course_id, word="course")
++    if class_id is not None:
++        return CourseRef(raw=class_id, word="class")
++    return None
++
++
++def parse(ref: CourseRef) -> str:
++    """The canonical id, or 400 `bad_<word>_id` in the request's own words."""
++    try:
++        return str(uuid.UUID(ref.raw))
++    except (ValueError, AttributeError, TypeError) as exc:
++        raise ApiError(
++            400,
++            f"bad_{ref.word}_id",
++            f"{ref.word}_id must be a uuid. Use the id returned when the {ref.word} was created.",
++        ) from exc
++
++
++def not_found(ref: CourseRef, *, doing: str) -> ApiError:
++    """404 `<word>_not_found`, worded as today for `class_id` callers."""
++    return ApiError(
++        404,
++        f"{ref.word}_not_found",
++        f"No such {ref.word}. Check the {ref.word} id, or create the {ref.word} before {doing}.",
++    )
++
++
++DEPRECATION_HEADER = "Deprecation"
++
++
++def flag_old_names(request: Request, ref: CourseRef) -> None:
++    """Mark this request as one that used only the old name, so every reply carries the header."""
++    if ref.word == "class":
++        request.state.old_names = True
++
++
++def uses_old_names(request: Request) -> bool:
++    if request.method == "POST" and request.url.path.rstrip("/") == "/classes":
++        return True
++    return bool(getattr(request.state, "old_names", False))
+diff --git a/src/gct/api/routers/ask.py b/src/gct/api/routers/ask.py
+index d474cbe..5a74fe9 100644
+--- a/src/gct/api/routers/ask.py
++++ b/src/gct/api/routers/ask.py
+@@ -36,12 +36,12 @@ autocommit connection `gct.api.deps.get_conn` yields is still the wiring this sh
+ from __future__ import annotations
+ 
+ import logging
+-import uuid
+ from typing import Literal
+ 
+-from fastapi import APIRouter
+-from pydantic import BaseModel, ConfigDict, Field, field_validator
++from fastapi import APIRouter, Request
++from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+ 
++from gct.api import course_ids
+ from gct.api.deps import Conn, Embedder, Generator, OwnerId
+ from gct.api.errors import ApiError
+ from gct.ask import ERROR_KIND_EMBEDDING_MISMATCH, ask
+@@ -175,9 +175,25 @@ class AskRequest(BaseModel):
+ 
+     model_config = ConfigDict(extra="forbid")
+ 
+-    class_id: str
++    class_id: str | None = None
++    course_id: str | None = None
+     question: str = Field(max_length=MAX_QUESTION_CHARS)
+ 
++    @model_validator(mode="wrap")
++    @classmethod
++    def _old_body_keeps_old_errors(cls, data, handler):
++        # A body without `course_id` is an old client's: validate it with today's model first, so
++        # its 422s stay byte for byte (rule 1), including the missing-`class_id` entry.
++        if isinstance(data, dict) and "course_id" not in data:
++            ClassAskRequest.model_validate(data)
++        return handler(data)
++
++    @model_validator(mode="after")
++    def _names_a_course(self) -> AskRequest:
++        if self.class_id is None and self.course_id is None:
++            raise ValueError("send course_id (or the older class_id)")
++        return self
++
+     @field_validator("question")
+     @classmethod
+     def _reject_blank(cls, question: str) -> str:
+@@ -200,6 +216,20 @@ class AskRequest(BaseModel):
+         return question
+ 
+ 
++class ClassAskRequest(BaseModel):
++    """Today's `POST /ask` body, kept so an old client's request is validated exactly as before."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    class_id: str
++    question: str = Field(max_length=MAX_QUESTION_CHARS)
++
++    @field_validator("question")
++    @classmethod
++    def _reject_blank(cls, question: str) -> str:
++        return AskRequest._reject_blank(question)
++
++
+ class CitationOut(BaseModel):
+     """One resolved `[S#]` - citation-spine honor-point ③ (`grounder.answer.Citation`).
+ 
+@@ -289,6 +319,7 @@ def _render_integrity(integrity: Integrity) -> IntegrityOut:
+ 
+ @router.post("", status_code=200)
+ def ask_question(
++    request: Request,
+     conn: Conn,
+     owner: OwnerId,
+     embedder: Embedder,
+@@ -340,27 +371,23 @@ def ask_question(
+     envelope - loud, and the right direction for a broken contract, which is why there is no
+     defensive branch inventing a second answer for it.
+     """
+-    try:
+-        class_uuid = str(uuid.UUID(body.class_id))
+-    except ValueError as exc:
+-        raise ApiError(
+-            400,
+-            "bad_class_id",
+-            "class_id must be a uuid. Use the id returned when the class was created.",
+-        ) from exc
++    ref = course_ids.pick(body.class_id, body.course_id)
++    course_ids.flag_old_names(request, ref)
++    class_uuid = course_ids.parse(ref)
+     if not class_exists(conn, class_id=class_uuid, owner_id=owner):
+-        raise ApiError(
+-            404,
+-            "class_not_found",
+-            "No such class. Check the class id, or create the class before asking about it.",
+-        )
++        raise course_ids.not_found(ref, doing="asking about it")
+ 
+     # `class_uuid`, never `body.class_id`: one id, one spelling, from the ownership check through
+     # to retrieval. `retrieve` canonicalises its own `class_id` since #126, so this is consistency
+     # between the two calls, not the thing standing between a spelling and a `::uuid` cast.
+-    result = ask(
+-        conn, body.question, owner, class_uuid, embedder=embedder, generator=generator
+-    ).result
++    return answer_for(conn, owner, class_uuid, body.question, embedder, generator)
++
++
++def answer_for(
++    conn, owner: str, class_uuid: str, question: str, embedder, generator
++) -> AskResponse:
++    """Ask `question` in a class already resolved and checked, and render the reply."""
++    result = ask(conn, question, owner, class_uuid, embedder=embedder, generator=generator).result
+ 
+     if result.state is GrounderState.ERROR:
+         kind = result.error.kind
+diff --git a/src/gct/api/routers/courses.py b/src/gct/api/routers/courses.py
+new file mode 100644
+index 0000000..9ff415e
+--- /dev/null
++++ b/src/gct/api/routers/courses.py
+@@ -0,0 +1,112 @@
++"""`POST /courses` - create a course. The new name for `POST /classes`, which stays as it was."""
++
++from __future__ import annotations
++
++from pathlib import Path
++from typing import Annotated
++
++from fastapi import APIRouter, File, UploadFile
++from pydantic import BaseModel, ConfigDict, Field
++
++from gct.api import course_ids
++from gct.api.deps import Conn, Embedder, Generator, OwnerId
++from gct.api.errors import ApiError
++from gct.api.routers.ask import MAX_QUESTION_CHARS, AskResponse, answer_for
++from gct.api.routers.classes import _NAME_REFUSAL, NewClass
++from gct.api.routers.files import _STAGING_STATUS, UploadAccepted
++from gct.classes import ClassNameError, class_exists, class_summary, create_class
++from gct.jobs.queue import enqueue
++from gct.staging import StagingError, stage
++
++router = APIRouter(prefix="/courses", tags=["courses"])
++
++
++class CourseCreated(BaseModel):
++    """The 201 body: the id every later call takes, and the name the course was created under."""
++
++    course_id: str
++    name: str
++
++
++@router.post("", status_code=201)
++def create(conn: Conn, owner: OwnerId, body: NewClass) -> CourseCreated:
++    """Create a course for this owner. Name refusals are the same as `POST /classes`."""
++    try:
++        course_id = create_class(conn, owner_id=owner, name=body.name)
++    except ClassNameError as exc:
++        kind, message = _NAME_REFUSAL[exc.reason]
++        raise ApiError(400, kind, message) from exc
++    return CourseCreated(course_id=course_id, name=body.name)
++
++
++class FileCounts(BaseModel):
++    queued: int
++    processing: int
++    ready: int
++    failed: int
++
++
++class CourseSummary(BaseModel):
++    course_id: str
++    name: str
++    files: FileCounts
++
++
++@router.get("/{course_id}")
++def summary(conn: Conn, owner: OwnerId, course_id: str) -> CourseSummary:
++    """A course's name and how many of its files are in each status."""
++    ref = course_ids.CourseRef(raw=course_id, word="course")
++    canonical = course_ids.parse(ref)
++    found = class_summary(conn, class_id=canonical, owner_id=owner)
++    if found is None:
++        raise course_ids.not_found(ref, doing="looking at it")
++    return CourseSummary(
++        course_id=canonical, name=found["name"], files=FileCounts(**found["files"])
++    )
++
++
++def _owned_course(conn, owner: str, course_id: str, *, doing: str) -> str:
++    ref = course_ids.CourseRef(raw=course_id, word="course")
++    canonical = course_ids.parse(ref)
++    if not class_exists(conn, class_id=canonical, owner_id=owner):
++        raise course_ids.not_found(ref, doing=doing)
++    return canonical
++
++
++@router.post("/{course_id}/files", status_code=202)
++def upload_to_course(
++    conn: Conn,
++    owner: OwnerId,
++    course_id: str,
++    file: Annotated[UploadFile, File()],
++) -> UploadAccepted:
++    """`POST /files` with the course in the path; the course is checked before staging."""
++    canonical = _owned_course(conn, owner, course_id, doing="uploading to it")
++    try:
++        staged = stage(file.file, filename=file.filename)
++    except StagingError as exc:
++        raise ApiError(_STAGING_STATUS[exc.reason], exc.reason, str(exc)) from exc
++    file_id = enqueue(conn, path=staged, owner_id=owner, class_id=canonical)
++    return UploadAccepted(file_id=file_id, filename=Path(staged).name)
++
++
++class CourseQuestion(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++
++    question: str = Field(max_length=MAX_QUESTION_CHARS)
++
++
++@router.post("/{course_id}/ask", status_code=200)
++def ask_in_course(
++    conn: Conn,
++    owner: OwnerId,
++    embedder: Embedder,
++    generator: Generator,
++    course_id: str,
++    body: CourseQuestion,
++) -> AskResponse:
++    """`POST /ask` with the course in the path."""
++    if not body.question.strip():
++        raise ApiError(422, "validation", "question must not be blank")
++    canonical = _owned_course(conn, owner, course_id, doing="asking about it")
++    return answer_for(conn, owner, canonical, body.question, embedder, generator)
+diff --git a/src/gct/api/routers/files.py b/src/gct/api/routers/files.py
+index 121907a..ba63807 100644
+--- a/src/gct/api/routers/files.py
++++ b/src/gct/api/routers/files.py
+@@ -25,13 +25,14 @@ writer of this precondition, and a route that builds its own connection breaks t
+ 
+ from __future__ import annotations
+ 
+-import uuid
+ from pathlib import Path
+ from typing import Annotated
+ 
+-from fastapi import APIRouter, File, Form, UploadFile
++from fastapi import APIRouter, File, Form, Request, UploadFile
++from fastapi.exceptions import RequestValidationError
+ from pydantic import BaseModel
+ 
++from gct.api import course_ids
+ from gct.api.deps import Conn, OwnerId
+ from gct.api.errors import ApiError
+ from gct.classes import class_exists
+@@ -76,10 +77,12 @@ class UploadAccepted(BaseModel):
+ 
+ @router.post("", status_code=202)
+ def upload_file(
++    request: Request,
+     conn: Conn,
+     owner: OwnerId,
+-    class_id: Annotated[str, Form()],
+     file: Annotated[UploadFile, File()],
++    class_id: Annotated[str | None, Form()] = None,
++    course_id: Annotated[str | None, Form()] = None,
+ ) -> UploadAccepted:
+     """Stage an uploaded file and queue it for ingestion; 202 with the id the client polls.
+ 
+@@ -135,20 +138,22 @@ def upload_file(
+     reason: `starlette.UploadFile.filename` is `str | None` and `validate_filename` is written to
+     refuse `None` itself, so a pre-check here would be a second writer for that judgement.
+     """
+-    try:
+-        class_uuid = str(uuid.UUID(class_id))
+-    except ValueError as exc:
+-        raise ApiError(
+-            400,
+-            "bad_class_id",
+-            "class_id must be a uuid. Use the id returned when the class was created.",
+-        ) from exc
+-    if not class_exists(conn, class_id=class_uuid, owner_id=owner):
+-        raise ApiError(
+-            404,
+-            "class_not_found",
+-            "No such class. Check the class id, or create the class before uploading to it.",
++    ref = course_ids.pick(class_id, course_id)
++    if ref is None:
++        raise RequestValidationError(
++            [
++                {
++                    "type": "missing",
++                    "loc": ("body", "class_id"),
++                    "msg": "Field required",
++                    "input": None,
++                }
++            ]
+         )
++    course_ids.flag_old_names(request, ref)
++    class_uuid = course_ids.parse(ref)
++    if not class_exists(conn, class_id=class_uuid, owner_id=owner):
++        raise course_ids.not_found(ref, doing="uploading to it")
+ 
+     try:
+         staged = stage(file.file, filename=file.filename)
+diff --git a/src/gct/classes.py b/src/gct/classes.py
+index 34516fd..d5c8799 100644
+--- a/src/gct/classes.py
++++ b/src/gct/classes.py
+@@ -233,3 +233,27 @@ def class_exists(conn: psycopg.Connection, *, class_id: str, owner_id: str) -> b
+         {"class_id": canonical, "owner_id": owner_id},
+     ).fetchone()
+     return row is not None
++
++
++def class_summary(conn: psycopg.Connection, *, class_id: str, owner_id: str) -> dict | None:
++    """The class's name and its file counts by status, or None if it is not this owner's."""
++    canonical = canonical_uuid(
++        class_id,
++        fn="class_summary",
++        param="class_id",
++        remedy="Pass the id `create_class` returned.",
++    )
++    row = conn.execute(
++        "select name from classes where class_id = %(c)s::uuid and owner_id = %(o)s",
++        {"c": canonical, "o": owner_id},
++    ).fetchone()
++    if row is None:
++        return None
++    counts = dict.fromkeys(("queued", "processing", "ready", "failed"), 0)
++    for status, n in conn.execute(
++        "select status, count(*) from files where class_id = %(c)s::uuid and owner_id = %(o)s "
++        "group by status",
++        {"c": canonical, "o": owner_id},
++    ).fetchall():
++        counts[status] = n
++    return {"class_id": canonical, "name": row[0], "files": counts}
+diff --git a/tests/gct/api/test_courses.py b/tests/gct/api/test_courses.py
+new file mode 100644
+index 0000000..7878c93
+--- /dev/null
++++ b/tests/gct/api/test_courses.py
+@@ -0,0 +1,29 @@
++"""`POST /courses`, and `course_id` beside the older `class_id` on `POST /files` and `POST /ask`."""
++
++from __future__ import annotations
++
++import uuid
++
++
++def test_post_courses_returns_a_course_id(api):
++    response = api.client.post("/courses", json={"name": "Biology 101"})
++    assert response.status_code == 201
++    assert set(response.json()) == {"course_id", "name"}
++
++
++def test_ask_by_course_id_uses_course_words(api):
++    response = api.client.post("/ask", json={"course_id": str(uuid.uuid4()), "question": "q?"})
++    assert response.status_code == 404
++    assert response.json()["error"]["kind"] == "course_not_found"
++
++
++def test_ask_by_class_id_is_unchanged(api):
++    response = api.client.post("/ask", json={"class_id": str(uuid.uuid4()), "question": "q?"})
++    assert response.json()["error"]["kind"] == "class_not_found"
++
++
++def test_conflicting_ids_are_refused(api):
++    body = {"class_id": api.class_id, "course_id": str(uuid.uuid4()), "question": "q?"}
++    response = api.client.post("/ask", json=body)
++    assert response.status_code == 400
++    assert response.json()["error"]["kind"] == "conflicting_ids"
+diff --git a/web/openapi.json b/web/openapi.json
+index 63298b1..d19420b 100644
+--- a/web/openapi.json
++++ b/web/openapi.json
+@@ -68,6 +68,186 @@
+         }
+       }
+     },
++    "/courses": {
++      "post": {
++        "tags": [
++          "courses"
++        ],
++        "operationId": "create_courses_post",
++        "requestBody": {
++          "content": {
++            "application/json": {
++              "schema": {
++                "$ref": "#/components/schemas/NewClass"
++              }
++            }
++          },
++          "required": true
++        },
++        "responses": {
++          "201": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/CourseCreated"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
++      }
++    },
++    "/courses/{course_id}": {
++      "get": {
++        "tags": [
++          "courses"
++        ],
++        "operationId": "summary_courses__course_id__get",
++        "parameters": [
++          {
++            "name": "course_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          }
++        ],
++        "responses": {
++          "200": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/CourseSummary"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
++      }
++    },
++    "/courses/{course_id}/files": {
++      "post": {
++        "tags": [
++          "courses"
++        ],
++        "operationId": "upload_to_course_courses__course_id__files_post",
++        "parameters": [
++          {
++            "name": "course_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          }
++        ],
++        "requestBody": {
++          "required": true,
++          "content": {
++            "multipart/form-data": {
++              "schema": {
++                "$ref": "#/components/schemas/Body_upload_to_course_courses__course_id__files_post"
++              }
++            }
++          }
++        },
++        "responses": {
++          "202": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/UploadAccepted"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
++      }
++    },
++    "/courses/{course_id}/ask": {
++      "post": {
++        "tags": [
++          "courses"
++        ],
++        "operationId": "ask_in_course_courses__course_id__ask_post",
++        "parameters": [
++          {
++            "name": "course_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          }
++        ],
++        "requestBody": {
++          "required": true,
++          "content": {
++            "application/json": {
++              "schema": {
++                "$ref": "#/components/schemas/CourseQuestion"
++              }
++            }
++          }
++        },
++        "responses": {
++          "200": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/AskResponse"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
++      }
++    },
+     "/files": {
+       "post": {
+         "tags": [
+@@ -194,7 +374,24 @@
+       "AskRequest": {
+         "properties": {
+           "class_id": {
+-            "type": "string"
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ]
++          },
++          "course_id": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ]
+           },
+           "question": {
+             "type": "string",
+@@ -204,7 +401,6 @@
+         "additionalProperties": false,
+         "type": "object",
+         "required": [
+-          "class_id",
+           "question"
+         ]
+       },
+@@ -253,9 +449,38 @@
+       },
+       "Body_upload_file_files_post": {
+         "properties": {
++          "file": {
++            "type": "string",
++            "contentMediaType": "application/octet-stream"
++          },
+           "class_id": {
+-            "type": "string"
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ]
+           },
++          "course_id": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ]
++          }
++        },
++        "type": "object",
++        "required": [
++          "file"
++        ]
++      },
++      "Body_upload_to_course_courses__course_id__files_post": {
++        "properties": {
+           "file": {
+             "type": "string",
+             "contentMediaType": "application/octet-stream"
+@@ -263,7 +488,6 @@
+         },
+         "type": "object",
+         "required": [
+-          "class_id",
+           "file"
+         ]
+       },
+@@ -305,6 +529,53 @@
+           "name"
+         ]
+       },
++      "CourseCreated": {
++        "properties": {
++          "course_id": {
++            "type": "string"
++          },
++          "name": {
++            "type": "string"
++          }
++        },
++        "type": "object",
++        "required": [
++          "course_id",
++          "name"
++        ]
++      },
++      "CourseQuestion": {
++        "properties": {
++          "question": {
++            "type": "string",
++            "maxLength": 2000
++          }
++        },
++        "additionalProperties": false,
++        "type": "object",
++        "required": [
++          "question"
++        ]
++      },
++      "CourseSummary": {
++        "properties": {
++          "course_id": {
++            "type": "string"
++          },
++          "name": {
++            "type": "string"
++          },
++          "files": {
++            "$ref": "#/components/schemas/FileCounts"
++          }
++        },
++        "type": "object",
++        "required": [
++          "course_id",
++          "name",
++          "files"
++        ]
++      },
+       "CoverageOut": {
+         "properties": {
+           "complete": {
+@@ -323,6 +594,29 @@
+           "gaps"
+         ]
+       },
++      "FileCounts": {
++        "properties": {
++          "queued": {
++            "type": "integer"
++          },
++          "processing": {
++            "type": "integer"
++          },
++          "ready": {
++            "type": "integer"
++          },
++          "failed": {
++            "type": "integer"
++          }
++        },
++        "type": "object",
++        "required": [
++          "queued",
++          "processing",
++          "ready",
++          "failed"
++        ]
++      },
+       "FileStatusResponse": {
+         "properties": {
+           "filename": {
