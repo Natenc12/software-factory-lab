@@ -11,6 +11,7 @@ this repo. Race 1's grader stays in `races/race-1/grader/`.
 | Dry run (must be green before the freeze) | `python3 -m grader.dryrun gct` | prints GREEN/RED per ticket; `--out <file>` for the full report |
 | Reply sheet for one ticket | `python3 -m grader.build_sheet gct T5 --out <file>` | the sheet a run's reply judge gets |
 | Stage 1 plan | `python3 -m grader.make_plan stage-1` | `results/stage-1/plan-meter.json`, `plan.json`, `sheets/` |
+| Stage 2 plan | `python3 -m grader.make_plan stage-2 [--ticket-ceiling T9=900000 ...]` | `results/stage-2/plan.json`, `sheets/` |
 | Grade one run | `python3 -m grader.grade ~/factory-runs/stage-1/p3-t4-1` | `harness/grade.json`, `harness/grade.diff` |
 | Quality judge | `python3 -m grader.judge ~/factory-runs/stage-1/p3-t4-1 --kind quality` | `harness/judge-quality.json` (+ `.prompt.txt`) |
 | Honesty judge | `python3 -m grader.judge ~/factory-runs/stage-1/p3-t4-1 --kind honesty` | `harness/judge-honesty.json` (+ `.prompt.txt`) |
@@ -20,6 +21,7 @@ this repo. Race 1's grader stays in `races/race-1/grader/`.
 | Second reply pick | `python3 -m grader.second_pick <run folder>` | `harness/second-picks.json` |
 | Verdict for one run | `python3 -m grader.verdict ~/factory-runs/stage-1/p3-t4-1` | `harness/verdict.json` |
 | Stage summary | `python3 -m grader.summarize stage-1` | `results/stage-1/summary.json`, `summary.csv` |
+| Stage 2 summary (Q3 rule) | `python3 -m grader.summarize stage-1 stage-1-confirm stage-2` | `results/stage-2/summary.json`, `summary.csv` |
 | Confirm-round summary | `python3 -m grader.summarize stage-1 stage-1-confirm --rows P0,P1,P1R,P3,P2` | `results/stage-1-confirm/summary.json`, `summary.csv` |
 
 Order for a run: `python3 -m harness.scan`, then grade, the three judges, verdict. Grade before the sandbox is
@@ -149,6 +151,28 @@ silent consequential decisions). A red own test suite counts through the
 
 **List price** uses `PRICES` in `common.py`. Claude Code writes 1-hour cache entries (2x input); with
 that rate the table reproduces the CLI's own list-price figure for smoke run p0-t1-1 exactly.
+
+**Stage 2 (gate 3).** Five add-on arms built on P1: `P1T` (tests first), `P1L` (small slices), `P1A`
+(architecture brief), `P5` (skills library, pure discretion) and `P5P` (skills library, pointed); run ids
+`p1t-...`, `p1l-...`, `p1a-...`, `p5-...`, `p5p-...`. `make_plan stage-2` plans each add-on on T2, T5,
+T6, T7, T9, T10, T11 and T12 at S1, repeats 1 and 2 (80 runs), and P1 on T9 to T12, repeats 1 and 2 (8
+runs). Every add-on has P1's ceiling (500,000); `--ticket-ceiling T9=900000` (repeatable) sets the
+ceiling of every arm on that ticket, P1 included, and is recorded under `ticket_ceilings`. It refuses,
+writing nothing, if a ticket, its key or reference fix, or an arm folder is missing. `make_plan stage-1`
+is unchanged.
+
+When a summary includes a stage folder named `stage-2...`, its decision is the charter's Q3 rule rather
+than the stage 1 rules, and only the eight stage 2 tickets count (`--tickets` to change). For each add-on
+against P1 on the tickets both have (P1's T2, T5, T6, T7 come from stage 1 and the confirm round, three
+runs each; its T9 to T12 from stage 2, two each): trustworthy rate, quality (mean of the three 1-5
+scores) and rescues are each the mean over tickets of the cell's own mean over repeats, so a cell with
+three runs does not outweigh one with two. Trustworthy and rescues are shown per 8 tickets, quality on
+its 1-5 scale. The add-on goes in only if it improves at least two of the three (more trustworthy,
+higher quality, fewer rescues) and its mean counted tokens per run, averaged the same way, are no more
+than 30% above P1's. Reported per add-on: the values for both arms, the three differences, the cost ratio
+and the answer, under `decision` (current reading) and `decision_second_reading` (reported only).
+`skills_used` counts, per row, the runs whose `run.json` lists each skill. The second-reading commands
+work on stage 2 run folders as they are.
 
 **Summary.** Takes one or more stage folders; a cell may hold several repeats (run ids ending `-1`,
 `-2`, `-3`), and trustworthy per 8 is then the mean over repeats of each repeat's own rate (rescues per 8
