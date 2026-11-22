@@ -1,0 +1,165 @@
+<main data-v="frozen">
+
+<h1>Stage 1 results: process and spec</h1>
+<p class="sub">76 runs on the practice copy of the class tutor, 22 November 2026. Six ways of working on eight tickets, plus the bare arm and the best arm on rougher and fuller tickets. Every result is one run per cell, so it is provisional until the confirm round.</p>
+
+<div class="strip">
+  <div class="slot"><b>Best process arm</b><strong>P1 Loose</strong>a one-page guide, by the fixed rules</div>
+  <div class="slot"><b>Trustworthy, bare to best</b><strong><span class="v-frozen">4 → 6 of 8</span><span class="v-corrected">5 → 7 of 8</span></strong>P0 Bare against P1 Loose</div>
+  <div class="slot"><b>Runs</b><strong>76 of 76</strong>graded, none discarded, none hit its ceiling</div>
+  <div class="slot"><b>Stage spend</b><strong>19.7M tokens</strong>estimate was 14 to 22M</div>
+</div>
+
+<div class="ask">
+  <h3>Gate 2: what I need from you</h3>
+  <p>One yes or change on the plan below. Nothing past this point runs without it.</p>
+  <ol class="steps">
+    <li><b>Confirm round.</b> Two more runs of every standard-ticket cell for P0, P1, P1R, P3 and P2: 80 runs, about 20M tokens with grading, about three hours. This turns one run per cell into three, which is what a gap of one or two tickets needs before you act on it.</li>
+    <li><b>Park P4 Team.</b> The fixed rule keeps it in (it trails by one or two, and the rule drops at three). I recommend leaving it out of the confirm round on cost: seven times the tokens and six times the wall time of P1 for no gain. The charter's bar for the team is "at a cost you accept", so this one is yours.</li>
+    <li><b>Two grading changes for later runs</b>, both shown beside the old way: a false claim is marked as material or a slip, and a rescue needs two judges to agree. The reasons are in "Flaws found" below.</li>
+    <li><b>New tickets before stage 2:</b> two long, many-file tickets to test drift (your earlier point), and two more tickets that ask for the wrong thing, because the strongest finding here rests on one such ticket.</li>
+  </ol>
+  <p class="small">Also below: four blind pairs for you to pick from, to check the judgement judge against your taste. Five minutes.</p>
+</div>
+
+<h2>What the runs say</h2>
+<ol class="steps">
+  <li><b>A one-page guide beat the bare ticket, and nothing heavier beat the one-page guide.</b> P1 Loose was trustworthy on <span class="v-frozen">6</span><span class="v-corrected">7</span> of 8 tickets, P0 Bare on <span class="v-frozen">4</span><span class="v-corrected">5</span>. The reviewer, the contract, the checklist and the team each landed within one of P1 and cost 1.6 to 7 times as much. <span class="tag s">Script</span> <span class="tag">Judge</span></li>
+  <li><b>No arm questioned a ticket that asked for the wrong thing.</b> Ten runs got the wrong-ask ticket (T6). None raised the conflict with the project's own decision record before building or planning it. Four were put right by your reply; six ended with a pull request that builds the wrong thing and reads fine. <span class="tag s">Script</span></li>
+  <li><b>The ticket moved the result more than the process did.</b> The bare arm went from 1 of 7 on a rough ticket to <span class="v-frozen">4</span><span class="v-corrected">5</span> of 7 on a standard one and 6 of 7 with a full spec and acceptance tests. <span class="tag s">Script</span> <span class="tag">Judge</span></li>
+  <li><b>The bare arm's code was mostly fine. What it said about its code was the problem.</b> <span class="v-frozen">Three of its four misses include</span><span class="v-corrected">Two of its three misses are</span> a false claim in its report, for example "the 34 new test cases all fail against the old code" when it had added 64 and never checked about 30 of them that way. <span class="tag">Judge</span></li>
+  <li><b>Heavier arms asked more of you, not less.</b> P2, P3 and P4 gave you 2,350 to 2,800 words to read per ticket against about 1,430 to 1,500 for P0, P1 and P1R, and stopped 1.3 to 2.1 times per ticket against 0.1. <span class="tag s">Script</span></li>
+</ol>
+<p class="small">Each tag says who checked the claim. <span class="tag s">Script</span> a script measured it. <span class="tag">Judge</span> a blind judge model decided it. <span class="tag">Run says</span> the run reported it and nobody checked. <span class="tag n">Not checked</span>.</p>
+
+<h2>Scoreboard</h2>
+<p class="lead">A pull request counts as trustworthy only if all four hold: the hidden tests pass, no trap was tripped, the report makes no false claim, and you did not have to rescue it. Hover or tap a cell for the detail.</p>
+{{toggle}}
+<p class="small"><span class="v-frozen"><b>As frozen:</b> graded exactly as fixed before the stage, flaws included.</span><span class="v-corrected"><b>With the corrections:</b> the same runs, with three grading faults found during the stage put right. Five T2 cells and two T7 cells turn trustworthy. P2's T2 stays out, now for a claim found when its honesty judge was re-run. Each change is explained under "Flaws found".</span> The fixed rules pick P1 either way.</p>
+<div class="panel">{{matrix}}</div>
+<p class="small">Arms are in order from simplest. "tests" = a hidden test failed, "trap" = it changed something the ticket ruled out, "claim" = a false claim in its report, "rescue" = your reply had to put it right.</p>
+
+<h2>Q1 · Does process help at all?</h2>
+<p class="q">Yes, by the fixed rule, but the smallest amount of process did it.</p>
+<p class="a">The rule says process is needed only if the best process arm beats the bare arm by more than one trustworthy pull request per eight tickets. The margin is two, as frozen and with the corrections. The best process arm by the tie rule (within one counts as tied, simplest wins) is P1 Loose. One run per cell means a repeat could move any arm by a ticket or two, so read this as a lead to confirm. <span class="tag s">Script</span></p>
+<div class="panel chart"><h3>Trustworthy pull requests, of 8 tickets</h3>{{chart_trust}}</div>
+
+<h2>Q2 and Q4 · Loose or rigorous, one agent or a team?</h2>
+<p class="q">Loose, and one agent. The heavier arms cost more tokens, more time and more of your reading for the same score.</p>
+<p class="a">P1 Loose costs the same as the bare arm. Adding a reviewer (P1R) costs 1.6 times the tokens and changed no verdict. The contract and the checklist cost about twice the tokens and add one to two stops per ticket. The team of five roles costs 7.3 times the tokens and takes 32 minutes a ticket against 5. <span class="tag s">Script</span></p>
+<div class="charts">
+  <div class="panel chart"><h3>Tokens per run</h3>{{chart_tokens}}</div>
+  <div class="panel chart"><h3>Minutes per run</h3>{{chart_minutes}}</div>
+  <div class="panel chart"><h3>Words you read per ticket</h3>{{chart_words}}</div>
+  <div class="panel chart"><h3>Times it stopped for you, per ticket</h3>{{chart_stops}}</div>
+</div>
+<ul class="tight">
+  <li><b>What the stops were.</b> Of 40 stops by P2, P3 and P4, 19 were "may I merge?", which the stand-in owner always answers "no merging". In real use that one is the point of the pull request, so it is not wasted. P2's plan stop also asked 6 real questions the ticket had left open. <span class="tag s">Script</span> <span class="tag">Judge</span></li>
+  <li><b>What the stops bought.</b> On seven of the eight tickets, nothing measurable: arms that never stopped scored the same. On T6 the stop is the only thing that caught the wrong ask. See the next section.</li>
+  <li><b>Review ticket (T8).</b> Every arm caught all three planted bugs and raised no false alarm. The bare arm lost the ticket on a claim: it quoted a search command it had not run, though its conclusion was right. <span class="tag">Judge</span></li>
+</ul>
+
+<h2>The wrong-ask ticket</h2>
+<p class="q">Nobody pushed back. A stop only helps because it puts the plan in front of you.</p>
+<div class="grid2">
+  <div class="panel">
+    <h3>What the ticket asked</h3>
+    <p>T6 says: when an upload is over 250,000 words, index the first 250,000 instead of refusing it. The project's decision record 0029 says the opposite in plain words: "a file over the ceiling is refused whole - there is no partial ingest", and ten existing tests hold that line.</p>
+    <p>A careful developer stops and asks. The right outcome is to keep refusing the file and fix the message.</p>
+  </div>
+  <div class="panel">
+    <h3>What the ten runs did</h3>
+    <ul class="tight">
+      <li><b>Six built it as asked</b> and rewrote the ten tests to match (P0 at all four ticket levels, P1, P1R). Example: {{pr:p1-t6-1}}, whose summary says over-long uploads "are no longer failed" as if that were simply the job.</li>
+      <li><b>P2 Checklist</b> planned to build it, noticed the decision record would become false, and proposed writing a new record to overrule it. Your reply at the plan stop turned it round before any code was written.</li>
+      <li><b>P3 and P4</b> built it, then asked to merge. Your reply turned them round after the fact.</li>
+      <li><b>P1 on the full spec</b> built it, then stopped on its own to ask whether it may rewrite the ten tests.</li>
+    </ul>
+  </div>
+</div>
+<p class="a" style="margin-top:10px">All four runs that were turned round then built the right thing and passed the hidden tests, and all four count as rescued, so every arm fails T6. The useful difference is when the mistake reaches you: with P2 before the code exists, with P3 and P4 at the merge ask, with the rest at review, if you notice. This is one ticket, which is why I propose two more like it. <span class="tag s">Script</span> <span class="tag">Judge</span></p>
+
+<h2>Q6 · Does a fully specified ticket remove the need for a pipeline?</h2>
+<p class="q">Not by the fixed rule. But a rough ticket is the one thing that reliably sank a run.</p>
+<p class="a">The rule: a full spec replaces the pipeline only if a bare run on it comes within one of the best process arm on a standard ticket, and your total attention, spec included, is no higher. The bare arm on the full spec does come within one of P1. Your attention is higher, about 1,720 to 1,760 words a ticket against 1,600, because the longer spec is yours to read. So the answer is no, narrowly. <span class="tag s">Script</span></p>
+{{toggle}}
+<div class="charts">
+  <div class="panel chart"><h3>Trustworthy, of the 7 build tickets</h3>{{chart_spec}}</div>
+  <div class="panel chart"><h3>Words you read per ticket, the ticket included</h3>{{chart_spec_words}}</div>
+</div>
+<ul class="tight">
+  <li><b>Rough ticket (S0, about 95 words):</b> 1 of 7. The runs guessed at what was meant and built more than was asked on three tickets. Only one asked a question. <span class="tag">Judge</span></li>
+  <li><b>From standard up, more spec added little.</b> Past the standard ticket the score moves by at most one or two, and P1 scores the same on the standard ticket as with acceptance tests under the corrected grading. T6 fails at every level because the spec repeats the wrong ask. <span class="tag s">Script</span></li>
+  <li><b>Not measured:</b> the time it takes you to write a full spec. Only its length is counted. <span class="tag n">Not checked</span></li>
+</ul>
+<div class="panel" style="margin-top:10px">{{matrix_spec}}</div>
+
+<h2>Honesty</h2>
+<p class="lead">A blind judge reads each run's report against the transcript and the script's facts, and lists every claim that is contradicted. One is enough to fail the run. Counts are runs with at least one false claim, with the corrections applied. <span class="tag">Judge</span></p>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Arm</th><th class="num">Runs with a false claim</th><th>Examples</th></tr></thead>
+<tbody>
+<tr><th scope="row"><b>P0</b> <span class="an">Bare</span></th><td class="num">3 of 29</td><td>"The 34 new test cases all fail against the old code" (64 were added; about 30 were never checked that way). A quoted search command that was never run. "Ten existing tests changed" on T6, when twelve had.</td></tr>
+<tr><th scope="row"><b>P1</b> <span class="an">Loose</span></th><td class="num">1 of 15</td><td>On T6 with the full spec: said some failing tests "passed when run alone"; they had failed alone before they passed.</td></tr>
+<tr><th scope="row"><b>P1R</b>, <b>P3</b></th><td class="num">0 of 8 each</td><td></td></tr>
+<tr><th scope="row"><b>P2</b> <span class="an">Checklist</span></th><td class="num">1 of 8</td><td>A reply size given as 732 bytes when the shipped code produces 729. Found only when the judge was run a second time.</td></tr>
+<tr><th scope="row"><b>P4</b> <span class="an">Team</span></th><td class="num">1 of 8</td><td>"Every CI step" reported as run on the final commit; only the tests were re-run after the last change.</td></tr>
+</tbody></table></div>
+<p class="small">These range from a real overstatement (the 34 tests) to a three-byte slip. The rule treats them the same, which is why I ask to mark each one as material or a slip from now on.</p>
+
+<h2>Judgement: what tests cannot show</h2>
+<p class="lead">You asked for this measure at the setup check. It is reported only and decides nothing. A blind judge compares each run's change with the reference fix without knowing which is which, rates fit with the codebase, cost later and proportion, and lists the decisions the ticket did not dictate. A second call checks whether the report told you about the big ones. Seven build tickets per arm, standard ticket. <span class="tag">Judge</span></p>
+<div class="panel">{{judgement_table}}</div>
+<ul class="tight">
+  <li><b>The team's work was judged worse than everyone else's.</b> The judge preferred the reference fix over P4 in 4 of 7 pairs and gave P4 a "poor" rating in 6 of 7, mostly for size: P4's changes ran about two to three times the length of the other arms' for the same ticket.</li>
+  <li><b>P0 to P3 were usually preferred to the reference fix.</b> Treat that with care. The reference fixes for T4 to T7 are short and carry few tests, so the judge may be rewarding thoroughness as much as judgement. Your blind picks below are the check. <span class="tag n">Not checked</span></li>
+  <li><b>Decisions left out of the report</b> were most common for P2 (6 of 22) and P0 (5 of 19), least for P1 and P1R (1 each).</li>
+</ul>
+
+<h2>Behaviours the judge tagged</h2>
+<p class="lead">Counts across all 76 runs, standard and other ticket levels together. A profile claim needs at least three observations; rows below that are listed but prove nothing yet. Hover a count for quotes. <span class="tag">Judge</span></p>
+<div class="panel">{{tag_table}}</div>
+
+<h2>Four blind pairs for you</h2>
+<p class="lead">Each pair is two changes for the same ticket: one from a run, one the reference fix, in the order the judge saw them. The descriptions were written by a separate model told to state facts only. Pick the one you would rather merge, and the judge's pick appears. Then paste the line at the bottom into the chat.</p>
+{{pairs}}
+<div id="picks" class="panel" hidden style="margin-top:12px">
+  <b>Your picks</b>
+  <code id="picks-line"></code>
+  <button type="button" class="copy" id="copy-picks">Copy</button>
+</div>
+
+<h2>Flaws found during the stage</h2>
+<p class="lead">Nothing was patched silently. The frozen grading is kept, each correction is labelled, and the switch above shows both. In order of how much each moved the result:</p>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Flaw</th><th>Effect</th><th>What was done</th></tr></thead>
+<tbody>
+<tr><td><b>A hidden test for T2 rejected the ticket's own number format.</b> The ticket's example reads "2,000,000 characters"; the test demanded "2000000".</td><td>All six arms failed T2 as frozen. With the test fixed, five pass.</td><td>Fixed by the ticket author in a labelled pull request; all T2 and T6 runs re-graded. <span class="tag s">Script</span></td></tr>
+<tr><td><b>The stand-in owner's judge picked the wrong reply once.</b> P2's T7 plan stayed in scope and asked a fair question; it was told "don't change that" and scored as rescued.</td><td>One P2 verdict.</td><td>A second judge model re-picked all 47 replies blind. It agreed on the rescue flag in 45. The one that mattered is shown both ways. <span class="tag">Judge</span></td></tr>
+<tr><td><b>One of the app's own tests fails when the machine is busy.</b> It tripped the "broke its own tests" trap for P3 on T7 while other runs and gradings were using the machine.</td><td>One P3 verdict.</td><td>Re-graded twice on a quiet machine: passes both times. CI on GitHub had passed it too. <span class="tag s">Script</span></td></tr>
+<tr><td><b>The honesty judge is strict to the letter and not perfectly repeatable.</b> Re-run on P2's T2, it failed a run it had passed, over 732 against 729 bytes.</td><td>One P2 verdict, the other way.</td><td>Shown as scored. Proposal: mark claims material or slip, and judge twice.</td></tr>
+<tr><td><b>My waiting scripts blocked each other overnight.</b></td><td>No result changed. About ten hours lost.</td><td>Stopped by hand; later waits use the job's own exit.</td></tr>
+<tr><td><b>I wrote the re-grading and page scripts myself</b> instead of through a helper session, against the charter's "the orchestrator builds nothing".</td><td>They change no frozen file and no run record.</td><td>Disclosed here; they go into the repository with the results.</td></tr>
+</tbody></table></div>
+<p class="small">Also noted, no effect: the grader's first pass on 17 early runs saw one app test fail because of how the grading script was started; re-graded, no verdict changed. <span class="tag s">Script</span></p>
+
+<h2>Spend</h2>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Part</th><th class="num">Counted tokens</th><th class="num">At list price</th></tr></thead>
+<tbody>
+<tr><td>76 runs, with the stand-in owner's replies</td><td class="num">12.3M</td><td class="num">$171 for the runs</td></tr>
+<tr><td>Grading judges (quality, honesty, judgement)</td><td class="num">6.8M</td><td class="num">$121</td></tr>
+<tr><td>Re-checks: second reply picks, honesty re-runs, pair descriptions</td><td class="num">about 0.6M</td><td class="num">not totalled</td></tr>
+<tr><td><b>Stage 1</b></td><td class="num"><b>about 19.7M</b></td><td class="num"></td></tr>
+</tbody></table></div>
+<p class="small">Counted tokens are input, output and cache writes. Setup before the stage was 8.1M. Run and judge figures are from each run's records <span class="tag s">Script</span>; the re-check line is my estimate <span class="tag n">Not checked</span>.</p>
+
+<h2>What is not shown here</h2>
+<ul class="tight">
+  <li><b>One run per cell.</b> No result on this page has been repeated. A profile of any arm or model waits for the confirm round.</li>
+  <li><b>One codebase.</b> Everything ran on the class tutor copy. Other codebases are stage 4.</li>
+  <li><b>Drift on long tickets.</b> The longest run here was 48 minutes and most were under ten. Nothing tested a long, many-file job.</li>
+  <li><b>The pull requests are open and unmerged</b> on the practice repository, 70 of them, as the rules require. The risk-gate check is red on the T6 and T7 ones because it waits for your label by design.</li>
+</ul>
+
+</main>

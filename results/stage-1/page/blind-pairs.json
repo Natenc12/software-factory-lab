@@ -1,0 +1,318 @@
+{
+ "p1-t7-1": {
+  "run": "p1-t7-1",
+  "ticket_title": "Store chunk page numbers as integers, keeping every existing row",
+  "run_is": "A",
+  "judge_preferred_side": "A",
+  "judge_reason": "A decides explicitly which stored values are valid page numbers, fails with a message naming the offending row, and proves the ticket's Done-when items with tests against a pre-0005 schema. B adds no tests for the migration, bad-data rollback or the page-0 rule, lets Postgres's integer cast decide what counts as a whole number, and rebuilds the constraint on every deploy.",
+  "judge_ratings": {
+   "A": {
+    "cost_later": {
+     "evidence": "0005 adds the constraint only `if not exists (select 1 from pg_constraint ...)`, so re-runs are a catalog lookup; tests run the real scripts/migrate.py against a throwaway schema, though they load it via importlib and hard-code sha256 hashes of the three applied files.",
+     "rating": "good"
+    },
+    "fits_the_codebase": {
+     "evidence": "retrieve.py drops the hand conversion (`page_or_slide=page_or_slide`) and every docstring describing the text column is updated, including scripts/ask_smoke.py `_indexed_pages`; that function's `int(page)` is left in place, slightly at odds with its new docstring.",
+     "rating": "good"
+    },
+    "proportion": {
+     "evidence": "A 53-line migration plus a 187-line test file covering each Done-when item (convert and re-run, bad value rolls back, fix-then-succeed, fresh database, page 0 refused, applied files unchanged); nothing outside the ticket's scope.",
+     "rating": "good"
+    }
+   },
+   "B": {
+    "cost_later": {
+     "evidence": "`alter table chunks drop constraint if exists chunks_page_or_slide_positive; alter table chunks add constraint ...` runs on every migrate, taking an exclusive lock and re-scanning all chunks each deploy; no test guards the migration, the rollback or the page-0 rule.",
+     "rating": "poor"
+    },
+    "fits_the_codebase": {
+     "evidence": "retrieve.py only edits the comment and keeps `page_or_slide=int(page_or_slide)`; scripts/ask_smoke.py still says \"`page_or_slide` is `text` in the column\", which the ticket asked to be corrected.",
+     "rating": "acceptable"
+    },
+    "proportion": {
+     "evidence": "Under-built: the ticket's \"Tests for the above are added\" is unmet \u2014 the only test edits are the text-to-int assertion updates in test_index.py and test_pipeline.py.",
+     "rating": "poor"
+    }
+   }
+  },
+  "describe": {
+   "A": {
+    "does": "Users see no change in how answers or citations look. Page and slide numbers are now stored in the database as numbers, so page 10 sorts after page 2. The database now rejects a page number below 1.",
+    "approach": "It adds a new migration file numbered 0005 (a migration is a script that changes the database's structure). The script first checks every existing page value against a pattern of digits only, with at least one non-zero digit, and stops if any row fails. It then converts the column to numbers and adds a rule (a check the database enforces on every save) that the value must be 1 or more.",
+    "choices": "On bad existing data it stops with its own message, which gives how many rows are bad and the ID and value of one of them; nothing is changed. It treats values with a space, a plus sign, a decimal point, or only zeros as bad, and accepts leading zeros ('007' becomes 7). On later runs it skips the conversion and adds the rule only if it is missing. The page-reading code now passes the stored number through without converting it again.",
+    "beyond": "Nothing outside the ticket. Its comment updates include one in scripts/ask_smoke.py, a test script, where only the descriptive comment changed.",
+    "size": "8 files. About 35 lines of database script plus 18 lines of comments, and about 15 changed lines in the Python code, mostly comments. It adds one new test file with 6 tests that run as 13 cases: conversion and re-run, 7 kinds of bad value, fixing a bad row and re-running, a brand-new database, inserting page 0 or -1, and confirming the three old migration files are unchanged. It updates 2 existing tests from text to number."
+   },
+   "B": {
+    "does": "Users see no change in how answers or citations look. Page and slide numbers are now stored in the database as numbers, so page 10 sorts after page 2. The database now rejects a page number below 1.",
+    "approach": "It adds a new migration file numbered 0005 (a script that changes the database's structure). If the column is still text, the script converts it to numbers. It then removes and re-adds a rule (a check the database enforces on every save) that the value must be 1 or more.",
+    "choices": "On bad existing data it relies on the database's built-in conversion and rule to fail, so the error is the database's standard message. That message does not give a count and may not name the row. Values the database can read as a number, such as ' 2' with a space or '+3', are converted, while '0' and '-1' are stopped by the rule. On every run the rule is dropped and re-added, which re-checks all rows each time. The page-reading code still converts the value to a number, as it did before.",
+    "beyond": "Nothing.",
+    "size": "6 files. About 15 lines of database script plus 13 lines of comments, and about 10 changed lines in the Python code, mostly comments. It adds no new tests and updates 2 existing tests from text to number."
+   },
+   "differences": [
+    {
+     "point": "How bad existing values are detected and reported",
+     "A": "Checks every value against its own digits-only pattern first; its error gives the bad-row count and one example row's ID and value.",
+     "B": "Lets the database's conversion and rule fail; the error is the database's standard message."
+    },
+    {
+     "point": "Values with surrounding spaces or a plus sign (e.g. ' 2', '+3')",
+     "A": "Treated as bad; the migration stops.",
+     "B": "Converted to the number (2, 3)."
+    },
+    {
+     "point": "The 'at least 1' rule on repeat runs",
+     "A": "Added once and left alone when it already exists.",
+     "B": "Removed and re-added on every run."
+    },
+    {
+     "point": "New tests",
+     "A": "Adds 13 test cases, covering existing data, bad values, re-runs, a new database, page 0, and the unchanged old files.",
+     "B": "Adds none."
+    }
+   ]
+  },
+  "diff_chars": {
+   "A": 17553,
+   "B": 7859
+  }
+ },
+ "p0-t2-1": {
+  "run": "p0-t2-1",
+  "ticket_title": "A request that fails validation can crash the error reply or get echoed back whole",
+  "run_is": "B",
+  "judge_preferred_side": "A",
+  "judge_reason": "A bounds every string at the single render step by extending the existing `_json_safe` walker, so `message` (where routes put client text such as a filename) is covered as the ticket's \"wherever it appears in the reply\" requires, while B bounds only `detail` and leaves that path open. B is leaner, its tests are more behavioural and its marker wording is nicer, but it adds two more recursive walkers beside `_json_safe` and I would rather trim A's verbosity than reopen B's gap later.",
+  "judge_ratings": {
+   "A": {
+    "cost_later": {
+     "evidence": "tests/gct/api/test_errors.py imports private `_bounded`/`_json_safe`, monkeypatches `errors.MAX_ERROR_ECHO_CHARS`, and `test_the_clamp_is_a_no_op_at_the_shipped_bound` restates the implementation; render also silently truncates any server-authored string over 512.",
+     "rating": "acceptable"
+    },
+    "fits_the_codebase": {
+     "evidence": "errors.py: extends `_json_safe` (the existing leaf-hazard walker, already applied to every envelope in `render`) with bytes/str branches; constant sits beside MAX_JSON_BODY_* in config.py, described as provisional in the house style.",
+     "rating": "good"
+    },
+    "proportion": {
+     "evidence": "The code change is small, but it carries a clamp for a bound below the marker length (\"a bound nobody has set\"), about 60 lines of docstring, and a 316-line test file including marker-forgery and clamp tests.",
+     "rating": "acceptable"
+    }
+   },
+   "B": {
+    "cost_later": {
+     "evidence": "`envelope(...)` bounds only `detail=bound_echo(detail)`, so `message` and any future echo outside `detail` are unbounded and bytes are handled only on the 422 path; the tests are mostly behavioural through `/classes` and `offline_app`, which is cheap to keep.",
+     "rating": "acceptable"
+    },
+    "fits_the_codebase": {
+     "evidence": "errors.py adds `_decode_bytes` and `bound_echo` as two new recursive walkers next to `_json_safe` instead of extending it, and leaves the `_SafeJSONResponse` docstring (\"the two ways rendering can RAISE\") unaware of the new hazard; config and api.md placement are fine.",
+     "rating": "acceptable"
+    },
+    "proportion": {
+     "evidence": "About 50 lines of code plus a 175-line test file, parametrised and aimed at the ticket's acceptance points; the config comment is short.",
+     "rating": "good"
+    }
+   }
+  },
+  "describe": {
+   "A": {
+    "does": "A request with bytes that are not readable text now gets the usual 422 'validation' reply with its list of field problems instead of a 500 server error. Any text an error reply repeats back is now cut to 512 characters, so a 2,000,000-byte request gets a reply under 4 KB.",
+    "approach": "Just before an error reply is turned into text, a step walks through every piece of it: unreadable bytes become text with a replacement symbol (\ufffd) for each bad byte, and any text longer than 512 characters keeps its start and ends with a note like '...[truncated from 2000000 chars]'. The same step also runs once earlier on the validation error list, so the bytes are fixed before the stage that used to crash on them.",
+    "choices": "The limit is a setting named MAX_ERROR_ECHO_CHARS (512). It applies to every piece of text in every error reply, including the human-readable 'message' line and field names, not only the echoed values. The length note uses plain digits with no commas. If the limit were ever set below the length of the note, the result is still cut to the limit. Two very long field names that match in their first 512 characters merge into one.",
+    "beyond": "It rewrote the existing explanatory comments on two parts of the error-reply code, and it added two paragraphs to the design document.",
+    "size": "Five files: two product code files, one design document, one new test file, and the settings file. About 30 lines of product logic plus about 90 lines of comments. 19 new tests (22 counting variations)."
+   },
+   "B": {
+    "does": "A request with bytes that are not readable text now gets the usual 422 'validation' reply with its list of field problems instead of a 500 server error. Any text in an error reply's 'detail' section (the part that lists specifics) is now cut to 512 characters, so a 2,000,000-byte request gets a reply under 4 KB.",
+    "approach": "Two separate steps. First, before the validation error list is processed, unreadable bytes are turned into text with a replacement symbol (\ufffd) for each bad byte. Then, when any error reply is built, every piece of text in its 'detail' section longer than 512 characters keeps its start and ends with a note like '\u2026 (2,000,000 characters in all)'.",
+    "choices": "The limit is a setting named MAX_ECHO_CHARS (512). It applies only to the 'detail' section of error replies, including details written by individual features, and not to the 'message' line. The length note uses commas in the number, matching the ticket's example. It also converts two other forms of raw byte data the same way. It has no separate handling for a limit set smaller than the length note. Two very long field names that match in their start and length merge into one.",
+    "beyond": "Nothing.",
+    "size": "Five files: two product code files, one design document, one new test file, and the settings file. About 35 lines of product logic plus about 30 lines of comments. 10 new tests (18 counting variations)."
+   },
+   "differences": [
+    {
+     "point": "Which parts of an error reply are cut to 512 characters",
+     "A": "Every piece of text, including the 'message' line",
+     "B": "Only text inside the 'detail' section"
+    },
+    {
+     "point": "Wording of the length note",
+     "A": "'...[truncated from 2000000 chars]', number without commas",
+     "B": "'\u2026 (2,000,000 characters in all)', number with commas"
+    },
+    {
+     "point": "A limit set smaller than the length note",
+     "A": "Output is still held to the limit",
+     "B": "No separate handling"
+    },
+    {
+     "point": "Edits to existing explanatory comments",
+     "A": "Rewrote the existing comments on two parts of the error code",
+     "B": "Left existing comments as they were and added new ones"
+    }
+   ]
+  },
+  "diff_chars": {
+   "A": 30814,
+   "B": 14174
+  }
+ },
+ "p4-t6-1": {
+  "run": "p4-t6-1",
+  "ticket_title": "Index the first 250,000 words of an over-long upload instead of refusing it",
+  "run_is": "B",
+  "judge_preferred_side": "A",
+  "judge_reason": "Neither change does what the ticket asks: both still fail an over-long file as `too_long` with nothing indexed, and only add its word count to the 'split it up' message, so I would not merge either as it stands. If forced to pick, A is the same wrong feature with far less to rip out, whereas B adds 690 lines of tests that pin the refusal the ticket removes.",
+  "judge_ratings": {
+   "A": {
+    "cost_later": {
+     "evidence": "`migrations/0005_files_word_count.sql` documents the column as 'Written only when a file is refused as `too_long`', which the real feature has to reverse (count on a `ready` row); `pipeline.py` still raises `ParseError(\"too_long\", ...)`.",
+     "rating": "poor"
+    },
+    "fits_the_codebase": {
+     "evidence": "Follows the existing seams (ParseError -> `_bury` -> `get_file_status` -> router sentence in `src/gct/api/routers/files.py`), but `_too_long_message` is a second way to render a failure beside `_FAILED_MESSAGE`.",
+     "rating": "acceptable"
+    },
+    "proportion": {
+     "evidence": "Small diff, but for a different ask: no truncation in `compose`, file never ends `ready`, and the only test asserts `(\"failed\", \"too_long\")` and `embedder.calls == 0`.",
+     "rating": "poor"
+    }
+   },
+   "B": {
+    "cost_later": {
+     "evidence": "`test_mn1_a_file_of_exactly_max_words_is_accepted_whole` quotes 'No truncation, no partial ingest', and e1-e3 pin `(\"failed\", \"too_long\", 312_400)` and the exact refusal sentence, so every one must be deleted to build the ticket.",
+     "rating": "poor"
+    },
+    "fits_the_codebase": {
+     "evidence": "`tests/test_ticket_acceptance.py` sits at the tests root outside the `tests/gct/...` layout and cites `scratch/team/contract.md` and `design.md`, which are not in the repo; it also duplicates the deck and embedder helpers.",
+     "rating": "poor"
+    },
+    "proportion": {
+     "evidence": "About 690 lines of tests (618 in `tests/test_ticket_acceptance.py`) for a one-sentence message tweak that is not the requested behaviour.",
+     "rating": "poor"
+    }
+   }
+  },
+  "describe": {
+   "A": {
+    "does": "An upload over 250,000 words is still refused and nothing from it is indexed; the ticket's main request (index the first 250,000 words and mark the file ready) is not implemented. The only visible change is the refusal message, which now reads \"This file has 312,400 words, more than the 250,000-word limit for a single upload. Split it up... and upload the parts.\"",
+    "approach": "When the file is refused, the word count is saved in a new database column (a 'column' is one named field stored for every file). The status page reads that saved number and puts it, with thousands separators, into the refusal sentence.",
+    "choices": "If no count is saved (files refused before this change, or a saved count of zero), the old refusal message is shown. A saved count at or below the limit would still produce the 'more than the limit' sentence. Existing files get no count (left empty), and every other kind of failure stores an empty count.",
+    "beyond": "It changes the wording of the refusal message and adds a stored word count for refused files. Neither was asked for, because the ticket replaces the refusal with partial indexing.",
+    "size": "7 files: one new migration (a script that changes the database's structure; one statement), five product code files with about 40 changed lines, and one new test file with 1 test. That test checks that a 250,001-word deck is refused, its count is saved, and nothing is embedded. It does not check the message text."
+   },
+   "B": {
+    "does": "An upload over 250,000 words is still refused and nothing from it is indexed; the ticket's main request (index the first 250,000 words and mark the file ready) is not implemented. The only visible change is the refusal message, which now reads \"This file has 312,400 words, more than the 250,000-word limit for a single upload. Split it up... and upload the parts.\"",
+    "approach": "When the file is refused, the word count is saved in a new database column (a 'column' is one named field stored for every file). The status page reads that saved number and puts it, with thousands separators, into the refusal sentence.",
+    "choices": "If no count is saved, or the saved count is not above 250,000, the old refusal message is shown word for word. Existing files get no count (left empty), and every other kind of failure stores an empty count, which clears any count left from an earlier attempt.",
+    "beyond": "It changes the wording of the refusal message and adds a stored word count for refused files. Neither was asked for, because the ticket replaces the refusal with partial indexing. Its acceptance tests also check that files over the limit continue to be refused with 'no partial ingest', the opposite of the ticket's decision.",
+    "size": "8 files: one new migration (a script that changes the database's structure; one statement), five product code files with about 60 changed lines including explanatory comments, and two new test files with 28 tests (37 test runs counting variations). The tests cover the message text, fallbacks, other failure types, unchanged files within the limit, and the database column."
+   },
+   "differences": [
+    {
+     "point": "Message when the saved count is not above the limit",
+     "A": "Shows the count sentence unless the count is empty or zero",
+     "B": "Falls back to the old refusal message for any count at or below 250,000"
+    },
+    {
+     "point": "Number of tests added",
+     "A": "1 test",
+     "B": "28 tests (37 runs) across two files"
+    },
+    {
+     "point": "Whether tests check the new message text",
+     "A": "No; only the saved count and that nothing was embedded",
+     "B": "Yes; exact message text for several word counts and for every other status"
+    },
+    {
+     "point": "Tests asserting that over-long files are still refused",
+     "A": "One test expects a 250,001-word file to end failed",
+     "B": "Several tests expect over-long files to end failed with no chunks, citing 'no partial ingest'"
+    }
+   ]
+  },
+  "diff_chars": {
+   "A": 7950,
+   "B": 36088
+  }
+ },
+ "p3-t5-1": {
+  "run": "p3-t5-1",
+  "ticket_title": "Stop one owner from creating two classes with the same name",
+  "run_is": "B",
+  "judge_preferred_side": "B",
+  "judge_reason": "Both enforce the same rule the same way (advisory lock, then compare a casefolded, whitespace-collapsed key in Python, no schema change), but B covers every done-when item with tests (409 over HTTP, existing duplicates untouched, migrate on a database with duplicates, the double-tap race) and keeps the module and route docstrings true, where A leaves the 409 path, existing duplicates and migrate untested and the surrounding docs stale. B's lock is also namespaced away from the worker's advisory lock, so I'd merge B, with a note that both silently settled the \"same name\" question the ticket left open.",
+  "judge_ratings": {
+   "A": {
+    "cost_later": {
+     "evidence": "`pg_advisory_xact_lock(hashtext(owner_id))` uses the single-bigint key space with no namespace, which B's comment says `gct.jobs.queue.WORKER_LOCK_KEY` also uses; and no test pins the 409 mapping, the race, or the existing-duplicates behaviour, so a regression there is silent.",
+     "rating": "acceptable"
+    },
+    "fits_the_codebase": {
+     "evidence": "Right seam (`except ClassNameTaken` beside `except ClassNameError`, rule in `gct.classes`), but tests go in a new `tests/gct/test_class_name_taken.py` beside `test_classes.py`, and the router docstring's 'NOTHING ELSE IS CAUGHT' and the module's 'an upload API has no business deciding' are left contradicting the code.",
+     "rating": "acceptable"
+    },
+    "proportion": {
+     "evidence": "Source change is tight (about 40 lines), but 38 lines of tests omit `POST /classes` 409 entirely, plus the existing-duplicates and `scripts/migrate.py` criteria the ticket lists under 'Tests for the above'.",
+     "rating": "acceptable"
+    }
+   },
+   "B": {
+    "cost_later": {
+     "evidence": "`test_example_8_a_double_tap...` imports the private `_CLASS_NAME_LOCK_NAMESPACE` and polls `pg_locks ... objsubid = 2`, tying a test to the lock implementation; the migrate test shells out to `scripts/migrate.py` against the test database; 'example N' test names refer to a contract that is not in the repo.",
+     "rating": "acceptable"
+    },
+    "fits_the_codebase": {
+     "evidence": "Extends `tests/gct/test_classes.py` and `test_classes_router.py` using `_create`/`_class_rows`/`db_other`, keeps the message as a module constant next to `_NAME_REFUSAL`, and updates the module, `create_class` and route docstrings in the house style.",
+     "rating": "good"
+    },
+    "proportion": {
+     "evidence": "About 60 lines of source for the ask, but roughly 280 lines of tests including a threaded concurrency harness and a subprocess migrate run; each maps to a done-when item, though it is heavy.",
+     "rating": "acceptable"
+    }
+   }
+  },
+  "describe": {
+   "A": {
+    "does": "When an owner tries to create a class with a name they already use, the product refuses, writes nothing, and the app shows a 409 \"class_name_taken\" error (409 is the standard web code for a conflict with existing data). The message reads: \"You already have a class with this name. Pick a different name, or upload to the class you already have.\"",
+    "approach": "Before saving, it looks up all of the owner's class names and compares each to the new one. It first takes an \"advisory lock\", a temporary hold in the database that makes a second create from the same owner wait until the first has finished, so two quick taps cannot both get through.",
+    "choices": "Two names count as the same if they differ only in upper/lower case or in spacing (extra, leading, trailing or tab spaces), so \"Biology 101\" and \" biology  101 \" match but \"Biology-101\" does not. Names are still saved exactly as typed, existing duplicate classes are left alone, and the lock is identified by the owner's ID alone.",
+    "beyond": "Nothing.",
+    "size": "3 files touched: 2 product files with about 40 added lines, and 1 new test file with 3 tests (6 cases counting variations). The tests call the library directly and do not go through the web endpoint."
+   },
+   "B": {
+    "does": "When an owner tries to create a class with a name they already use, the product refuses, writes nothing, and the app shows a 409 \"class_name_taken\" error (409 is the standard web code for a conflict with existing data). The message explains that names differing only in letter case or spacing count as the same, and suggests picking a different name or using the existing class.",
+    "approach": "Before saving, it looks up the owner's class names, oldest first, and compares each to the new one. It first takes an \"advisory lock\", a temporary hold in the database that makes a second create from the same owner wait until the first has finished, so two quick taps cannot both get through.",
+    "choices": "It uses the same matching rule as A: case and spacing are ignored, while punctuation, digits and accents still count, so \"Biologie 101\" is different. Names are saved exactly as typed and existing duplicates are left alone. The internal error records which stored name caused the refusal, and the lock carries a fixed extra number to keep it separate from other database locks the product uses.",
+    "beyond": "Nothing. It also adds explanatory notes inside the two product files describing the new rule.",
+    "size": "4 files touched: 2 product files with about 75 added lines (much of it explanatory notes), and 2 existing test files with 15 added tests. The tests cover the web endpoint, two simultaneous creates, existing duplicates, and running the database setup script on a database with duplicates."
+   },
+   "differences": [
+    {
+     "point": "What the user-facing refusal message says",
+     "A": "Says the name is already used and suggests a different name or the existing class.",
+     "B": "Also explains that names differing only in case or spacing count as the same."
+    },
+    {
+     "point": "How the database lock is identified",
+     "A": "By the owner's ID only.",
+     "B": "By the owner's ID plus a fixed number reserved for this check, kept apart from other locks."
+    },
+    {
+     "point": "Information kept with the internal error",
+     "A": "Records only the name that was refused.",
+     "B": "Records the refused name and the stored name it matched."
+    },
+    {
+     "point": "What the tests cover",
+     "A": "3 tests of the library: the matching rule, other names, and other owners.",
+     "B": "15 tests, including the web 409 reply, simultaneous double taps, untouched existing duplicates, and the setup script running cleanly with duplicates present."
+    }
+   ]
+  },
+  "diff_chars": {
+   "A": 4757,
+   "B": 21063
+  }
+ }
+}
