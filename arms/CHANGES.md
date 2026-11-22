@@ -167,3 +167,53 @@ folder). `{python}`, `{arm}` and `{run}` in it are filled in, and for any arm wi
 also copied to the run's control folder, which the session can neither read nor write, so the hooks
 run from a copy no role can edit. Tests: `tests/test_arms.py`; real trials: `harness/TRIALS.md`
 trials 6–8.
+
+## Stage 2: P1 plus one addition (P1T, P1L, P1A, P5, P5P)
+
+Sources: the charter's three habit add-on rows, `research/skill-libraries.md` ("Draft arm P5" and
+its appendix), and the orchestrator's brief for gate 3. Each arm's `GUIDE.md` is P1's guide byte for
+byte, then one addition; `tests/test_arms.py` checks both. Nothing from P1R, P3, P2 or P4: no forced
+stop, no merge brief, no contract, no reviewer agent.
+
+- **P1T, tests first.** Charter: "Tests are written and shown failing before any code". Added, from
+  the brief: the pull request summary lists the tests seen failing on the starting code. "Each should
+  fail there for the reason you expect" was added so a test that fails for an unrelated reason (an
+  import error, a typo) does not count.
+- **P1L, small slices.** Charter: "a series of small commits, each green, none over about 150 lines".
+  "Each green" became "after each commit the whole test suite passes"; "check with `git diff --stat`"
+  names how to measure a commit's size.
+- **P1A, architecture brief.** Charter: "reads a one-page system map and the project's decision
+  records before planning". The guide's section says to read the map, then the decision records that
+  touch the area. The map is a second instruction file, `SYSTEM-MAP.md`, so it is appended after the
+  guide ("the system map that follows") rather than left for the run to find. It fits gct-lab only.
+  - **Written from** gct-lab's `main` at `283ebf86add01478e5c92a5468b0e88148e5fb28`, read with
+    `git show` from the local clone (no checkout, nothing changed): `README.md`,
+    `design/START-HERE.md`, `design/architecture.md`, the section headings of `data-model.md` and
+    `requirements.md`, the decision template and the decision records' file names, the module
+    docstrings' first lines, `providers/active.py`, `pyproject.toml` and the CI workflow's step names.
+    No ticket, answer or stage result was read while writing it, and the bodies of the decision
+    records were not read either.
+  - **Kept neutral by construction:** it lists every decision record (0001 to 0032), each once,
+    grouped only by the area of the code it belongs to, with no titles, summaries or emphasis, and it
+    states no specific rule, limit or number from any of them. The parts, the two request flows and
+    the places rules live are described at the level of the project's own architecture document. The
+    one instruction is general: before planning, read the decision records, component spec and tests
+    for the area being changed. A test checks the full 0001–0032 list.
+  - The product's and package's names are left out (paths are given relative to the package folder),
+    so the text names no repository.
+- **P5, skills library (pure discretion).** P1's guide plus "Skills are available." and the six
+  appendix skills, one `skills/<name>/SKILL.md` each, meaning unchanged. Tightened:
+  - check-the-ask: the owner's page is "in your scratch folder" (the draft gave no place; skill bodies
+    must not use a relative path such as `../scratch`, trials 6–9); split into three short
+    paragraphs.
+  - prove-each-claim: "(commands)" became "(the commands)", "what you did not check" gained "and".
+  - test-that-bites: "a list of which tests" became "a list of the tests".
+  - stay-in-scope: "PR" spelt out as "pull request".
+  - fresh-eyes-review: "Do not paste your reasoning into its brief" moved next to the brief it is
+    about. Its subagent is Claude Code's general-purpose agent, which runs on the session's model;
+    the skill does not name a model.
+- **P5P, skills library (pointed).** P5 with every skill file byte for byte the same, plus the
+  research report's pointing text after "Skills are available.". The report wrote it as one sentence
+  ("Use check-the-ask after you read the ticket and the code it touches, and prove-each-claim before
+  you write the pull request."); the arm gives it as the two lines the brief asked for, each starting
+  "Use". A test checks that the two arms differ only by those two lines.
