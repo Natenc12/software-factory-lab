@@ -211,6 +211,15 @@ def main() -> int:
                 res = {"tool_use_id": call["id"], "content": "allowed"}
             emit({"type": "user", "session_id": sid, "parent_tool_use_id": parent,
                   "message": {"content": [{"type": "tool_result", **res}]}})  # fmt: skip
+    if step == "skill":
+        call = {"type": "tool_use", "id": "toolu_skill", "name": "Skill", "input": {"skill": "work:release-note"}}
+        # Streaming repeats the record; the skill must be counted once.
+        emit(assistant(sid, f"msg_skill_{n}", [call], usage(2, 10, 100, 100)))
+        emit(assistant(sid, f"msg_skill_{n}", [call], usage(2, 10, 100, 100)))
+        done = {"type": "tool_result", "tool_use_id": "toolu_skill", "content": "Launching skill: work:release-note"}
+        emit({"type": "user", "session_id": sid, "message": {"content": [done]}})
+        later = {"type": "tool_use", "id": "toolu_skill2", "name": "Skill", "input": {"skill": "work:sql-style"}}
+        emit(assistant(sid, f"msg_skill2_{n}", [later], usage(2, 10, 100, 100)))
     if step == "stop":
         page = Path(os.getcwd()).parent / "scratch" / f"ask-{n}.html"
         page.write_text(f"<html><body><h1>Question from {run_id}</h1><p>Fix the CLI too?</p></body></html>")

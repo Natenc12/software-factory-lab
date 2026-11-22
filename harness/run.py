@@ -36,7 +36,7 @@ from harness.common import (
     runs_root,
     write_json,
 )
-from harness.stream import StreamState, Usage, find_page, find_stop
+from harness.stream import StreamState, Usage, find_page, find_stop, skills_used
 
 HERE = Path(__file__).resolve().parent
 EXIT = {"finished": 0, "ceiling_hit": 0, "plan_limit": 75, "harness_fault": 1}
@@ -64,8 +64,17 @@ def session_cmd(a, root: Path, prompt_resume: str | None) -> list[str]:
     ctl = sandbox.control_dir(root)
     cmd = [a.claude_bin, "-p", "--output-format", "stream-json", "--verbose", "--model", a.model]
     cmd += ["--setting-sources", "", "--settings", str(ctl / "settings.json")]
-    cmd += ["--disable-slash-commands", "--strict-mcp-config", "--no-chrome", "--permission-mode", "dontAsk"]
-    cmd += ["--tools", sandbox.ALLOWED_TOOLS.replace(" ", ","), "--disallowedTools", "WebFetch,WebSearch"]
+    plugin = ctl / "plugin"
+    tools = sandbox.ALLOWED_TOOLS.split()
+    if plugin.is_dir():
+        # An arm with skills: its plugin, the Skill tool, and no --disable-slash-commands (which turns off
+        # every skill). Its settings file sets disableBundledSkills, so Claude Code's own skills stay out.
+        cmd += ["--plugin-dir", str(plugin)]
+        tools.append("Skill")
+    else:
+        cmd += ["--disable-slash-commands"]
+    cmd += ["--strict-mcp-config", "--no-chrome", "--permission-mode", "dontAsk"]
+    cmd += ["--tools", ",".join(tools), "--disallowedTools", "WebFetch,WebSearch"]
     cmd += ["--add-dir", str(root)]
     if a.effort:
         cmd += ["--effort", a.effort]
@@ -208,6 +217,8 @@ def finish_record(root: Path, rec: dict) -> None:
     rec["pr_number"] = pr
     if (root / "repo").exists():
         rec["practice_head_commit"] = git_head(root / "repo")
+    transcript = hdir / "transcript.jsonl"
+    rec["skills_used"] = skills_used(transcript.read_text(errors="replace").splitlines()) if transcript.exists() else []
     rec["ended_at"] = now_iso()
 
 

@@ -19,10 +19,21 @@ rg = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(rg)
 
 
-def run_texts(name: str) -> dict[str, str]:
-    """Every text a run of this arm can receive: instruction files and agent definitions."""
-    instructions, agents = sandbox.arm_files(ARMS / name)
-    return {str(p.relative_to(ARMS)): p.read_text(encoding="utf-8") for p in [*instructions, *agents]}
+def run_texts(name: str, arms: Path = ARMS) -> dict[str, str]:
+    """Every text a run of this arm can receive: instruction files, agent definitions and skills."""
+    instructions, agents = sandbox.arm_files(arms / name)
+    files = [*instructions, *agents, *sandbox.skill_files(arms / name)]
+    return {str(p.relative_to(arms)): p.read_text(encoding="utf-8") for p in files}
+
+
+def word_counts(name: str, arms: Path = ARMS) -> dict:
+    """Words loaded up front (instructions, agent definitions, skill descriptions) and on demand (skill bodies)."""
+    instructions, agents = sandbox.arm_files(arms / name)
+    skills = [sandbox.parse_skill(p) for p in sandbox.skill_files(arms / name)]
+    descriptions = sum(len(s["description"].split()) for s in skills)
+    bodies = sum(len(s["body"].split()) for s in skills)
+    files = sum(len(p.read_text(encoding="utf-8").split()) for p in [*instructions, *agents])
+    return {"up_front": files + descriptions, "descriptions": descriptions, "bodies": bodies, "skills": len(skills)}
 
 
 def test_p0_gives_a_run_nothing():
@@ -90,8 +101,27 @@ def test_arms_with_a_brief_end_on_a_stop(name):
 def test_sizes_note_matches_the_files():
     sizes = (ARMS / "SIZES.md").read_text()
     for name in NAMES:
-        words = sum(len(t.split()) for t in run_texts(name).values())
-        assert re.search(rf"^\| {name} \|[^|]*\| {words:,} \|", sizes, re.M), f"{name}: {words} words"
+        n = word_counts(name)
+        skills = f"{n['descriptions']:,} \\| {n['bodies']:,}" if n["skills"] else "none \\| none"
+        row = rf"^\| {name} \|[^|]*\| {n['up_front']:,} \|[^|]*\|[^|]*\| {skills} \|"
+        assert re.search(row, sizes, re.M), f"{name}: {n}"
+
+
+def test_skill_descriptions_count_up_front_and_bodies_on_demand():
+    fixtures = Path(__file__).parent / "fixtures"
+    n = word_counts("arm-with-skills", fixtures)
+    guide = len((fixtures / "arm-with-skills" / "GUIDE.md").read_text().split())
+    assert n["skills"] == 2
+    assert n["descriptions"] == len("Use when the task asks for a release note.".split()) + len(
+        "Use when writing or changing SQL.".split()
+    )
+    assert n["up_front"] == guide + n["descriptions"]
+    assert n["bodies"] > n["descriptions"]
+    assert set(run_texts("arm-with-skills", fixtures)) == {
+        "arm-with-skills/GUIDE.md",
+        "arm-with-skills/skills/release-note/SKILL.md",
+        "arm-with-skills/skills/sql-style/SKILL.md",
+    }
 
 
 # ---- the team's role limits (arms/P4/hooks/role_guard.py) ----

@@ -5,8 +5,10 @@ Contract, `P2` Checklist, `P4` Team. A run gets an arm with `--arm arms/<name>`;
 `--arm`.
 
 What a run receives from a folder: its top-level `.md` files other than `README.md`, appended to the
-system prompt, and `agents/*.md`, passed as `--agents` (see `harness/README.md`). Nothing else here
-is loaded into a run:
+system prompt; `agents/*.md`, passed as `--agents`; and, only if the folder has one, `skills/<name>/SKILL.md`
+(see `harness/README.md`). Skills are opt-in: each is one file with `name` and `description` front
+matter. The run sees every description up front and loads a skill's body only when it calls the skill;
+it may use them at its own discretion. No stage 1 arm has skills. Nothing else here is loaded into a run:
 
 - `CHANGES.md`: every departure from the arms' sources, with the reason.
 - `SIZES.md`: each arm's word count.
