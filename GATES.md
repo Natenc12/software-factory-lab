@@ -2,22 +2,31 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
-## Gate 3 · confirm round results and the stage 2 plan · waiting for the owner · 2026-11-22
+## Gate 3 · confirm round results and the stage 2 plan · approved 2026-11-22
 
 Page: https://claude.ai/artifact/WVNSzAwaZtwbsDA3qDTgQX (copy: `results/stage-1-confirm/page/confirm-results.html`)
 
-The confirm round ran in full: 80 runs graded, none discarded. The orchestrator's stage 2 plan, none of
-it started beyond setup already approved at gate 2 (the four new tickets):
+The confirm round ran in full: 80 runs graded, none discarded. The orchestrator asked: "Do you approve
+the stage 2 plan as it stands, or do you want it changed?" The owner's reply: "yeah". Applied:
 
-1. Build on P1 Loose. Five additions, one at a time: tests first, small slices, an architecture brief,
-   and a skills library in two versions (pure discretion; pointed, with two lines in the guide).
-2. Eight tickets: T6 and the two new wrong-ask tickets, the two new long tickets, and T2, T5 and T7.
-   Two runs of every cell: 88 runs, about 20M counted tokens with grading. The charter pencilled in up
-   to 48 runs for this stage.
-3. The chief-of-staff setup (a Fable lead directing Opus workers) goes to stage 3 with two controls.
+1. **Stage 2 builds on P1 Loose** and tests five additions, one at a time. Arm names: `P1T` (tests
+   first), `P1L` (small slices), `P1A` (architecture brief), `P5` (skills library, pure discretion),
+   `P5P` (skills library, pointed: the same six skills plus two lines in the guide). `P1` is the control.
+2. **Eight tickets:** T6 and the two new wrong-ask tickets (T11, T12), the two new long tickets (T9,
+   T10), and T2, T5 and T7. Standard ticket level. Two runs of every cell: 80 runs for the five
+   additions, plus 8 for P1 on T9 to T12; P1's three existing runs on T2, T5, T6 and T7 serve as its
+   control there. 88 runs, about 20M counted tokens with grading. The charter pencilled in up to 48
+   runs for this stage; the owner approved 88.
+3. **How an addition gets in:** the charter's rule, unchanged. It must improve at least two of
+   trustworthy rate, quality score and rescues against P1 on the same tickets, without adding more
+   than 30% to cost. The current rules decide; the second reading is reported beside them.
+4. **The chief-of-staff setup** (a Fable lead directing Opus workers) goes to stage 3 with two
+   controls: P1 on Opus alone and P1 on Fable alone.
 
-No decision recorded yet. Also for the record: the owner said on 2026-11-22 that the OpenAI key
-mentioned in `research/owner-sessions-audit.md` had already been revoked.
+Before any stage 2 run: the four new tickets are audited independently, each new arm gets a cheap
+trial, per-run ceilings are set for the long tickets, the stage is frozen and tagged, and the owner is
+shown the freeze note. Also for the record: the owner said on 2026-11-22 that the OpenAI key mentioned
+in `research/owner-sessions-audit.md` had already been revoked.
 
 ## Owner decisions after gate 2 · repos made public, skills arm versions · 2026-11-22
 
