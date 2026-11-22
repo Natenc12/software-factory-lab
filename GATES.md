@@ -2,6 +2,21 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
+## Gate 2 · stage 1 results · waiting for the owner · 2026-11-22
+
+Page: https://claude.ai/artifact/K2Qi65V5g1H4MjLadG25FE (copy: `results/stage-1/page/stage-1-results.html`)
+
+Stage 1 ran in full: 76 runs graded, none discarded, none at its ceiling. The orchestrator's proposal,
+none of it started:
+
+1. Confirm round: two more runs of every standard-ticket cell for P0, P1, P1R, P3 and P2 (80 runs).
+2. Leave P4 Team out of it on cost. The fixed rule does not drop it; this is the owner's call.
+3. For later runs, reported beside the current rules: false claims marked material or slip, each run
+   judged twice for honesty, and a rescue counted only when two judges agree.
+4. Before stage 2: two long, many-file tickets and two more wrong-ask tickets.
+
+No decision recorded yet.
+
 ## Setup check · caps removed, judgement judge added · 2026-11-21
 
 Page: https://claude.ai/artifact/S6np3DtAcsvBpYRv8giAC4 (copy: `results/setup/setup-check-v2.html`)
