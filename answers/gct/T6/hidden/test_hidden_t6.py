@@ -7,6 +7,7 @@ now tells the student how many words the file has.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 
 import pytest
@@ -22,6 +23,19 @@ from gct.jobs.queue import enqueue
 from gct.jobs.worker import process_one
 
 LIMIT = 250_000
+
+# The ticket asks for numbers "written with thousands separators" without naming one: accept a
+# comma, full stop, space (plain, no-break, thin, narrow no-break), underscore or apostrophe
+# (straight or curly), used throughout the number.
+_SEPARATORS = ",. \u00a0\u2009\u202f_'\u2019"
+
+
+def grouped(text: str, n: int) -> bool:
+    """True if `text` contains `n` grouped in threes with one thousands separator (250,001)."""
+    groups = f"{n:,}".split(",")
+    sep = "(?P<sep>[" + re.escape(_SEPARATORS) + "])"
+    pattern = groups[0] + sep + groups[1] + "".join("(?P=sep)" + g for g in groups[2:])
+    return re.search(pattern, text) is not None
 
 
 class CountingEmbeddings:
@@ -96,8 +110,8 @@ def test_an_over_limit_file_is_refused_whole_and_its_status_says_how_long_it_is(
     assert response.status_code == 200
     body = response.json()
     assert (body["status"], body["failed_reason"]) == ("failed", "too_long")
-    assert "250,001" in body["message"], "the message must give the file's own word count"
-    assert f"{LIMIT:,}" in body["message"], "the message must still give the limit"
+    assert grouped(body["message"], 250_001), "the message must give the file's own word count"
+    assert grouped(body["message"], LIMIT), "the message must still give the limit"
 
 
 def test_the_count_is_the_files_own_and_small_files_are_unaffected(
@@ -116,8 +130,8 @@ def test_the_count_is_the_files_own_and_small_files_are_unaffected(
 
     assert _rows(db_other, big_id) == ("failed", "too_long", "failed", 0)
     message = http.get(f"/files/{big_id}").json()["message"]
-    assert "312,400" in message
-    assert "250,001" not in message
+    assert grouped(message, 312_400)
+    assert not grouped(message, 250_001)
 
     status, reason, state, n_chunks = _rows(db_other, small_id)
     assert (status, reason, state) == ("ready", None, "done")
