@@ -121,3 +121,6 @@ For a flawed ticket whose S3 acceptance tests are written to hold for both the r
 the owner's amended request, those tests may already pass on the starting branch; `key.json` then says
 `"acceptance_may_pass_on_base": true` and `verify_ticket.py` records the run instead of requiring a
 failure. Their starting branches are tagged `stage-2-candidate/base/<T>` until the stage 2 freeze.
+
+T9 is not for use at S0: its rough capture names none of the keys, routes or reply shapes the hidden
+tests assert, so no S0 run can pass (`meta.json`: `not_for_spec_levels`).

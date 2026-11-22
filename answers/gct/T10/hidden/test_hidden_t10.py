@@ -203,8 +203,9 @@ def test_every_reply_to_an_old_name_request_carries_the_deprecation_header(clien
         ),
         client.post("/ask", json={"class_id": class_id, "question": "what is it?"}),
         client.post("/ask", json={"class_id": unknown, "question": "what is it?"}),
+        client.post("/ask", json={"class_id": "biology", "question": "what is it?"}),
     ]
-    assert [r.status_code for r in replies] == [202, 404, 400, 400, 200, 404]
+    assert [r.status_code for r in replies] == [202, 404, 400, 400, 200, 404, 400]
     assert replies[3].json()["error"]["kind"] == "bad_filename"
     assert all(flagged(r) for r in replies), [r.headers.get("deprecation") for r in replies]
 
@@ -320,6 +321,9 @@ def test_course_scoped_upload_and_ask_follow_every_earlier_rule(client, db):
     lost = client.post(f"/courses/{uuid.uuid4()}/ask", json={"question": "what is it?"})
     assert lost.status_code == 404
     assert lost.json()["error"]["kind"] == "course_not_found"
+    malformed = client.post("/courses/biology/ask", json={"question": "what is it?"})
+    assert malformed.status_code == 400
+    assert malformed.json()["error"]["kind"] == "bad_course_id"
     extra = client.post(
         f"/courses/{course_id}/ask", json={"question": "what is it?", "class_id": class_id}
     )

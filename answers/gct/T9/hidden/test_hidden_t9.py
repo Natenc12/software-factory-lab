@@ -143,7 +143,7 @@ def test_a_ready_file_keeps_answering_until_the_new_version_is_published(
     )
     assert texts(conn, owner_id, class_id) == {"the new lecture text"}
     new_ref = staging_refs(db_other, file_id)
-    assert new_ref != old_ref and Path(new_ref).name == "week-1-v2.pdf"
+    assert new_ref != old_ref and Path(new_ref).exists()
     assert Path(old_ref).exists(), "nothing staged is deleted (ADR 0010)"
 
 
@@ -197,6 +197,10 @@ def test_replacing_a_failed_file_processes_it_like_a_new_upload(app_and_client, 
     body = client.get(f"/files/{file_id}").json()
     assert (body["status"], body["filename"], body["replacement"]) == ("ready", "fixed.pdf", None)
     assert texts(conn, owner_id, class_id) == {"now it parses"}
+    assert versions(client, file_id) == [
+        (2, "fixed.pdf", "published", None, True),
+        (1, "broken.pdf", "failed", "unparseable", False),
+    ]
 
 
 def test_refusals_stage_nothing(app_and_client, worker_db):

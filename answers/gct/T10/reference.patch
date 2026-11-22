@@ -120,7 +120,7 @@ index 0000000..39ce042
 +        return True
 +    return bool(getattr(request.state, "old_names", False))
 diff --git a/src/gct/api/routers/ask.py b/src/gct/api/routers/ask.py
-index d474cbe..a3ced95 100644
+index d474cbe..5a74fe9 100644
 --- a/src/gct/api/routers/ask.py
 +++ b/src/gct/api/routers/ask.py
 @@ -36,12 +36,12 @@ autocommit connection `gct.api.deps.get_conn` yields is still the wiring this sh
@@ -139,7 +139,7 @@ index d474cbe..a3ced95 100644
  from gct.api.deps import Conn, Embedder, Generator, OwnerId
  from gct.api.errors import ApiError
  from gct.ask import ERROR_KIND_EMBEDDING_MISMATCH, ask
-@@ -175,9 +175,16 @@ class AskRequest(BaseModel):
+@@ -175,9 +175,25 @@ class AskRequest(BaseModel):
  
      model_config = ConfigDict(extra="forbid")
  
@@ -148,6 +148,15 @@ index d474cbe..a3ced95 100644
 +    course_id: str | None = None
      question: str = Field(max_length=MAX_QUESTION_CHARS)
  
++    @model_validator(mode="wrap")
++    @classmethod
++    def _old_body_keeps_old_errors(cls, data, handler):
++        # A body without `course_id` is an old client's: validate it with today's model first, so
++        # its 422s stay byte for byte (rule 1), including the missing-`class_id` entry.
++        if isinstance(data, dict) and "course_id" not in data:
++            ClassAskRequest.model_validate(data)
++        return handler(data)
++
 +    @model_validator(mode="after")
 +    def _names_a_course(self) -> AskRequest:
 +        if self.class_id is None and self.course_id is None:
@@ -157,7 +166,28 @@ index d474cbe..a3ced95 100644
      @field_validator("question")
      @classmethod
      def _reject_blank(cls, question: str) -> str:
-@@ -289,6 +296,7 @@ def _render_integrity(integrity: Integrity) -> IntegrityOut:
+@@ -200,6 +216,20 @@ class AskRequest(BaseModel):
+         return question
+ 
+ 
++class ClassAskRequest(BaseModel):
++    """Today's `POST /ask` body, kept so an old client's request is validated exactly as before."""
++
++    model_config = ConfigDict(extra="forbid")
++
++    class_id: str
++    question: str = Field(max_length=MAX_QUESTION_CHARS)
++
++    @field_validator("question")
++    @classmethod
++    def _reject_blank(cls, question: str) -> str:
++        return AskRequest._reject_blank(question)
++
++
+ class CitationOut(BaseModel):
+     """One resolved `[S#]` - citation-spine honor-point ③ (`grounder.answer.Citation`).
+ 
+@@ -289,6 +319,7 @@ def _render_integrity(integrity: Integrity) -> IntegrityOut:
  
  @router.post("", status_code=200)
  def ask_question(
@@ -165,7 +195,7 @@ index d474cbe..a3ced95 100644
      conn: Conn,
      owner: OwnerId,
      embedder: Embedder,
-@@ -340,27 +348,23 @@ def ask_question(
+@@ -340,27 +371,23 @@ def ask_question(
      envelope - loud, and the right direction for a broken contract, which is why there is no
      defensive branch inventing a second answer for it.
      """

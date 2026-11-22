@@ -15,5 +15,9 @@
     "S1": 1232,
     "S2": 1810,
     "S3": 1844
-  }
+  },
+  "not_for_spec_levels": [
+    "S0"
+  ],
+  "not_for_spec_levels_note": "S0 names none of the keys, routes, error kinds or reply shapes the hidden tests assert, and no reply supplies them, so no S0 run can pass. Stage 2 runs the standard level only."
 }

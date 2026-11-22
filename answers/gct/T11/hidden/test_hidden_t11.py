@@ -76,6 +76,7 @@ def test_an_outage_past_the_budget_can_be_requeued_and_then_succeeds(
 
     conn, owner_id, class_id = worker_db
     conn.autocommit = True
+    assert worker.DEFAULT_MAX_ATTEMPTS == 5, "the retry budget stays as it is"
     monkeypatch.setattr(worker.time, "sleep", lambda _: None)
     file_id = enqueue(
         conn, path=write_pdf(tmp_path / "a.pdf", "lecture"), owner_id=owner_id, class_id=class_id

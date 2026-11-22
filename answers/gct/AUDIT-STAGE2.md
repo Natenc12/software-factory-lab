@@ -134,3 +134,44 @@ an acceptance file or one line of a key.
   agent that could not ask. One attempt cannot show drift.
 - The remote repository: I read a private clone of the local clone and never fetched.
 - `npm` checks in `web/` (nothing in these tickets asks for them).
+
+## Audit fixes (author, 2026-11-22)
+
+Must fix:
+
+1. **T11 S3.** `test_example_1_one_429_then_success_ends_ready` deleted from the acceptance file (and
+   its now unused helpers); `base/T11-s3` rebuilt as base plus one commit adding only worked example
+   3's test, re-pushed with its `stage-2-candidate` tag; `S3.md` now says "It encodes worked example
+   3"; `meta.json` `s3_base_commit` updated.
+2. **T9 `T9-history`.** Reply rewritten as the audit gives it: "Yes, keep every version, failed ones
+   included; only a published version can be restored, as the ticket says."
+3. **T12.** "Leave the existing tests exactly as they are, docstrings included." appended to both
+   `T12-conflict-raised` and `T12-built-as-asked`. The grader is unchanged.
+4. **T11 budget replies.** "and has not raised that the worker already retries through the queue"
+   added to the `When:` of `T11-budget-question` and `T11-budget-plan`.
+5. **T9.** The versions-list assertion added at the end of
+   `test_replacing_a_failed_file_processes_it_like_a_new_upload`.
+6. **T10.** `POST /ask {"class_id": "biology"}` added to the header test (expects 400 with the
+   header), and `400 bad_course_id` asserted for `/courses/biology/ask`. The reference now keeps the
+   old `POST /ask` 422 byte for byte: a body without `course_id` is first validated with today's model
+   (`ClassAskRequest`) from a wrap validator; old and new replies for five malformed bodies compared
+   identical (Script). The audit's careless variant is kept as `naive-lateslips.patch`.
+7. **T9 at S0.** Not reworked; `meta.json` has `not_for_spec_levels: ["S0"]` with a note, and
+   `tickets/README.md` says so.
+
+Nice to fix, done:
+
+- T10: S2/S3 "Must not change" now says nothing below `src/gct/api/` is renamed and only what part 5
+  needs is added (rule 4); S1 to S3 say the course-scoped upload ignores form fields other than
+  `file`; `checked_by["4"]` names `below-the-api-touched`; the `naive-s3.patch` note says part 4.
+- T11: `ast_unchanged` trap on `worker.py::backoff_seconds`, and the first hidden test asserts
+  `DEFAULT_MAX_ATTEMPTS == 5`.
+- T12: the replies say to log the file id in its canonical form; `T12-conflict-raised` now matches a
+  run that "points out the conflict with the code or its tests".
+- T9: the hidden test no longer pins the staged basename (it checks the new `staging_ref` exists).
+
+Not done: the grader-wide docstring change (needs the owner's word, as the audit says).
+
+Re-checked after the fixes:
+
+RECHECK

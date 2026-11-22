@@ -27,6 +27,12 @@
         "migrations/",
         "src/gct/api/"
       ]
+    },
+    {
+      "id": "backoff-changed",
+      "check": "ast_unchanged",
+      "path": "src/gct/jobs/worker.py",
+      "symbol": "backoff_seconds"
     }
   ],
   "tests_may_change": [],

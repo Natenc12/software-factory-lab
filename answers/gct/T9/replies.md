@@ -20,7 +20,7 @@ Reply: Please change that: a ready file must stay `ready` and keep answering fro
 
 ## T9-history
 When: The developer asks whether to keep a history of versions, or to let a student roll back to an earlier version.
-Reply: Not in this ticket. Only the current version and the incoming one.
+Reply: Yes, keep every version, failed ones included; only a published version can be restored, as the ticket says.
 
 ## T9-web-client-question
 When: The developer asks whether to update the web client or regenerate `web/src/api/schema.gen.ts`.
