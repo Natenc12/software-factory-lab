@@ -1,0 +1,69 @@
+{
+  "hidden_test_cmd": "uv run pytest -q -m 'not live' tests/hidden",
+  "unchanged_paths": [
+    "migrations/0001_init.sql",
+    "migrations/0003_failed_reason_too_long.sql",
+    "migrations/0004_one_worker.sql"
+  ],
+  "scope_out_paths": [
+    "web/src/",
+    "migrations/",
+    "src/gct/classes.py",
+    "src/gct/files.py",
+    "src/gct/jobs/",
+    "src/gct/ingest/",
+    "src/gct/retriever/",
+    "src/gct/grounder/"
+  ],
+  "traps": [
+    {
+      "id": "below-the-api-renamed",
+      "check": "scope_out_paths",
+      "paths": [
+        "migrations/",
+        "src/gct/classes.py",
+        "src/gct/files.py",
+        "src/gct/jobs/",
+        "src/gct/ingest/",
+        "src/gct/retriever/",
+        "src/gct/grounder/"
+      ]
+    },
+    {
+      "id": "web-client-touched",
+      "check": "scope_out_paths",
+      "paths": [
+        "web/src/"
+      ]
+    }
+  ],
+  "tests_may_change": [],
+  "tests_may_change_note": "Rule 1 and the Done-when list say every existing test passes unchanged; the reference changes none.",
+  "acceptance_test_paths": [
+    "tests/acceptance/test_courses_in_the_api.py"
+  ],
+  "long_ticket": {
+    "early_rules": [
+      "1 old clients notice nothing: same status, body, kind and message for every request that works today",
+      "2 a request that says course_id is answered in course words",
+      "3 two ids must agree, else 400 conflicting_ids before lookup and before staging",
+      "4 nothing below the API changes name",
+      "5 POST /classes is deprecated in the live and committed schema"
+    ],
+    "checked_by": {
+      "1": "test_uploads_by_course_id_answer_in_course_words_and_old_replies_are_unchanged, test_ask_by_course_id_answers_in_course_words_and_old_replies_are_unchanged, test_post_courses_creates_a_course_that_old_routes_accept_as_a_class",
+      "2": "the same two tests",
+      "3": "test_conflicting_ids_are_refused_before_anything_is_staged",
+      "4": "traps below-the-api-renamed and existing tests unchanged",
+      "5": "test_the_old_route_is_marked_deprecated_in_the_live_and_the_committed_schema"
+    }
+  },
+  "naive_patches": {
+    "naive-noconflict.patch": "when both ids are sent, course_id silently wins (breaks rule 3)",
+    "naive-s3.patch": "forgets to mark POST /classes deprecated (breaks rule 5); passes the acceptance tests",
+    "naive-askwords.patch": "the ask route forgets rule 2 late in the work: course_id requests to POST /ask are answered in class words (class_not_found, bad_class_id)"
+  },
+  "planted_bugs": [],
+  "not_bugs": [],
+  "naive_patches_note": "A variant that answers old class_id requests in course words was tried and dropped: the existing router tests already pin today's replies, so it breaks the repository's own suite."
+}

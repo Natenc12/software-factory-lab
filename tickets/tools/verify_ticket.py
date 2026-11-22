@@ -372,12 +372,22 @@ class Verifier:
         )
         env = self.prepare(tree, s3_ref, "s3base")
         res = run_pytest(tree.path, env, accept, "s3-base")
-        self.step(
-            "s3: acceptance tests fail on the S3 branch",
-            res["counts"].get("failed", 0) + res["counts"].get("error", 0) > 0,
-            note=res["summary"],
-            outcomes=res["outcomes"],
-        )
+        fails = res["counts"].get("failed", 0) + res["counts"].get("error", 0) > 0
+        if self.key.get("acceptance_may_pass_on_base"):
+            # A false-premise ticket: what its examples end in is already true on the base.
+            self.step(
+                "s3: acceptance tests run on the S3 branch (may pass there: key says so)",
+                res["exit"] in (0, 1),
+                note=res["summary"],
+                outcomes=res["outcomes"],
+            )
+        else:
+            self.step(
+                "s3: acceptance tests fail on the S3 branch",
+                fails,
+                note=res["summary"],
+                outcomes=res["outcomes"],
+            )
         env = self.prepare(tree, s3_ref, "s3ref", self.ref_patch)
         tree.add_hidden(self.hidden)
         res = run_pytest(tree.path, env, [], "s3-ref")

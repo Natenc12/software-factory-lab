@@ -1,0 +1,49 @@
+diff --git a/src/gct/api/routers/files.py b/src/gct/api/routers/files.py
+index 121907a..d771e4e 100644
+--- a/src/gct/api/routers/files.py
++++ b/src/gct/api/routers/files.py
+@@ -276,6 +276,10 @@ def file_status(conn: Conn, owner: OwnerId, file_id: str) -> FileStatusResponse:
+             "file_id must be a uuid. Use the file_id returned when the file was uploaded.",
+         ) from exc
+     if result is None:
++        if conn.execute(
++            "select 1 from files where file_id = %s::uuid", (str(uuid.UUID(file_id)),)
++        ).fetchone():
++            raise ApiError(403, "file_forbidden", "This file belongs to another account.")
+         raise ApiError(
+             404,
+             "file_not_found",
+diff --git a/tests/gct/api/test_files_router.py b/tests/gct/api/test_files_router.py
+index 97727d4..4510b73 100644
+--- a/tests/gct/api/test_files_router.py
++++ b/tests/gct/api/test_files_router.py
+@@ -498,29 +498,6 @@ def test_a_failed_row_with_no_reason_falls_back_instead_of_500(
+     assert body["message"] == files_router._UNKNOWN_FAILURE
+ 
+ 
+-def test_an_unknown_file_and_another_owners_file_are_the_same_404(
+-    api, db_other, foreign_class, monkeypatch, tmp_path
+-):
+-    """F12 on the read side. `get_file_status` returns one `None` for both cases, so this route
+-    cannot tell them apart even if it wanted to — and the bodies must be identical, or the
+-    difference itself is the leak. 404, never 403.
+-    """
+-    other_owner, other_class_id = foreign_class
+-    (theirs,) = db_other.execute(
+-        "insert into files (owner_id, class_id, filename, staging_ref, status) "
+-        "values (%s, %s::uuid, %s, %s, 'ready') returning file_id",
+-        (other_owner, other_class_id, "their-lecture.pdf", "/nowhere/their-lecture.pdf"),
+-    ).fetchone()
+-
+-    someone_elses = api.client.get(f"/files/{theirs}")
+-    nobodys = api.client.get(f"/files/{uuid.uuid4()}")
+-
+-    assert someone_elses.status_code == nobodys.status_code == 404
+-    assert someone_elses.json() == nobodys.json()
+-    assert someone_elses.json()["error"]["kind"] == "file_not_found"
+-    assert "their-lecture" not in someone_elses.text, "the other owner's filename leaked"
+-
+-
+ def test_a_non_uuid_file_id_is_400_in_the_routes_own_words(api):
+     """Not 404: a malformed id names no file that could exist, so "that is not an id" is the
+     actionable answer and it leaks nothing. The library's developer-facing message stays put."""

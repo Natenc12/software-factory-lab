@@ -1,0 +1,501 @@
+diff --git a/migrations/0005_file_replacement.sql b/migrations/0005_file_replacement.sql
+new file mode 100644
+index 0000000..08cc710
+--- /dev/null
++++ b/migrations/0005_file_replacement.sql
+@@ -0,0 +1,15 @@
++-- 0005: replacing an uploaded file's contents (PUT /files/{file_id}).
++--
++-- `pending_staging_ref` points at the staged bytes of a replacement that has not been published yet;
++-- `staging_ref` keeps pointing at the bytes the file's current chunks came from until it is. When a
++-- replacement of a `ready` file fails, the file keeps its content and `replacement_failed_reason`
++-- says why (the same closed set as `failed_reason`). Both columns are NULL for every existing row.
++-- Re-runnable: scripts/migrate.py applies every file on every run.
++
++alter table files add column if not exists pending_staging_ref text;
++alter table files add column if not exists replacement_failed_reason text;
++
++alter table files drop constraint if exists files_replacement_failed_reason_check;
++alter table files add constraint files_replacement_failed_reason_check
++    check (replacement_failed_reason in
++        ('unparseable','protected','unsupported','empty','too_long','transient_exhausted'));
+diff --git a/src/gct/api/routers/files.py b/src/gct/api/routers/files.py
+index 121907a..f41b6a9 100644
+--- a/src/gct/api/routers/files.py
++++ b/src/gct/api/routers/files.py
+@@ -36,7 +36,7 @@ from gct.api.deps import Conn, OwnerId
+ from gct.api.errors import ApiError
+ from gct.classes import class_exists
+ from gct.config import MAX_INGEST_WORDS
+-from gct.files import get_file_status
++from gct.files import FileBusy, get_file_status, replace_file
+ from gct.jobs.queue import enqueue
+ from gct.staging import StagingError, stage
+ 
+@@ -239,6 +239,8 @@ class FileStatusResponse(BaseModel):
+     status: str
+     failed_reason: str | None
+     message: str
++    replacement: str | None = None
++    replacement_failed_reason: str | None = None
+ 
+ 
+ @router.get("/{file_id}")
+@@ -291,4 +293,50 @@ def file_status(conn: Conn, owner: OwnerId, file_id: str) -> FileStatusResponse:
+         status=result.status,
+         failed_reason=result.failed_reason,
+         message=message,
++        replacement=result.replacement,
++        replacement_failed_reason=result.replacement_failed_reason,
+     )
++
++
++@router.put("/{file_id}", status_code=202)
++def replace(
++    conn: Conn,
++    owner: OwnerId,
++    file_id: str,
++    file: Annotated[UploadFile, File()],
++) -> UploadAccepted:
++    """Upload new contents for an existing file; 202, and the client polls `GET /files/{file_id}`.
++
++    404 `file_not_found` for a missing file and for another owner's alike; 409 `file_busy` while
++    the file is queued or processing or a replacement is already pending. Both are checked before
++    anything is staged, and again under a row lock when the replacement is queued.
++    """
++    busy = ApiError(
++        409,
++        "file_busy",
++        "This file is still being processed, or a replacement is already on its way. Try again "
++        "once it is ready or failed.",
++    )
++    try:
++        uuid.UUID(file_id)
++    except ValueError as exc:
++        raise ApiError(
++            400,
++            "bad_file_id",
++            "file_id must be a uuid. Use the file_id returned when the file was uploaded.",
++        ) from exc
++    try:
++        staged = stage(file.file, filename=file.filename)
++    except StagingError as exc:
++        raise ApiError(_STAGING_STATUS[exc.reason], exc.reason, str(exc)) from exc
++    try:
++        found = replace_file(conn, file_id=file_id, owner_id=owner, path=staged)
++    except FileBusy as exc:
++        raise busy from exc
++    if not found:
++        raise ApiError(
++            404,
++            "file_not_found",
++            "No such file. Check the file id returned when the file was uploaded.",
++        )
++    return UploadAccepted(file_id=str(uuid.UUID(file_id)), filename=Path(staged).name)
+diff --git a/src/gct/files.py b/src/gct/files.py
+index d8f5115..465a1af 100644
+--- a/src/gct/files.py
++++ b/src/gct/files.py
+@@ -18,9 +18,11 @@ one of the values the route knows how to render actionably. The membership test
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass
++from pathlib import Path
+ 
+ import psycopg
+ 
++from gct.db import require_idle
+ from gct.ids import canonical_uuid
+ 
+ 
+@@ -45,6 +47,10 @@ class FileStatus:
+     status: str
+     failed_reason: str | None
+     filename: str
++    # Only for a `ready` file: "pending" while a replacement waits to be published, "failed" when
++    # the last replacement failed (the file kept its content), otherwise None.
++    replacement: str | None = None
++    replacement_failed_reason: str | None = None
+ 
+ 
+ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) -> FileStatus | None:
+@@ -97,7 +103,8 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+ 
+     row = conn.execute(
+         """
+-        select status, failed_reason, filename
++        select status, failed_reason, filename, pending_staging_ref is not null,
++               replacement_failed_reason
+         from files
+         where file_id = %(file_id)s::uuid
+           and owner_id = %(owner_id)s
+@@ -106,4 +113,78 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+     ).fetchone()
+     if row is None:
+         return None
+-    return FileStatus(status=row[0], failed_reason=row[1], filename=row[2])
++    status, failed_reason, filename, pending, replacement_failed_reason = row
++    replacement = None
++    if status == "ready" and pending:
++        replacement = "pending"
++    elif status == "ready" and replacement_failed_reason:
++        replacement = "failed"
++    return FileStatus(
++        status=status,
++        failed_reason=failed_reason,
++        filename=filename,
++        replacement=replacement,
++        replacement_failed_reason=replacement_failed_reason if replacement == "failed" else None,
++    )
++
++
++class FileBusy(Exception):
++    """The file cannot be replaced now: it is queued or processing, or a replacement is pending."""
++
++
++def replace_file(
++    conn: psycopg.Connection, *, file_id: str, owner_id: str, path: str | Path
++) -> bool:
++    """Queue `path` (already staged) as the new contents of `file_id`. False if no such file.
++
++    A `ready` file stays `ready`, answering from its current chunks, until the worker publishes the
++    new version; if that fails the file keeps its content and records `replacement_failed_reason`.
++    A `failed` file goes back to `queued` and is processed like a new upload. Anything else, or a
++    file with a replacement already pending, raises `FileBusy` and changes nothing.
++    """
++    canonical = canonical_uuid(
++        file_id,
++        fn="replace_file",
++        param="file_id",
++        remedy="Pass the file_id returned when the file was uploaded.",
++    )
++    require_idle(conn, "replace_file")
++    with conn.transaction():
++        row = conn.execute(
++            """
++            select f.status, f.pending_staging_ref, f.class_id::text,
++                   exists (
++                       select 1 from jobs j
++                       where j.file_id = f.file_id and j.state in ('queued', 'processing')
++                   )
++            from files f
++            where f.file_id = %(file_id)s::uuid and f.owner_id = %(owner_id)s
++            for update of f
++            """,
++            {"file_id": canonical, "owner_id": owner_id},
++        ).fetchone()
++        if row is None:
++            return False
++        status, pending, class_id, job_active = row
++        if status not in ("ready", "failed") or pending is not None or job_active:
++            raise FileBusy(f"file {canonical} is {status} or already being replaced")
++        conn.execute(
++            """
++            update files
++            set pending_staging_ref = %(path)s,
++                replacement_failed_reason = null,
++                status = case when status = 'failed' then 'queued' else status end,
++                failed_reason = case when status = 'failed' then null else failed_reason end,
++                updated_at = now()
++            where file_id = %(file_id)s::uuid
++            """,
++            {"path": str(Path(path).resolve()), "file_id": canonical},
++        )
++        conn.execute(
++            """
++            insert into jobs (file_id, owner_id, class_id)
++            values (%(file_id)s::uuid, %(owner_id)s, %(class_id)s::uuid)
++            """,
++            {"file_id": canonical, "owner_id": owner_id, "class_id": class_id},
++        )
++    return True
+diff --git a/src/gct/jobs/queue.py b/src/gct/jobs/queue.py
+index 9a9cab1..1ba5095 100644
+--- a/src/gct/jobs/queue.py
++++ b/src/gct/jobs/queue.py
+@@ -45,6 +45,8 @@ class Job:
+     class_id: str
+     attempts: int
+     staging_ref: str
++    # True when this job ingests a replacement (`files.pending_staging_ref`), not the first upload.
++    replacing: bool = False
+ 
+ 
+ def enqueue(
+@@ -271,12 +273,13 @@ def claim(conn: psycopg.Connection) -> Job | None:
+                   where q.state = 'queued' order by q.created_at limit 1
+               )
+             returning j.job_id::text, j.file_id::text, j.owner_id, j.class_id::text,
+-                      j.attempts, f.staging_ref
++                      j.attempts, coalesce(f.pending_staging_ref, f.staging_ref),
++                      f.pending_staging_ref is not null
+             """
+         ).fetchone()
+     if row is None:
+         return None
+-    job_id, file_id, owner_id, class_id, attempts, staging_ref = row
++    job_id, file_id, owner_id, class_id, attempts, staging_ref, replacing = row
+     return Job(
+         job_id=job_id,
+         file_id=file_id,
+@@ -284,6 +287,7 @@ def claim(conn: psycopg.Connection) -> Job | None:
+         class_id=class_id,
+         attempts=attempts,
+         staging_ref=staging_ref,
++        replacing=replacing,
+     )
+ 
+ 
+diff --git a/src/gct/jobs/worker.py b/src/gct/jobs/worker.py
+index 8c2c289..5d9c77d 100644
+--- a/src/gct/jobs/worker.py
++++ b/src/gct/jobs/worker.py
+@@ -57,14 +57,40 @@ def _bury(conn: psycopg.Connection, job: Job, *, reason: str, error: str) -> Non
+         conn.execute(
+             """
+             update files
+-            set status = 'failed', failed_reason = %(reason)s, updated_at = now()
++            set status = 'failed', failed_reason = %(reason)s, pending_staging_ref = null,
++                updated_at = now()
+             where file_id = %(file_id)s::uuid and status <> 'ready'
+             """,
+             {"reason": reason, "file_id": job.file_id},
+         )
++        # A replacement of a `ready` file failed: the file keeps its content and says why.
++        conn.execute(
++            """
++            update files
++            set replacement_failed_reason = %(reason)s, pending_staging_ref = null,
++                updated_at = now()
++            where file_id = %(file_id)s::uuid and status = 'ready'
++              and pending_staging_ref is not null
++            """,
++            {"reason": reason, "file_id": job.file_id},
++        )
+     fail(conn, job_id=job.job_id, error=error)
+ 
+ 
++def _promote(conn: psycopg.Connection, job: Job) -> None:
++    """After a publish: the file's staged copy is now the one its chunks came from."""
++    with conn.transaction():
++        conn.execute(
++            """
++            update files
++            set staging_ref = coalesce(pending_staging_ref, staging_ref),
++                pending_staging_ref = null, replacement_failed_reason = null, updated_at = now()
++            where file_id = %(file_id)s::uuid
++            """,
++            {"file_id": job.file_id},
++        )
++
++
+ def process_one(
+     conn: psycopg.Connection,
+     *,
+@@ -139,6 +165,7 @@ def process_one(
+         release(conn, job_id=job.job_id, error=f"transient: {exc}")
+         return True
+ 
++    _promote(conn, job)
+     complete(conn, job_id=job.job_id)
+     logger.info("job %s: done in %.1fs", job.job_id, time.perf_counter() - started)
+     return True
+diff --git a/tests/gct/api/test_files_router.py b/tests/gct/api/test_files_router.py
+index 97727d4..38ccfcb 100644
+--- a/tests/gct/api/test_files_router.py
++++ b/tests/gct/api/test_files_router.py
+@@ -354,6 +354,8 @@ def test_the_status_of_a_fresh_upload_is_queued_and_says_so_in_words(
+         "status": "queued",
+         "failed_reason": None,
+         "message": files_router._STATUS_MESSAGE["queued"],
++        "replacement": None,
++        "replacement_failed_reason": None,
+     }
+ 
+ 
+diff --git a/tests/gct/test_replace_file.py b/tests/gct/test_replace_file.py
+new file mode 100644
+index 0000000..7d818a3
+--- /dev/null
++++ b/tests/gct/test_replace_file.py
+@@ -0,0 +1,75 @@
++"""`replace_file`: new contents for an existing file, published only when the worker succeeds."""
++
++from __future__ import annotations
++
++import io
++from pathlib import Path
++
++import pytest
++from reportlab.pdfgen import canvas
++
++from gct.config import EMBEDDING_DIM
++from gct.files import FileBusy, get_file_status, replace_file
++from gct.ingest.chunk import CHUNK_OVERLAP_WORDS, CHUNK_SIZE_WORDS
++from gct.jobs.queue import enqueue
++from gct.jobs.worker import process_one
++
++
++class FakeEmbeddings:
++    model_id = "fake-embed-3"
++
++    def embed(self, texts):
++        return [[1.0] + [0.0] * (EMBEDDING_DIM - 1) for _ in texts]
++
++
++def _pdf(path: Path, text: str) -> Path:
++    buf = io.BytesIO()
++    c = canvas.Canvas(buf, pagesize=(612, 792))
++    c.drawString(72, 700, text)
++    c.showPage()
++    c.save()
++    path.write_bytes(buf.getvalue())
++    return path
++
++
++def _tick(conn) -> bool:
++    return process_one(
++        conn,
++        embedder=FakeEmbeddings(),
++        chunk_size=CHUNK_SIZE_WORDS,
++        chunk_overlap=CHUNK_OVERLAP_WORDS,
++    )
++
++
++def test_a_ready_file_stays_ready_while_its_replacement_is_pending(worker_db, tmp_path):
++    conn, owner_id, class_id = worker_db
++    conn.autocommit = True
++    file_id = enqueue(
++        conn, path=_pdf(tmp_path / "a.pdf", "one"), owner_id=owner_id, class_id=class_id
++    )
++    assert _tick(conn)
++
++    assert replace_file(
++        conn, file_id=file_id, owner_id=owner_id, path=_pdf(tmp_path / "b.pdf", "two")
++    )
++    status = get_file_status(conn, file_id=file_id, owner_id=owner_id)
++    assert (status.status, status.replacement, status.filename) == ("ready", "pending", "a.pdf")
++
++    with pytest.raises(FileBusy):
++        replace_file(conn, file_id=file_id, owner_id=owner_id, path=tmp_path / "b.pdf")
++
++    assert _tick(conn)
++    status = get_file_status(conn, file_id=file_id, owner_id=owner_id)
++    assert (status.status, status.replacement, status.filename) == ("ready", None, "b.pdf")
++
++
++def test_another_owners_file_is_not_replaced(db, tmp_path):
++    conn, owner_id, class_id = db
++    conn.autocommit = True
++    file_id = enqueue(
++        conn, path=_pdf(tmp_path / "a.pdf", "one"), owner_id=owner_id, class_id=class_id
++    )
++    assert (
++        replace_file(conn, file_id=file_id, owner_id="someone-else", path=tmp_path / "a.pdf")
++        is False
++    )
+diff --git a/web/openapi.json b/web/openapi.json
+index 63298b1..02ebdfe 100644
+--- a/web/openapi.json
++++ b/web/openapi.json
+@@ -146,6 +146,54 @@
+             }
+           }
+         }
++      },
++      "put": {
++        "tags": [
++          "files"
++        ],
++        "operationId": "replace_files__file_id__put",
++        "parameters": [
++          {
++            "name": "file_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          }
++        ],
++        "requestBody": {
++          "required": true,
++          "content": {
++            "multipart/form-data": {
++              "schema": {
++                "$ref": "#/components/schemas/Body_replace_files__file_id__put"
++              }
++            }
++          }
++        },
++        "responses": {
++          "202": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/UploadAccepted"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
+       }
+     },
+     "/ask": {
+@@ -251,6 +299,18 @@
+           "integrity"
+         ]
+       },
++      "Body_replace_files__file_id__put": {
++        "properties": {
++          "file": {
++            "type": "string",
++            "contentMediaType": "application/octet-stream"
++          }
++        },
++        "type": "object",
++        "required": [
++          "file"
++        ]
++      },
+       "Body_upload_file_files_post": {
+         "properties": {
+           "class_id": {
+@@ -343,6 +403,26 @@
+           },
+           "message": {
+             "type": "string"
++          },
++          "replacement": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ]
++          },
++          "replacement_failed_reason": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ]
+           }
+         },
+         "type": "object",

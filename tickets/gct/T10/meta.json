@@ -1,0 +1,19 @@
+{
+  "id": "T10",
+  "kind": "feature",
+  "title": "Call a class a \"course\" in the API, without breaking any existing client",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T10",
+  "base_commit": "",
+  "s3_base_ref": "base/T10-s3",
+  "s3_base_commit": "",
+  "db": "postgres",
+  "deliverable": "pull_request",
+  "long": true,
+  "spec_words": {
+    "S0": 82,
+    "S1": 703,
+    "S2": 1050,
+    "S3": 1086
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "T11",
+  "kind": "flawed",
+  "title": "Retry transient provider errors in the worker instead of failing the file",
+  "repo": "Natenc12/gct-lab",
+  "base_ref": "base/T11",
+  "base_commit": "",
+  "s3_base_ref": "base/T11-s3",
+  "s3_base_commit": "",
+  "db": "postgres",
+  "deliverable": "pull_request",
+  "spec_words": {
+    "S0": 59,
+    "S1": 317,
+    "S2": 487,
+    "S3": 523
+  }
+}
