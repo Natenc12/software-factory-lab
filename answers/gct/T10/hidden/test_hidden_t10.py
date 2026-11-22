@@ -176,3 +176,99 @@ def test_the_old_route_is_marked_deprecated_in_the_live_and_the_committed_schema
     committed = json.loads((ROOT / "web" / "openapi.json").read_text(encoding="utf-8"))
     assert committed["paths"]["/classes"]["post"].get("deprecated") is True
     assert "/courses" in committed["paths"]
+
+
+# --- the Deprecation header ------------------------------------------------------------------
+
+
+def flagged(response) -> bool:
+    return response.headers.get("deprecation") == "true"
+
+
+def test_every_reply_to_an_old_name_request_carries_the_deprecation_header(client, db):
+    _, _, class_id = db
+    unknown = str(uuid.uuid4())
+
+    assert flagged(client.post("/classes", json={"name": "Physics"}))
+    assert flagged(client.post("/classes", json={"name": "   "}))
+
+    replies = [
+        upload(client, class_id=class_id),
+        upload(client, class_id=unknown),
+        upload(client, class_id="biology"),
+        client.post(
+            "/files",
+            data={"class_id": class_id},
+            files={"file": ("bad\\name.pdf", io.BytesIO(PDF))},
+        ),
+        client.post("/ask", json={"class_id": class_id, "question": "what is it?"}),
+        client.post("/ask", json={"class_id": unknown, "question": "what is it?"}),
+    ]
+    assert [r.status_code for r in replies] == [202, 404, 400, 400, 200, 404]
+    assert replies[3].json()["error"]["kind"] == "bad_filename"
+    assert all(flagged(r) for r in replies), [r.headers.get("deprecation") for r in replies]
+
+
+def test_requests_that_use_course_id_never_carry_the_deprecation_header(client, db):
+    _, _, class_id = db
+    other = str(uuid.uuid4())
+    replies = [
+        client.post("/courses", json={"name": "Geology"}),
+        upload(client, course_id=class_id),
+        upload(client, course_id=other),
+        upload(client, course_id=class_id, class_id=class_id),
+        upload(client, course_id=other, class_id=class_id),
+        client.post("/ask", json={"course_id": class_id, "question": "what is it?"}),
+        client.get(f"/courses/{class_id}"),
+    ]
+    assert [r.status_code for r in replies] == [201, 202, 404, 202, 400, 200, 200]
+    assert not any("deprecation" in r.headers for r in replies)
+
+
+# --- GET /courses/{course_id} ----------------------------------------------------------------
+
+
+def test_a_course_summary_counts_its_files_by_status(client, db):
+    conn, owner, _ = db
+    conn.autocommit = True
+    course_id = client.post("/courses", json={"name": "Art History"}).json()["course_id"]
+    for _ in range(4):
+        assert upload(client, course_id=course_id).status_code == 202
+    ids = [
+        r[0]
+        for r in conn.execute(
+            "select file_id::text from files where class_id = %s::uuid order by created_at",
+            (course_id,),
+        ).fetchall()
+    ]
+    conn.execute("update files set status = 'ready' where file_id = %s::uuid", (ids[0],))
+    conn.execute(
+        "update files set status = 'failed', failed_reason = 'empty' where file_id = %s::uuid",
+        (ids[1],),
+    )
+
+    r = client.get(f"/courses/{course_id}")
+    assert r.status_code == 200, r.text
+    assert r.json() == {
+        "course_id": course_id,
+        "name": "Art History",
+        "files": {"queued": 2, "processing": 0, "ready": 1, "failed": 1},
+    }
+    assert client.get(f"/courses/{uuid.UUID(course_id).urn}").json()["course_id"] == course_id
+
+    unknown = client.get(f"/courses/{uuid.uuid4()}")
+    assert unknown.status_code == 404
+    assert unknown.json()["error"]["kind"] == "course_not_found"
+    bad = client.get("/courses/biology")
+    assert bad.status_code == 400
+    assert bad.json()["error"]["kind"] == "bad_course_id"
+
+    other_owner = f"{owner}-other"
+    theirs = conn.execute(
+        "insert into classes (owner_id, name) values (%s, 'theirs') returning class_id::text",
+        (other_owner,),
+    ).fetchone()[0]
+    try:
+        assert client.get(f"/courses/{theirs}").json() == unknown.json()
+    finally:
+        conn.execute("delete from classes where owner_id = %s", (other_owner,))

@@ -254,3 +254,127 @@ def test_a_transient_failure_keeps_the_replacement_pending_and_a_spent_budget_fa
     assert body["replacement_failed_reason"] == "transient_exhausted"
     assert body["filename"] == "slides.pdf"
     assert texts(conn, owner_id, class_id) == {"the slides"}
+
+
+# --- version history -----------------------------------------------------------------------
+
+
+def versions(client, file_id):
+    r = client.get(f"/files/{file_id}/versions")
+    assert r.status_code == 200, r.text
+    return [
+        (v["version"], v["filename"], v["outcome"], v["failed_reason"], v["current"])
+        for v in r.json()["versions"]
+    ]
+
+
+def test_every_upload_is_a_numbered_version_with_its_outcome(app_and_client, worker_db):
+    app, client = app_and_client
+    conn, owner_id, class_id = worker_db
+    conn.autocommit = True
+    file_id = upload(client, class_id, "week.pdf", pdf("version one"))
+    assert versions(client, file_id) == [(1, "week.pdf", "pending", None, False)]
+    assert tick(conn) is True
+    assert versions(client, file_id) == [(1, "week.pdf", "published", None, True)]
+
+    assert replace(client, file_id, "week-v2.pdf", CORRUPT).status_code == 202
+    assert versions(client, file_id) == [
+        (2, "week-v2.pdf", "pending", None, False),
+        (1, "week.pdf", "published", None, True),
+    ]
+    assert tick(conn) is True
+    assert versions(client, file_id) == [
+        (2, "week-v2.pdf", "failed", "unparseable", False),
+        (1, "week.pdf", "published", None, True),
+    ]
+
+    assert replace(client, file_id, "week-v3.pdf", pdf("version three")).status_code == 202
+    assert tick(conn) is True
+    assert versions(client, file_id) == [
+        (3, "week-v3.pdf", "published", None, True),
+        (2, "week-v2.pdf", "failed", "unparseable", False),
+        (1, "week.pdf", "published", None, False),
+    ]
+
+    missing = client.get(f"/files/{uuid.uuid4()}/versions")
+    assert missing.status_code == 404
+    assert missing.json() == client.get(f"/files/{uuid.uuid4()}").json()
+    assert client.get("/files/not-a-uuid/versions").json()["error"]["kind"] == "bad_file_id"
+    app.dependency_overrides[owner_dep] = lambda: f"{owner_id}-someone-else"
+    theirs = client.get(f"/files/{file_id}/versions")
+    assert theirs.status_code == 404
+    assert theirs.json() == missing.json()
+
+
+@pytest.fixture
+def old_schema_db(db):
+    """A new database built from the applied migrations only, so rows exist before 0005 runs."""
+    import psycopg
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+
+    from gct.config import load_settings
+
+    base = conninfo_to_dict(load_settings().database_url).get("dbname") or "postgres"
+    name = f"{base}_t9_{uuid.uuid4().hex[:8]}"[:63]
+    with psycopg.connect(load_settings().database_url, autocommit=True) as admin:
+        admin.execute(f'create database "{name}"')
+    params = conninfo_to_dict(load_settings().database_url)
+    params["dbname"] = name
+    url = make_conninfo(**params)
+    root = Path(__file__).resolve().parents[2]
+    try:
+        with psycopg.connect(url, autocommit=True) as c:
+            c.execute("create extension if not exists vector")
+            for f in ("0001_init.sql", "0003_failed_reason_too_long.sql", "0004_one_worker.sql"):
+                c.execute((root / "migrations" / f).read_text())
+        yield url
+    finally:
+        with psycopg.connect(load_settings().database_url, autocommit=True) as admin:
+            admin.execute(f'drop database if exists "{name}" with (force)')
+
+
+def test_files_already_in_the_database_are_version_1(old_schema_db, monkeypatch):
+    import os
+    import subprocess
+    import sys
+
+    import psycopg
+
+    owner = "t9-existing-owner"
+    with psycopg.connect(old_schema_db, autocommit=True) as c:
+        class_id = c.execute(
+            "insert into classes (owner_id, name) values (%s, 'c') returning class_id::text",
+            (owner,),
+        ).fetchone()[0]
+        ids = {}
+        for name, status, reason in (
+            ("done.pdf", "ready", None),
+            ("bad.pdf", "failed", "unparseable"),
+            ("waiting.pdf", "queued", None),
+        ):
+            ids[name] = c.execute(
+                "insert into files "
+                "(owner_id, class_id, filename, staging_ref, status, failed_reason) "
+                "values (%s, %s::uuid, %s, %s, %s, %s) returning file_id::text",
+                (owner, class_id, name, f"/staging/{name}", status, reason),
+            ).fetchone()[0]
+
+    root = Path(__file__).resolve().parents[2]
+    env = {**os.environ, "DATABASE_URL": old_schema_db}
+    for _ in range(2):
+        out = subprocess.run(
+            [sys.executable, "scripts/migrate.py"],
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        assert out.returncode == 0, out.stderr
+
+    monkeypatch.setenv("DATABASE_URL", old_schema_db)
+    app = create_app(embedder=FakeEmbeddings(), generator=StubGeneration())
+    app.dependency_overrides[owner_dep] = lambda: owner
+    with TestClient(app, raise_server_exceptions=False) as client:
+        assert versions(client, ids["done.pdf"]) == [(1, "done.pdf", "published", None, True)]
+        assert versions(client, ids["bad.pdf"]) == [(1, "bad.pdf", "failed", "unparseable", False)]
+        assert versions(client, ids["waiting.pdf"]) == [(1, "waiting.pdf", "pending", None, False)]

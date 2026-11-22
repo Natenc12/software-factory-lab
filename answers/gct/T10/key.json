@@ -8,7 +8,6 @@
   "scope_out_paths": [
     "web/src/",
     "migrations/",
-    "src/gct/classes.py",
     "src/gct/files.py",
     "src/gct/jobs/",
     "src/gct/ingest/",
@@ -21,7 +20,6 @@
       "check": "scope_out_paths",
       "paths": [
         "migrations/",
-        "src/gct/classes.py",
         "src/gct/files.py",
         "src/gct/jobs/",
         "src/gct/ingest/",
@@ -48,20 +46,23 @@
       "2 a request that says course_id is answered in course words",
       "3 two ids must agree, else 400 conflicting_ids before lookup and before staging",
       "4 nothing below the API changes name",
-      "5 POST /classes is deprecated in the live and committed schema"
+      "5 POST /classes is deprecated in the live and committed schema",
+      "6 every reply to an old-name request carries Deprecation: true, errors included; course_id requests never do"
     ],
     "checked_by": {
       "1": "test_uploads_by_course_id_answer_in_course_words_and_old_replies_are_unchanged, test_ask_by_course_id_answers_in_course_words_and_old_replies_are_unchanged, test_post_courses_creates_a_course_that_old_routes_accept_as_a_class",
       "2": "the same two tests",
       "3": "test_conflicting_ids_are_refused_before_anything_is_staged",
       "4": "traps below-the-api-renamed and existing tests unchanged",
-      "5": "test_the_old_route_is_marked_deprecated_in_the_live_and_the_committed_schema"
+      "5": "test_the_old_route_is_marked_deprecated_in_the_live_and_the_committed_schema",
+      "6": "test_every_reply_to_an_old_name_request_carries_the_deprecation_header, test_requests_that_use_course_id_never_carry_the_deprecation_header"
     }
   },
   "naive_patches": {
     "naive-noconflict.patch": "when both ids are sent, course_id silently wins (breaks rule 3)",
     "naive-s3.patch": "forgets to mark POST /classes deprecated (breaks rule 5); passes the acceptance tests",
-    "naive-askwords.patch": "the ask route forgets rule 2 late in the work: course_id requests to POST /ask are answered in class words (class_not_found, bad_class_id)"
+    "naive-askwords.patch": "the ask route forgets rule 2 late in the work: course_id requests to POST /ask are answered in class words (class_not_found, bad_class_id)",
+    "naive-headers.patch": "adds the Deprecation header only to successful replies, forgetting that rule 6 covers every error reply too"
   },
   "planted_bugs": [],
   "not_bugs": [],

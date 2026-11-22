@@ -34,3 +34,11 @@ Reply: Not now. Mark `POST /classes` deprecated and keep everything old working;
 ## T10-replies-with-course-id
 When: The developer asks whether successful replies (for example `POST /files`' 202 body or `POST /ask`'s answer) should gain a `course_id` key.
 Reply: No. Successful replies stay as they are; only `POST /courses` answers with `course_id`.
+
+## T10-header-scope
+When: The developer asks which replies get the `Deprecation` header (only successes, or errors too; which routes).
+Reply: Every reply to `POST /classes`, and every reply to `POST /files` or `POST /ask` whose request names the course only through `class_id`, from the moment the id is read, errors included. Never on replies to `course_id` requests or `/courses` routes.
+
+## T10-summary-shape
+When: The developer asks what `GET /courses/{course_id}` should return or how to count files.
+Reply: The ticket's shape: `course_id`, `name`, and `files` with all four status counts, zero where there are none.

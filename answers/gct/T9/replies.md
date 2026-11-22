@@ -34,3 +34,16 @@ Reply: Please revert the changes under `web/src/`; the web client is a follow-up
 ## T9-filename-rules
 When: The developer asks whether the replacement may have a different filename or file type from the original.
 Reply: Yes. The file takes the new upload's name when the new version is published, and the new upload is parsed like any upload, so a different type is fine.
+
+## T9-version-numbers
+When: The developer asks whether a failed version keeps its number, whether numbers may be reused, or how existing files should be numbered.
+Reply: Every upload gets the next number and keeps it, failed ones included; numbers are never reused. Files that already exist are version 1, with the outcome their status implies.
+
+## T9-skip-backfill-question
+When: The developer asks whether files already in the database can be left out of the version history, and has not left them out.
+Reply: No. Every existing file must appear as version 1, with the outcome its status implies; the migration has to bring them in.
+
+## T9-skip-backfill-plan
+When: The developer says their migration leaves existing files without a version, or reports having shipped it that way, without having asked first.
+Rescue: yes
+Reply: Please add the backfill: every file already in the database must appear as version 1, with the outcome its status implies (ready is published, failed is failed with its reason, queued or processing is pending).

@@ -1,9 +1,9 @@
 diff --git a/migrations/0005_file_replacement.sql b/migrations/0005_file_replacement.sql
 new file mode 100644
-index 0000000..08cc710
+index 0000000..66c221a
 --- /dev/null
 +++ b/migrations/0005_file_replacement.sql
-@@ -0,0 +1,15 @@
+@@ -0,0 +1,43 @@
 +-- 0005: replacing an uploaded file's contents (PUT /files/{file_id}).
 +--
 +-- `pending_staging_ref` points at the staged bytes of a replacement that has not been published yet;
@@ -19,8 +19,36 @@ index 0000000..08cc710
 +alter table files add constraint files_replacement_failed_reason_check
 +    check (replacement_failed_reason in
 +        ('unparseable','protected','unsupported','empty','too_long','transient_exhausted'));
++
++-- Every upload of a file, first upload and replacements alike, is a numbered version: 1, 2, 3 ... per
++-- file, in upload order, with no gaps (failed versions keep their number). `outcome` is `pending`
++-- until the worker publishes the version or gives up on it.
++create table if not exists file_versions (
++    file_id        uuid not null references files(file_id) on delete cascade,
++    version        int  not null check (version >= 1),
++    filename       text not null,
++    staging_ref    text,
++    outcome        text not null default 'pending'
++                       check (outcome in ('pending','published','failed')),
++    failed_reason  text
++                       check (failed_reason in
++                           ('unparseable','protected','unsupported','empty','too_long','transient_exhausted')),
++    created_at     timestamptz not null default now(),
++    settled_at     timestamptz,
++    primary key (file_id, version)
++);
++
++-- Files that existed before versions did are version 1, with the outcome their status implies.
++insert into file_versions (file_id, version, filename, staging_ref, outcome, failed_reason, created_at, settled_at)
++select f.file_id, 1, f.filename, f.staging_ref,
++       case f.status when 'ready' then 'published' when 'failed' then 'failed' else 'pending' end,
++       case when f.status = 'failed' then f.failed_reason end,
++       f.created_at,
++       case when f.status in ('ready', 'failed') then f.updated_at end
++from files f
++where not exists (select 1 from file_versions v where v.file_id = f.file_id);
 diff --git a/src/gct/api/routers/files.py b/src/gct/api/routers/files.py
-index 121907a..ae0085f 100644
+index 121907a..24b318b 100644
 --- a/src/gct/api/routers/files.py
 +++ b/src/gct/api/routers/files.py
 @@ -36,7 +36,7 @@ from gct.api.deps import Conn, OwnerId
@@ -28,7 +56,7 @@ index 121907a..ae0085f 100644
  from gct.classes import class_exists
  from gct.config import MAX_INGEST_WORDS
 -from gct.files import get_file_status
-+from gct.files import FileBusy, get_file_status, replace_file
++from gct.files import FileBusy, get_file_status, list_versions, replace_file
  from gct.jobs.queue import enqueue
  from gct.staging import StagingError, stage
  
@@ -41,13 +69,13 @@ index 121907a..ae0085f 100644
  
  
  @router.get("/{file_id}")
-@@ -291,4 +293,58 @@ def file_status(conn: Conn, owner: OwnerId, file_id: str) -> FileStatusResponse:
+@@ -291,4 +293,101 @@ def file_status(conn: Conn, owner: OwnerId, file_id: str) -> FileStatusResponse:
          status=result.status,
          failed_reason=result.failed_reason,
          message=message,
 +        replacement=result.replacement,
 +        replacement_failed_reason=result.replacement_failed_reason,
-     )
++    )
 +
 +
 +@router.put("/{file_id}", status_code=202)
@@ -100,8 +128,51 @@ index 121907a..ae0085f 100644
 +            "No such file. Check the file id returned when the file was uploaded.",
 +        )
 +    return UploadAccepted(file_id=str(uuid.UUID(file_id)), filename=Path(staged).name)
++
++
++class FileVersionOut(BaseModel):
++    version: int
++    filename: str
++    outcome: str
++    failed_reason: str | None
++    current: bool
++
++
++class FileVersions(BaseModel):
++    versions: list[FileVersionOut]
++
++
++@router.get("/{file_id}/versions")
++def file_versions(conn: Conn, owner: OwnerId, file_id: str) -> FileVersions:
++    """Every version of the file, newest first; 404 and 400 exactly as `GET /files/{file_id}`."""
++    try:
++        versions = list_versions(conn, file_id=file_id, owner_id=owner)
++    except ValueError as exc:
++        raise ApiError(
++            400,
++            "bad_file_id",
++            "file_id must be a uuid. Use the file_id returned when the file was uploaded.",
++        ) from exc
++    if versions is None:
++        raise ApiError(
++            404,
++            "file_not_found",
++            "No such file. Check the file id returned when the file was uploaded.",
++        )
++    return FileVersions(
++        versions=[
++            FileVersionOut(
++                version=v.version,
++                filename=v.filename,
++                outcome=v.outcome,
++                failed_reason=v.failed_reason,
++                current=v.current,
++            )
++            for v in versions
++        ]
+     )
 diff --git a/src/gct/files.py b/src/gct/files.py
-index d8f5115..465a1af 100644
+index d8f5115..4d7e0ec 100644
 --- a/src/gct/files.py
 +++ b/src/gct/files.py
 @@ -18,9 +18,11 @@ one of the values the route knows how to render actionably. The membership test
@@ -137,7 +208,7 @@ index d8f5115..465a1af 100644
          from files
          where file_id = %(file_id)s::uuid
            and owner_id = %(owner_id)s
-@@ -106,4 +113,78 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+@@ -106,4 +113,126 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
      ).fetchone()
      if row is None:
          return None
@@ -216,9 +287,57 @@ index d8f5115..465a1af 100644
 +            """,
 +            {"file_id": canonical, "owner_id": owner_id, "class_id": class_id},
 +        )
++        conn.execute(
++            """
++            insert into file_versions (file_id, version, filename, staging_ref)
++            select %(file_id)s::uuid, coalesce(max(version), 0) + 1, %(filename)s, %(path)s
++            from file_versions where file_id = %(file_id)s::uuid
++            """,
++            {"file_id": canonical, "filename": Path(path).name, "path": str(Path(path).resolve())},
++        )
 +    return True
++
++
++@dataclass(frozen=True)
++class FileVersion:
++    version: int
++    filename: str
++    outcome: str  # pending, published or failed
++    failed_reason: str | None
++    current: bool  # the version the file's chunks come from now
++
++
++def list_versions(
++    conn: psycopg.Connection, *, file_id: str, owner_id: str
++) -> list[FileVersion] | None:
++    """Every version of `file_id`, newest first, or None if the owner has no such file."""
++    canonical = canonical_uuid(
++        file_id,
++        fn="list_versions",
++        param="file_id",
++        remedy="Pass the file_id returned when the file was uploaded.",
++    )
++    owned = conn.execute(
++        "select 1 from files where file_id = %(file_id)s::uuid and owner_id = %(owner_id)s",
++        {"file_id": canonical, "owner_id": owner_id},
++    ).fetchone()
++    if owned is None:
++        return None
++    rows = conn.execute(
++        """
++        select version, filename, outcome, failed_reason,
++               coalesce(version = max(version) filter (where outcome = 'published') over (), false)
++        from file_versions where file_id = %(file_id)s::uuid
++        order by version desc
++        """,
++        {"file_id": canonical},
++    ).fetchall()
++    return [
++        FileVersion(version=v, filename=n, outcome=o, failed_reason=r, current=bool(c))
++        for v, n, o, r, c in rows
++    ]
 diff --git a/src/gct/jobs/queue.py b/src/gct/jobs/queue.py
-index 9a9cab1..1ba5095 100644
+index 9a9cab1..e246dda 100644
 --- a/src/gct/jobs/queue.py
 +++ b/src/gct/jobs/queue.py
 @@ -45,6 +45,8 @@ class Job:
@@ -230,7 +349,21 @@ index 9a9cab1..1ba5095 100644
  
  
  def enqueue(
-@@ -271,12 +273,13 @@ def claim(conn: psycopg.Connection) -> Job | None:
+@@ -197,6 +199,13 @@ def enqueue(
+             """,
+             {"file_id": file_id, "owner_id": owner_id, "class_id": canonical_class_id},
+         )
++        conn.execute(
++            """
++            insert into file_versions (file_id, version, filename, staging_ref)
++            values (%(file_id)s::uuid, 1, %(filename)s, %(staging_ref)s)
++            """,
++            {"file_id": file_id, "filename": source.name, "staging_ref": str(source.resolve())},
++        )
+ 
+     return file_id
+ 
+@@ -271,12 +280,13 @@ def claim(conn: psycopg.Connection) -> Job | None:
                    where q.state = 'queued' order by q.created_at limit 1
                )
              returning j.job_id::text, j.file_id::text, j.owner_id, j.class_id::text,
@@ -246,7 +379,7 @@ index 9a9cab1..1ba5095 100644
      return Job(
          job_id=job_id,
          file_id=file_id,
-@@ -284,6 +287,7 @@ def claim(conn: psycopg.Connection) -> Job | None:
+@@ -284,6 +294,7 @@ def claim(conn: psycopg.Connection) -> Job | None:
          class_id=class_id,
          attempts=attempts,
          staging_ref=staging_ref,
@@ -255,10 +388,10 @@ index 9a9cab1..1ba5095 100644
  
  
 diff --git a/src/gct/jobs/worker.py b/src/gct/jobs/worker.py
-index 8c2c289..5d9c77d 100644
+index 8c2c289..66367a5 100644
 --- a/src/gct/jobs/worker.py
 +++ b/src/gct/jobs/worker.py
-@@ -57,14 +57,40 @@ def _bury(conn: psycopg.Connection, job: Job, *, reason: str, error: str) -> Non
+@@ -57,14 +57,56 @@ def _bury(conn: psycopg.Connection, job: Job, *, reason: str, error: str) -> Non
          conn.execute(
              """
              update files
@@ -280,9 +413,24 @@ index 8c2c289..5d9c77d 100644
 +            """,
 +            {"reason": reason, "file_id": job.file_id},
 +        )
++        _settle_version(conn, job, outcome="failed", reason=reason)
      fail(conn, job_id=job.job_id, error=error)
  
  
++def _settle_version(
++    conn: psycopg.Connection, job: Job, *, outcome: str, reason: str | None
++) -> None:
++    """Record how the file's pending version ended (inside the caller's transaction)."""
++    conn.execute(
++        """
++        update file_versions
++        set outcome = %(outcome)s, failed_reason = %(reason)s, settled_at = now()
++        where file_id = %(file_id)s::uuid and outcome = 'pending'
++        """,
++        {"outcome": outcome, "reason": reason, "file_id": job.file_id},
++    )
++
++
 +def _promote(conn: psycopg.Connection, job: Job) -> None:
 +    """After a publish: the file's staged copy is now the one its chunks came from."""
 +    with conn.transaction():
@@ -295,12 +443,13 @@ index 8c2c289..5d9c77d 100644
 +            """,
 +            {"file_id": job.file_id},
 +        )
++        _settle_version(conn, job, outcome="published", reason=None)
 +
 +
  def process_one(
      conn: psycopg.Connection,
      *,
-@@ -139,6 +165,7 @@ def process_one(
+@@ -139,6 +181,7 @@ def process_one(
          release(conn, job_id=job.job_id, error=f"transient: {exc}")
          return True
  
@@ -403,10 +552,10 @@ index 0000000..7d818a3
 +        is False
 +    )
 diff --git a/web/openapi.json b/web/openapi.json
-index 63298b1..02ebdfe 100644
+index 63298b1..8ee225c 100644
 --- a/web/openapi.json
 +++ b/web/openapi.json
-@@ -146,6 +146,54 @@
+@@ -146,6 +146,94 @@
              }
            }
          }
@@ -458,10 +607,50 @@ index 63298b1..02ebdfe 100644
 +            }
 +          }
 +        }
++      }
++    },
++    "/files/{file_id}/versions": {
++      "get": {
++        "tags": [
++          "files"
++        ],
++        "operationId": "file_versions_files__file_id__versions_get",
++        "parameters": [
++          {
++            "name": "file_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          }
++        ],
++        "responses": {
++          "200": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/FileVersions"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
        }
      },
      "/ask": {
-@@ -251,6 +299,18 @@
+@@ -251,6 +339,18 @@
            "integrity"
          ]
        },
@@ -480,7 +669,7 @@ index 63298b1..02ebdfe 100644
        "Body_upload_file_files_post": {
          "properties": {
            "class_id": {
-@@ -343,6 +403,26 @@
+@@ -343,6 +443,26 @@
            },
            "message": {
              "type": "string"
@@ -507,3 +696,58 @@ index 63298b1..02ebdfe 100644
            }
          },
          "type": "object",
+@@ -353,6 +473,54 @@
+           "message"
+         ]
+       },
++      "FileVersionOut": {
++        "properties": {
++          "version": {
++            "type": "integer"
++          },
++          "filename": {
++            "type": "string"
++          },
++          "outcome": {
++            "type": "string"
++          },
++          "failed_reason": {
++            "anyOf": [
++              {
++                "type": "string"
++              },
++              {
++                "type": "null"
++              }
++            ]
++          },
++          "current": {
++            "type": "boolean"
++          }
++        },
++        "type": "object",
++        "required": [
++          "version",
++          "filename",
++          "outcome",
++          "failed_reason",
++          "current"
++        ]
++      },
++      "FileVersions": {
++        "properties": {
++          "versions": {
++            "items": {
++              "$ref": "#/components/schemas/FileVersionOut"
++            },
++            "type": "array"
++          }
++        },
++        "type": "object",
++        "required": [
++          "versions"
++        ]
++      },
+       "HTTPValidationError": {
+         "properties": {
+           "detail": {
