@@ -39,7 +39,7 @@
   ],
   "long_ticket": {
     "early_rules": [
-      "1 a ready file stays ready and answers from its current chunks until the new version is published",
+      "1 a ready file stays ready and answers from its current chunks until a new version (replacement or restore) is published",
       "2 a failed replacement (terminal or budget spent) changes nothing and is reported",
       "3 nothing staged is deleted; staging_ref moves only on publish",
       "4 refusals stage nothing",
@@ -50,18 +50,27 @@
     "checked_by": {
       "1": "test_a_ready_file_keeps_answering_until_the_new_version_is_published, test_a_transient_failure_keeps_the_replacement_pending_and_a_spent_budget_fails_it",
       "2": "test_a_failed_replacement_leaves_the_file_as_it_was, test_a_transient_failure_keeps_the_replacement_pending_and_a_spent_budget_fails_it",
-      "3": "test_a_ready_file_keeps_answering_until_the_new_version_is_published, test_a_failed_replacement_leaves_the_file_as_it_was",
+      "3": "test_a_ready_file_keeps_answering_until_the_new_version_is_published, test_a_failed_replacement_leaves_the_file_as_it_was, test_an_earlier_published_version_can_be_restored_as_the_next_version",
       "4": "test_refusals_stage_nothing",
       "5": "test_a_ready_file_keeps_answering_until_the_new_version_is_published, test_a_failed_replacement_leaves_the_file_as_it_was",
       "6": "test_every_upload_is_a_numbered_version_with_its_outcome",
-      "7": "test_files_already_in_the_database_are_version_1"
-    }
+      "7": "test_files_already_in_the_database_are_version_1",
+      "part 5": "test_an_earlier_published_version_can_be_restored_as_the_next_version, test_restore_refusals"
+    },
+    "parts": [
+      "1 storage (migration with backfill)",
+      "2 library",
+      "3 worker",
+      "4 API: PUT, GET keys, GET versions",
+      "5 restore, which needs every earlier part"
+    ]
   },
   "naive_patches": {
     "naive-reupload.patch": "treats a replacement like a re-upload: the ready file goes back to queued/processing while the new version runs (breaks rule 1)",
     "naive-failure.patch": "forgets the failure path in the worker: a failed replacement stays 'pending' for ever and is never reported (breaks rule 2)",
     "naive-s3.patch": "stages the upload before checking whether the request can be accepted, so a refused replacement leaves bytes in the staging folder (breaks rule 4); passes the acceptance tests",
-    "naive-backfill.patch": "creates the version table but does not bring existing files into it (breaks rule 7)"
+    "naive-backfill.patch": "creates the version table but does not bring existing files into it (breaks rule 7)",
+    "naive-deletebytes.patch": "deletes the superseded staged bytes when a new version is published (breaks rule 3); the restore in part 5 then fails"
   },
   "planted_bugs": [],
   "not_bugs": []

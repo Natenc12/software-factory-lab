@@ -1,7 +1,7 @@
 {
   "id": "T9",
   "kind": "feature",
-  "title": "Let a student replace an uploaded file with a new version",
+  "title": "Let a student replace an uploaded file, keep its versions, and restore an earlier one",
   "repo": "Natenc12/gct-lab",
   "base_ref": "base/T9",
   "base_commit": "",
@@ -11,9 +11,9 @@
   "deliverable": "pull_request",
   "long": true,
   "spec_words": {
-    "S0": 133,
-    "S1": 1002,
-    "S2": 1470,
-    "S3": 1504
+    "S0": 149,
+    "S1": 1232,
+    "S2": 1810,
+    "S3": 1844
   }
 }

@@ -378,3 +378,75 @@ def test_files_already_in_the_database_are_version_1(old_schema_db, monkeypatch)
         assert versions(client, ids["done.pdf"]) == [(1, "done.pdf", "published", None, True)]
         assert versions(client, ids["bad.pdf"]) == [(1, "bad.pdf", "failed", "unparseable", False)]
         assert versions(client, ids["waiting.pdf"]) == [(1, "waiting.pdf", "pending", None, False)]
+
+
+# --- restoring an earlier version (the last part; leans on every part before it) -------------
+
+
+def restore(client, file_id, version):
+    return client.post(f"/files/{file_id}/versions/{version}/restore")
+
+
+def test_an_earlier_published_version_can_be_restored_as_the_next_version(
+    app_and_client, worker_db
+):
+    app, client = app_and_client
+    conn, owner_id, class_id = worker_db
+    conn.autocommit = True
+    file_id = upload(client, class_id, "a.pdf", pdf("text one"))
+    assert tick(conn) is True
+    assert replace(client, file_id, "b.pdf", pdf("text two")).status_code == 202
+    assert tick(conn) is True
+    assert replace(client, file_id, "c.pdf", CORRUPT).status_code == 202
+    assert tick(conn) is True
+
+    before = staged_files()
+    r = restore(client, file_id, 1)
+    assert r.status_code == 202, r.text
+    assert r.json() == {"file_id": file_id, "filename": "a.pdf", "version": 4}
+    assert staged_files() == before, "a restore reuses the staged bytes; it stages nothing"
+    body = client.get(f"/files/{file_id}").json()
+    assert (body["status"], body["replacement"], body["filename"]) == ("ready", "pending", "b.pdf")
+    assert texts(conn, owner_id, class_id) == {"text two"}
+
+    assert tick(conn) is True
+    body = client.get(f"/files/{file_id}").json()
+    assert (body["status"], body["replacement"], body["filename"]) == ("ready", None, "a.pdf")
+    assert texts(conn, owner_id, class_id) == {"text one"}
+    assert versions(client, file_id) == [
+        (4, "a.pdf", "published", None, True),
+        (3, "c.pdf", "failed", "unparseable", False),
+        (2, "b.pdf", "published", None, False),
+        (1, "a.pdf", "published", None, False),
+    ]
+
+
+def test_restore_refusals(app_and_client, worker_db):
+    app, client = app_and_client
+    conn, owner_id, class_id = worker_db
+    conn.autocommit = True
+    file_id = upload(client, class_id, "a.pdf", pdf("text one"))
+    assert tick(conn) is True
+    assert replace(client, file_id, "b.pdf", CORRUPT).status_code == 202
+    assert tick(conn) is True  # version 2 failed; version 1 is current
+
+    def kind(r):
+        return r.status_code, r.json()["error"]["kind"]
+
+    assert kind(restore(client, file_id, 2)) == (409, "version_not_published")
+    assert kind(restore(client, file_id, 1)) == (409, "version_is_current")
+    assert kind(restore(client, file_id, 9)) == (404, "version_not_found")
+    assert kind(restore(client, "not-a-uuid", 1)) == (400, "bad_file_id")
+    missing = restore(client, str(uuid.uuid4()), 1)
+    assert missing.status_code == 404
+    assert missing.json() == client.get(f"/files/{uuid.uuid4()}").json()
+
+    assert replace(client, file_id, "c.pdf", pdf("text three")).status_code == 202
+    assert tick(conn) is True  # version 3 is current now
+    assert replace(client, file_id, "d.pdf", pdf("text four")).status_code == 202
+    assert kind(restore(client, file_id, 1)) == (409, "file_busy")
+
+    app.dependency_overrides[owner_dep] = lambda: f"{owner_id}-someone-else"
+    theirs = restore(client, file_id, 1)
+    assert theirs.status_code == 404
+    assert theirs.json() == missing.json()

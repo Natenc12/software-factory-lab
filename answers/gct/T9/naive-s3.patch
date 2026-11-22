@@ -48,19 +48,26 @@ index 0000000..66c221a
 +from files f
 +where not exists (select 1 from file_versions v where v.file_id = f.file_id);
 diff --git a/src/gct/api/routers/files.py b/src/gct/api/routers/files.py
-index 121907a..e0b6f6a 100644
+index 121907a..8c33531 100644
 --- a/src/gct/api/routers/files.py
 +++ b/src/gct/api/routers/files.py
-@@ -36,7 +36,7 @@ from gct.api.deps import Conn, OwnerId
+@@ -36,7 +36,14 @@ from gct.api.deps import Conn, OwnerId
  from gct.api.errors import ApiError
  from gct.classes import class_exists
  from gct.config import MAX_INGEST_WORDS
 -from gct.files import get_file_status
-+from gct.files import FileBusy, get_file_status, list_versions, replace_file
++from gct.files import (
++    FileBusy,
++    RestoreRefused,
++    get_file_status,
++    list_versions,
++    replace_file,
++    restore_version,
++)
  from gct.jobs.queue import enqueue
  from gct.staging import StagingError, stage
  
-@@ -239,6 +239,8 @@ class FileStatusResponse(BaseModel):
+@@ -239,6 +246,8 @@ class FileStatusResponse(BaseModel):
      status: str
      failed_reason: str | None
      message: str
@@ -69,7 +76,7 @@ index 121907a..e0b6f6a 100644
  
  
  @router.get("/{file_id}")
-@@ -291,4 +293,93 @@ def file_status(conn: Conn, owner: OwnerId, file_id: str) -> FileStatusResponse:
+@@ -291,4 +300,137 @@ def file_status(conn: Conn, owner: OwnerId, file_id: str) -> FileStatusResponse:
          status=result.status,
          failed_reason=result.failed_reason,
          message=message,
@@ -163,8 +170,52 @@ index 121907a..e0b6f6a 100644
 +            for v in versions
 +        ]
      )
++
++
++class RestoreAccepted(BaseModel):
++    file_id: str
++    filename: str
++    version: int
++
++
++_RESTORE_REFUSAL = {
++    "version_not_found": (404, "No such version of this file."),
++    "version_not_published": (409, "Only a version that was published can be restored."),
++    "version_is_current": (409, "This version is the one the file serves already."),
++}
++
++
++@router.post("/{file_id}/versions/{version}/restore", status_code=202)
++def restore(conn: Conn, owner: OwnerId, file_id: str, version: int) -> RestoreAccepted:
++    """Bring back an earlier published version as the file's next version; 202, then poll."""
++    try:
++        result = restore_version(conn, file_id=file_id, owner_id=owner, version=version)
++    except FileBusy as exc:
++        raise ApiError(
++            409,
++            "file_busy",
++            "This file is still being processed, or a replacement is already on its way. Try "
++            "again once it is ready or failed.",
++        ) from exc
++    except RestoreRefused as exc:
++        status, message = _RESTORE_REFUSAL[exc.reason]
++        raise ApiError(status, exc.reason, message) from exc
++    except ValueError as exc:
++        raise ApiError(
++            400,
++            "bad_file_id",
++            "file_id must be a uuid. Use the file_id returned when the file was uploaded.",
++        ) from exc
++    if result is None:
++        raise ApiError(
++            404,
++            "file_not_found",
++            "No such file. Check the file id returned when the file was uploaded.",
++        )
++    new_version, filename = result
++    return RestoreAccepted(file_id=str(uuid.UUID(file_id)), filename=filename, version=new_version)
 diff --git a/src/gct/files.py b/src/gct/files.py
-index d8f5115..4d7e0ec 100644
+index d8f5115..4cfe0f3 100644
 --- a/src/gct/files.py
 +++ b/src/gct/files.py
 @@ -18,9 +18,11 @@ one of the values the route knows how to render actionably. The membership test
@@ -200,7 +251,7 @@ index d8f5115..4d7e0ec 100644
          from files
          where file_id = %(file_id)s::uuid
            and owner_id = %(owner_id)s
-@@ -106,4 +113,126 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
+@@ -106,4 +113,173 @@ def get_file_status(conn: psycopg.Connection, *, file_id: str, owner_id: str) ->
      ).fetchone()
      if row is None:
          return None
@@ -328,6 +379,53 @@ index d8f5115..4d7e0ec 100644
 +        FileVersion(version=v, filename=n, outcome=o, failed_reason=r, current=bool(c))
 +        for v, n, o, r, c in rows
 +    ]
++
++
++class RestoreRefused(Exception):
++    """A version cannot be restored: `reason` is version_not_found, version_not_published or
++    version_is_current."""
++
++    def __init__(self, reason: str) -> None:
++        super().__init__(reason)
++        self.reason = reason
++
++
++def restore_version(
++    conn: psycopg.Connection, *, file_id: str, owner_id: str, version: int
++) -> tuple[int, str] | None:
++    """Queue an earlier published version's staged bytes as the file's next version.
++
++    Returns `(new_version, filename)`, or None if the owner has no such file. Raises `FileBusy` as
++    `replace_file` does, and `RestoreRefused` for a version that is missing, never published, or
++    already current. Nothing is staged: the version's bytes are still on disk (ADR 0010).
++    """
++    canonical = canonical_uuid(
++        file_id,
++        fn="restore_version",
++        param="file_id",
++        remedy="Pass the file_id returned when the file was uploaded.",
++    )
++    require_idle(conn, "restore_version")
++    with conn.transaction():
++        versions = list_versions(conn, file_id=canonical, owner_id=owner_id)
++        if versions is None:
++            return None
++        chosen = next((v for v in versions if v.version == version), None)
++        if chosen is None:
++            raise RestoreRefused("version_not_found")
++        if chosen.outcome != "published":
++            raise RestoreRefused("version_not_published")
++        if chosen.current:
++            raise RestoreRefused("version_is_current")
++        (staged,) = conn.execute(
++            "select staging_ref from file_versions where file_id = %(f)s::uuid and version = %(v)s",
++            {"f": canonical, "v": version},
++        ).fetchone()
++    if not replace_file(conn, file_id=canonical, owner_id=owner_id, path=staged):
++        return None
++    with conn.transaction():
++        newest = list_versions(conn, file_id=canonical, owner_id=owner_id)[0]
++    return newest.version, newest.filename
 diff --git a/src/gct/jobs/queue.py b/src/gct/jobs/queue.py
 index 9a9cab1..e246dda 100644
 --- a/src/gct/jobs/queue.py
@@ -544,10 +642,10 @@ index 0000000..7d818a3
 +        is False
 +    )
 diff --git a/web/openapi.json b/web/openapi.json
-index 63298b1..8ee225c 100644
+index 63298b1..c669525 100644
 --- a/web/openapi.json
 +++ b/web/openapi.json
-@@ -146,6 +146,94 @@
+@@ -146,6 +146,142 @@
              }
            }
          }
@@ -639,10 +737,58 @@ index 63298b1..8ee225c 100644
 +            }
 +          }
 +        }
++      }
++    },
++    "/files/{file_id}/versions/{version}/restore": {
++      "post": {
++        "tags": [
++          "files"
++        ],
++        "operationId": "restore_files__file_id__versions__version__restore_post",
++        "parameters": [
++          {
++            "name": "file_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          },
++          {
++            "name": "version",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "integer"
++            }
++          }
++        ],
++        "responses": {
++          "202": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/RestoreAccepted"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
        }
      },
      "/ask": {
-@@ -251,6 +339,18 @@
+@@ -251,6 +387,18 @@
            "integrity"
          ]
        },
@@ -661,7 +807,7 @@ index 63298b1..8ee225c 100644
        "Body_upload_file_files_post": {
          "properties": {
            "class_id": {
-@@ -343,6 +443,26 @@
+@@ -343,6 +491,26 @@
            },
            "message": {
              "type": "string"
@@ -688,7 +834,7 @@ index 63298b1..8ee225c 100644
            }
          },
          "type": "object",
-@@ -353,6 +473,54 @@
+@@ -353,6 +521,54 @@
            "message"
          ]
        },
@@ -743,3 +889,29 @@ index 63298b1..8ee225c 100644
        "HTTPValidationError": {
          "properties": {
            "detail": {
+@@ -394,6 +610,25 @@
+           "name"
+         ]
+       },
++      "RestoreAccepted": {
++        "properties": {
++          "file_id": {
++            "type": "string"
++          },
++          "filename": {
++            "type": "string"
++          },
++          "version": {
++            "type": "integer"
++          }
++        },
++        "type": "object",
++        "required": [
++          "file_id",
++          "filename",
++          "version"
++        ]
++      },
+       "UploadAccepted": {
+         "properties": {
+           "file_id": {

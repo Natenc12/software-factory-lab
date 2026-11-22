@@ -42,3 +42,7 @@ Reply: Every reply to `POST /classes`, and every reply to `POST /files` or `POST
 ## T10-summary-shape
 When: The developer asks what `GET /courses/{course_id}` should return or how to count files.
 Reply: The ticket's shape: `course_id`, `name`, and `files` with all four status counts, zero where there are none.
+
+## T10-scoped-routes
+When: The developer asks how the course-scoped routes (`POST /courses/{course_id}/files`, `POST /courses/{course_id}/ask`) should behave, or whether they may take an id in the body as well.
+Reply: Like `POST /files` and `POST /ask` with `course_id`, for the course in the path, with the same success replies. They take no id in the body: `file` only for the upload, `question` only for ask (any other key is a 422).

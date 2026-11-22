@@ -120,7 +120,7 @@ index 0000000..39ce042
 +        return True
 +    return bool(getattr(request.state, "old_names", False))
 diff --git a/src/gct/api/routers/ask.py b/src/gct/api/routers/ask.py
-index d474cbe..0cfd8e4 100644
+index d474cbe..a3ced95 100644
 --- a/src/gct/api/routers/ask.py
 +++ b/src/gct/api/routers/ask.py
 @@ -36,12 +36,12 @@ autocommit connection `gct.api.deps.get_conn` yields is still the wiring this sh
@@ -165,7 +165,7 @@ index d474cbe..0cfd8e4 100644
      conn: Conn,
      owner: OwnerId,
      embedder: Embedder,
-@@ -340,20 +348,11 @@ def ask_question(
+@@ -340,27 +348,23 @@ def ask_question(
      envelope - loud, and the right direction for a broken contract, which is why there is no
      defensive branch inventing a second answer for it.
      """
@@ -190,6 +190,21 @@ index d474cbe..0cfd8e4 100644
  
      # `class_uuid`, never `body.class_id`: one id, one spelling, from the ownership check through
      # to retrieval. `retrieve` canonicalises its own `class_id` since #126, so this is consistency
+     # between the two calls, not the thing standing between a spelling and a `::uuid` cast.
+-    result = ask(
+-        conn, body.question, owner, class_uuid, embedder=embedder, generator=generator
+-    ).result
++    return answer_for(conn, owner, class_uuid, body.question, embedder, generator)
++
++
++def answer_for(
++    conn, owner: str, class_uuid: str, question: str, embedder, generator
++) -> AskResponse:
++    """Ask `question` in a class already resolved and checked, and render the reply."""
++    result = ask(conn, question, owner, class_uuid, embedder=embedder, generator=generator).result
+ 
+     if result.state is GrounderState.ERROR:
+         kind = result.error.kind
 diff --git a/src/gct/api/routers/classes.py b/src/gct/api/routers/classes.py
 index 90b44c1..b086a61 100644
 --- a/src/gct/api/routers/classes.py
@@ -205,22 +220,29 @@ index 90b44c1..b086a61 100644
  
 diff --git a/src/gct/api/routers/courses.py b/src/gct/api/routers/courses.py
 new file mode 100644
-index 0000000..d4edb02
+index 0000000..9ff415e
 --- /dev/null
 +++ b/src/gct/api/routers/courses.py
-@@ -0,0 +1,58 @@
+@@ -0,0 +1,112 @@
 +"""`POST /courses` - create a course. The new name for `POST /classes`, which stays as it was."""
 +
 +from __future__ import annotations
 +
-+from fastapi import APIRouter
-+from pydantic import BaseModel
++from pathlib import Path
++from typing import Annotated
++
++from fastapi import APIRouter, File, UploadFile
++from pydantic import BaseModel, ConfigDict, Field
 +
 +from gct.api import course_ids
-+from gct.api.deps import Conn, OwnerId
++from gct.api.deps import Conn, Embedder, Generator, OwnerId
 +from gct.api.errors import ApiError
++from gct.api.routers.ask import MAX_QUESTION_CHARS, AskResponse, answer_for
 +from gct.api.routers.classes import _NAME_REFUSAL, NewClass
-+from gct.classes import ClassNameError, class_summary, create_class
++from gct.api.routers.files import _STAGING_STATUS, UploadAccepted
++from gct.classes import ClassNameError, class_exists, class_summary, create_class
++from gct.jobs.queue import enqueue
++from gct.staging import StagingError, stage
 +
 +router = APIRouter(prefix="/courses", tags=["courses"])
 +
@@ -267,6 +289,53 @@ index 0000000..d4edb02
 +    return CourseSummary(
 +        course_id=canonical, name=found["name"], files=FileCounts(**found["files"])
 +    )
++
++
++def _owned_course(conn, owner: str, course_id: str, *, doing: str) -> str:
++    ref = course_ids.CourseRef(raw=course_id, word="course")
++    canonical = course_ids.parse(ref)
++    if not class_exists(conn, class_id=canonical, owner_id=owner):
++        raise course_ids.not_found(ref, doing=doing)
++    return canonical
++
++
++@router.post("/{course_id}/files", status_code=202)
++def upload_to_course(
++    conn: Conn,
++    owner: OwnerId,
++    course_id: str,
++    file: Annotated[UploadFile, File()],
++) -> UploadAccepted:
++    """`POST /files` with the course in the path; the course is checked before staging."""
++    canonical = _owned_course(conn, owner, course_id, doing="uploading to it")
++    try:
++        staged = stage(file.file, filename=file.filename)
++    except StagingError as exc:
++        raise ApiError(_STAGING_STATUS[exc.reason], exc.reason, str(exc)) from exc
++    file_id = enqueue(conn, path=staged, owner_id=owner, class_id=canonical)
++    return UploadAccepted(file_id=file_id, filename=Path(staged).name)
++
++
++class CourseQuestion(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++
++    question: str = Field(max_length=MAX_QUESTION_CHARS)
++
++
++@router.post("/{course_id}/ask", status_code=200)
++def ask_in_course(
++    conn: Conn,
++    owner: OwnerId,
++    embedder: Embedder,
++    generator: Generator,
++    course_id: str,
++    body: CourseQuestion,
++) -> AskResponse:
++    """`POST /ask` with the course in the path."""
++    if not body.question.strip():
++        raise ApiError(422, "validation", "question must not be blank")
++    canonical = _owned_course(conn, owner, course_id, doing="asking about it")
++    return answer_for(conn, owner, canonical, body.question, embedder, generator)
 diff --git a/src/gct/api/routers/files.py b/src/gct/api/routers/files.py
 index 121907a..ba63807 100644
 --- a/src/gct/api/routers/files.py
@@ -406,10 +475,10 @@ index 0000000..7878c93
 +    assert response.status_code == 400
 +    assert response.json()["error"]["kind"] == "conflicting_ids"
 diff --git a/web/openapi.json b/web/openapi.json
-index 63298b1..09f59b1 100644
+index 63298b1..fa864ae 100644
 --- a/web/openapi.json
 +++ b/web/openapi.json
-@@ -65,6 +65,87 @@
+@@ -65,6 +65,187 @@
                }
              }
            }
@@ -494,10 +563,110 @@ index 63298b1..09f59b1 100644
 +              }
 +            }
 +          }
++        }
++      }
++    },
++    "/courses/{course_id}/files": {
++      "post": {
++        "tags": [
++          "courses"
++        ],
++        "operationId": "upload_to_course_courses__course_id__files_post",
++        "parameters": [
++          {
++            "name": "course_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          }
++        ],
++        "requestBody": {
++          "required": true,
++          "content": {
++            "multipart/form-data": {
++              "schema": {
++                "$ref": "#/components/schemas/Body_upload_to_course_courses__course_id__files_post"
++              }
++            }
++          }
++        },
++        "responses": {
++          "202": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/UploadAccepted"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
++        }
++      }
++    },
++    "/courses/{course_id}/ask": {
++      "post": {
++        "tags": [
++          "courses"
++        ],
++        "operationId": "ask_in_course_courses__course_id__ask_post",
++        "parameters": [
++          {
++            "name": "course_id",
++            "in": "path",
++            "required": true,
++            "schema": {
++              "type": "string"
++            }
++          }
++        ],
++        "requestBody": {
++          "required": true,
++          "content": {
++            "application/json": {
++              "schema": {
++                "$ref": "#/components/schemas/CourseQuestion"
++              }
++            }
++          }
++        },
++        "responses": {
++          "200": {
++            "description": "Successful Response",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/AskResponse"
++                }
++              }
++            }
++          },
++          "422": {
++            "description": "Validation Error",
++            "content": {
++              "application/json": {
++                "schema": {
++                  "$ref": "#/components/schemas/HTTPValidationError"
++                }
++              }
++            }
++          }
          }
        }
      },
-@@ -194,7 +275,24 @@
+@@ -194,7 +375,24 @@
        "AskRequest": {
          "properties": {
            "class_id": {
@@ -523,7 +692,7 @@ index 63298b1..09f59b1 100644
            },
            "question": {
              "type": "string",
-@@ -204,7 +302,6 @@
+@@ -204,7 +402,6 @@
          "additionalProperties": false,
          "type": "object",
          "required": [
@@ -531,18 +700,16 @@ index 63298b1..09f59b1 100644
            "question"
          ]
        },
-@@ -253,17 +350,33 @@
+@@ -253,9 +450,38 @@
        },
        "Body_upload_file_files_post": {
          "properties": {
--          "class_id": {
--            "type": "string"
--          },
-           "file": {
-             "type": "string",
-             "contentMediaType": "application/octet-stream"
++          "file": {
++            "type": "string",
++            "contentMediaType": "application/octet-stream"
 +          },
-+          "class_id": {
+           "class_id": {
+-            "type": "string"
 +            "anyOf": [
 +              {
 +                "type": "string"
@@ -551,7 +718,7 @@ index 63298b1..09f59b1 100644
 +                "type": "null"
 +              }
 +            ]
-+          },
+           },
 +          "course_id": {
 +            "anyOf": [
 +              {
@@ -561,7 +728,19 @@ index 63298b1..09f59b1 100644
 +                "type": "null"
 +              }
 +            ]
-           }
++          }
++        },
++        "type": "object",
++        "required": [
++          "file"
++        ]
++      },
++      "Body_upload_to_course_courses__course_id__files_post": {
++        "properties": {
+           "file": {
+             "type": "string",
+             "contentMediaType": "application/octet-stream"
+@@ -263,7 +489,6 @@
          },
          "type": "object",
          "required": [
@@ -569,7 +748,7 @@ index 63298b1..09f59b1 100644
            "file"
          ]
        },
-@@ -305,6 +418,40 @@
+@@ -305,6 +530,53 @@
            "name"
          ]
        },
@@ -586,6 +765,19 @@ index 63298b1..09f59b1 100644
 +        "required": [
 +          "course_id",
 +          "name"
++        ]
++      },
++      "CourseQuestion": {
++        "properties": {
++          "question": {
++            "type": "string",
++            "maxLength": 2000
++          }
++        },
++        "additionalProperties": false,
++        "type": "object",
++        "required": [
++          "question"
 +        ]
 +      },
 +      "CourseSummary": {
@@ -610,7 +802,7 @@ index 63298b1..09f59b1 100644
        "CoverageOut": {
          "properties": {
            "complete": {
-@@ -323,6 +470,29 @@
+@@ -323,6 +595,29 @@
            "gaps"
          ]
        },

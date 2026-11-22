@@ -1,7 +1,7 @@
 {
   "id": "T10",
   "kind": "feature",
-  "title": "Call a class a \"course\" in the API, without breaking any existing client",
+  "title": "Call a class a \"course\" in the API, step by step, without breaking any existing client",
   "repo": "Natenc12/gct-lab",
   "base_ref": "base/T10",
   "base_commit": "",
@@ -11,9 +11,9 @@
   "deliverable": "pull_request",
   "long": true,
   "spec_words": {
-    "S0": 119,
-    "S1": 925,
-    "S2": 1390,
-    "S3": 1426
+    "S0": 138,
+    "S1": 964,
+    "S2": 1515,
+    "S3": 1551
   }
 }

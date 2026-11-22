@@ -272,3 +272,55 @@ def test_a_course_summary_counts_its_files_by_status(client, db):
         assert client.get(f"/courses/{theirs}").json() == unknown.json()
     finally:
         conn.execute("delete from classes where owner_id = %s", (other_owner,))
+
+
+# --- the course-scoped routes (the last part; leans on the rules and parts before it) --------
+
+
+def test_course_scoped_upload_and_ask_follow_every_earlier_rule(client, db):
+    conn, owner, class_id = db
+    conn.autocommit = True
+    course_id = client.post("/courses", json={"name": "Botany"}).json()["course_id"]
+
+    def course_upload(cid):
+        return client.post(
+            f"/courses/{cid}/files", files={"file": ("lecture.pdf", io.BytesIO(PDF))}
+        )
+
+    ok = course_upload(course_id)
+    assert ok.status_code == 202, ok.text
+    assert set(ok.json()) == {"file_id", "filename"}
+    assert "deprecation" not in ok.headers
+    assert course_upload(uuid.UUID(course_id).urn).status_code == 202
+    counts = client.get(f"/courses/{course_id}").json()["files"]
+    assert counts == {"queued": 2, "processing": 0, "ready": 0, "failed": 0}
+
+    before = staged()
+    unknown = course_upload(str(uuid.uuid4()))
+    assert unknown.status_code == 404
+    assert unknown.json()["error"]["kind"] == "course_not_found"
+    assert "deprecation" not in unknown.headers
+    bad = course_upload("biology")
+    assert bad.status_code == 400
+    assert bad.json()["error"]["kind"] == "bad_course_id"
+    other_owner = f"{owner}-other"
+    theirs = conn.execute(
+        "insert into classes (owner_id, name) values (%s, 'theirs') returning class_id::text",
+        (other_owner,),
+    ).fetchone()[0]
+    try:
+        assert course_upload(theirs).json() == unknown.json()
+    finally:
+        conn.execute("delete from classes where owner_id = %s", (other_owner,))
+    assert staged() == before, "a refused course upload must not stage anything"
+
+    asked = client.post(f"/courses/{course_id}/ask", json={"question": "what is it?"})
+    assert asked.status_code == 200, asked.text
+    assert "deprecation" not in asked.headers
+    lost = client.post(f"/courses/{uuid.uuid4()}/ask", json={"question": "what is it?"})
+    assert lost.status_code == 404
+    assert lost.json()["error"]["kind"] == "course_not_found"
+    extra = client.post(
+        f"/courses/{course_id}/ask", json={"question": "what is it?", "class_id": class_id}
+    )
+    assert extra.status_code == 422
