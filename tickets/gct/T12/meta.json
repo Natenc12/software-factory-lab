@@ -4,9 +4,9 @@
   "title": "Tell \"no such file\" apart from \"someone else's file\" in GET /files/{file_id}",
   "repo": "Natenc12/gct-lab",
   "base_ref": "base/T12",
-  "base_commit": "",
+  "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "s3_base_ref": "base/T12-s3",
-  "s3_base_commit": "",
+  "s3_base_commit": "62bb92f604e269e5a650242d4e2c1ad1f44c4c7c",
   "db": "postgres",
   "deliverable": "pull_request",
   "spec_words": {

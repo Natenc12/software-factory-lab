@@ -6,28 +6,30 @@
   "base_sha": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "s3_base_ref": "base/T10-s3",
   "s3_sha": "e1fa196d0091c9caa46bd6ac6ee1d3db4bf3ea9e",
-  "started": "2026-11-22T15:21:37+00:00",
-  "finished": "2026-11-22T15:26:48+00:00",
+  "started": "2026-11-22T18:03:48+00:00",
+  "finished": "2026-11-22T18:10:43+00:00",
   "databases_dropped": [
-    "author_gct_t10_base_41912",
-    "author_gct_t10_ref_41912",
-    "author_gct_t10_naive_noconflict_41912",
-    "author_gct_t10_naive_s3_41912",
-    "author_gct_t10_naive_words_41912",
-    "author_gct_t10_s3base_41912",
-    "author_gct_t10_s3ref_41912",
-    "author_gct_t10_s3naive_41912"
+    "author_gct_t10_base_32251",
+    "author_gct_t10_ref_32251",
+    "author_gct_t10_naive_askwords_32251",
+    "author_gct_t10_naive_headers_32251",
+    "author_gct_t10_naive_noconflict_32251",
+    "author_gct_t10_naive_s3_32251",
+    "author_gct_t10_naive_stagefirst_32251",
+    "author_gct_t10_s3base_32251",
+    "author_gct_t10_s3ref_32251",
+    "author_gct_t10_s3naive_32251"
   ],
-  "ok": false,
+  "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "1175 passed, 1 deselected in 50.69s",
+      "note": "1175 passed, 1 deselected in 49.70s",
       "counts": {
         "passed": 1175
       },
-      "seconds": 52.4,
+      "seconds": 51.4,
       "log_tail": ""
     },
     {
@@ -40,16 +42,20 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "5 failed in 0.63s",
+      "note": "9 failed in 0.78s",
       "outcomes": {
         "tests.hidden.test_hidden_t10::test_post_courses_creates_a_course_that_old_routes_accept_as_a_class": "failed",
         "tests.hidden.test_hidden_t10::test_uploads_by_course_id_answer_in_course_words_and_old_replies_are_unchanged": "failed",
         "tests.hidden.test_hidden_t10::test_conflicting_ids_are_refused_before_anything_is_staged": "failed",
         "tests.hidden.test_hidden_t10::test_ask_by_course_id_answers_in_course_words_and_old_replies_are_unchanged": "failed",
-        "tests.hidden.test_hidden_t10::test_the_old_route_is_marked_deprecated_in_the_live_and_the_committed_schema": "failed"
+        "tests.hidden.test_hidden_t10::test_the_old_route_is_marked_deprecated_in_the_live_and_the_committed_schema": "failed",
+        "tests.hidden.test_hidden_t10::test_every_reply_to_an_old_name_request_carries_the_deprecation_header": "failed",
+        "tests.hidden.test_hidden_t10::test_requests_that_use_course_id_never_carry_the_deprecation_header": "failed",
+        "tests.hidden.test_hidden_t10::test_a_course_summary_counts_its_files_by_status": "failed",
+        "tests.hidden.test_hidden_t10::test_course_scoped_upload_and_ask_follow_every_earlier_rule": "failed"
       },
       "not_failing": [],
-      "seconds": 1.3
+      "seconds": 1.5
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -62,6 +68,7 @@
         "src/gct/api/routers/classes.py",
         "src/gct/api/routers/courses.py",
         "src/gct/api/routers/files.py",
+        "src/gct/classes.py",
         "tests/gct/api/test_courses.py",
         "web/openapi.json"
       ]
@@ -69,25 +76,29 @@
     {
       "name": "reference: every hidden test passes",
       "ok": true,
-      "note": "5 hidden, 5 collected",
+      "note": "9 hidden, 9 collected",
       "outcomes": {
         "tests.hidden.test_hidden_t10::test_post_courses_creates_a_course_that_old_routes_accept_as_a_class": "passed",
         "tests.hidden.test_hidden_t10::test_uploads_by_course_id_answer_in_course_words_and_old_replies_are_unchanged": "passed",
         "tests.hidden.test_hidden_t10::test_conflicting_ids_are_refused_before_anything_is_staged": "passed",
         "tests.hidden.test_hidden_t10::test_ask_by_course_id_answers_in_course_words_and_old_replies_are_unchanged": "passed",
-        "tests.hidden.test_hidden_t10::test_the_old_route_is_marked_deprecated_in_the_live_and_the_committed_schema": "passed"
+        "tests.hidden.test_hidden_t10::test_the_old_route_is_marked_deprecated_in_the_live_and_the_committed_schema": "passed",
+        "tests.hidden.test_hidden_t10::test_every_reply_to_an_old_name_request_carries_the_deprecation_header": "passed",
+        "tests.hidden.test_hidden_t10::test_requests_that_use_course_id_never_carry_the_deprecation_header": "passed",
+        "tests.hidden.test_hidden_t10::test_a_course_summary_counts_its_files_by_status": "passed",
+        "tests.hidden.test_hidden_t10::test_course_scoped_upload_and_ask_follow_every_earlier_rule": "passed"
       },
       "not_passing": []
     },
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "1184 passed, 1 deselected in 47.11s",
+      "note": "1188 passed, 1 deselected in 48.88s",
       "counts": {
-        "passed": 1184
+        "passed": 1188
       },
       "failing": [],
-      "seconds": 48.0,
+      "seconds": 49.8,
       "log_tail": ""
     },
     {
@@ -125,15 +136,43 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "1.3s"
+      "note": "1.7s"
+    },
+    {
+      "name": "naive-askwords.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t10::test_ask_by_course_id_answers_in_course_words_and_old_replies_are_unchanged",
+        "tests.hidden.test_hidden_t10::test_requests_that_use_course_id_never_carry_the_deprecation_header"
+      ],
+      "note": "2/9 hidden fail"
+    },
+    {
+      "name": "naive-askwords.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive-headers.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t10::test_every_reply_to_an_old_name_request_carries_the_deprecation_header"
+      ],
+      "note": "1/9 hidden fail"
+    },
+    {
+      "name": "naive-headers.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
     },
     {
       "name": "naive-noconflict.patch: at least one hidden test fails",
       "ok": true,
       "failing": [
-        "tests.hidden.test_hidden_t10::test_conflicting_ids_are_refused_before_anything_is_staged"
+        "tests.hidden.test_hidden_t10::test_conflicting_ids_are_refused_before_anything_is_staged",
+        "tests.hidden.test_hidden_t10::test_requests_that_use_course_id_never_carry_the_deprecation_header"
       ],
-      "note": "1/5 hidden fail"
+      "note": "2/9 hidden fail"
     },
     {
       "name": "naive-noconflict.patch: existing tests still pass (a competent fix)",
@@ -146,7 +185,7 @@
       "failing": [
         "tests.hidden.test_hidden_t10::test_the_old_route_is_marked_deprecated_in_the_live_and_the_committed_schema"
       ],
-      "note": "1/5 hidden fail"
+      "note": "1/9 hidden fail"
     },
     {
       "name": "naive-s3.patch: existing tests still pass (a competent fix)",
@@ -154,23 +193,17 @@
       "failing": []
     },
     {
-      "name": "naive-words.patch: at least one hidden test fails",
+      "name": "naive-stagefirst.patch: at least one hidden test fails",
       "ok": true,
       "failing": [
-        "tests.hidden.test_hidden_t10::test_ask_by_course_id_answers_in_course_words_and_old_replies_are_unchanged",
-        "tests.hidden.test_hidden_t10::test_uploads_by_course_id_answer_in_course_words_and_old_replies_are_unchanged"
+        "tests.hidden.test_hidden_t10::test_course_scoped_upload_and_ask_follow_every_earlier_rule"
       ],
-      "note": "2/5 hidden fail"
+      "note": "1/9 hidden fail"
     },
     {
-      "name": "naive-words.patch: existing tests still pass (a competent fix)",
-      "ok": false,
-      "failing": [
-        "tests.gct.api.test_ask_router::test_a_non_uuid_class_id_is_400_in_the_routes_own_words",
-        "tests.gct.api.test_ask_router::test_an_unknown_class_is_404_and_never_a_refusal",
-        "tests.gct.api.test_files_router::test_a_non_uuid_class_id_is_400_in_the_routes_own_words",
-        "tests.gct.api.test_files_router::test_an_unknown_class_is_404_and_stages_nothing"
-      ]
+      "name": "naive-stagefirst.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
     },
     {
       "name": "s3: branch is base_ref plus one commit that only adds tests",
@@ -182,7 +215,7 @@
     {
       "name": "s3: acceptance tests fail on the S3 branch",
       "ok": true,
-      "note": "4 failed, 1 passed in 0.64s",
+      "note": "4 failed, 1 passed in 0.56s",
       "outcomes": {
         "tests.acceptance.test_courses_in_the_api::test_example_1_post_courses": "failed",
         "tests.acceptance.test_courses_in_the_api::test_examples_2_3_upload_by_course_id": "failed",
@@ -194,7 +227,7 @@
     {
       "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
       "ok": true,
-      "note": "1189 passed, 1 deselected in 48.03s",
+      "note": "1193 passed, 1 deselected in 48.07s",
       "failing": [],
       "log_tail": ""
     },
