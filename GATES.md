@@ -2,6 +2,29 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
+## Owner decisions after gate 2 · repos made public, skills arm versions · 2026-11-22
+
+**The experiment's repositories are public.** The owner asked "can we make the repos relevant to this
+public?" The orchestrator listed what flipping them as they stand would expose (the hidden tests and
+answer keys under `answers/`, the audit of the owner's own sessions, the owner's email in commit
+history, single-run results) and recommended a clean public copy instead. The owner chose "Flip repos
+as-is". Applied the same hour: `software-factory-lab`, `gct-lab` and `pipeline-lab` are public. This
+replaces the charter's "private repos only" guardrail.
+
+- Before the change, a pattern scan of all three histories for keys, tokens and passwords found only
+  placeholders and localhost examples (Script; a regex scan, not a dedicated scanner).
+- The rule that hidden tests and answer keys stay out of every run's reach now rests on the run
+  sandbox, whose network allows only the package index, and on the leak scan of each run's record.
+  A run that reads them is still discarded.
+- Tickets T1 to T8 and their answers are now public, so they are spent as a test for anything
+  outside this experiment.
+- Not done by the orchestrator: replacing the OpenAI key that `research/owner-sessions-audit.md`
+  says a reviewer printed into a session log. The key is not in any of the three repositories.
+
+**Skills library arm.** Asked whether the stage 2 plan should carry the pure-discretion version, the
+pointed version or both, the owner replied "whatever u think is best". The orchestrator will put both
+on the stage 2 plan page. Neither exists as an arm or runs until that page is approved.
+
 ## Gate 2 · stage 1 results · approved 2026-11-22
 
 Page: https://claude.ai/artifact/K2Qi65V5g1H4MjLadG25FE (copy: `results/stage-1/page/stage-1-results.html`)
