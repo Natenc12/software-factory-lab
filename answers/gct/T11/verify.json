@@ -5,29 +5,29 @@
   "base_ref": "base/T11",
   "base_sha": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "s3_base_ref": "base/T11-s3",
-  "s3_sha": "fd612d2fae1db029276b57662ec713e35145f594",
-  "started": "2026-11-22T18:10:43+00:00",
-  "finished": "2026-11-22T18:15:52+00:00",
+  "s3_sha": "0fedf18653d1f27d60ba0112bd5f8a32dfb15d9d",
+  "started": "2026-11-22T19:39:08+00:00",
+  "finished": "2026-11-22T19:44:36+00:00",
   "databases_dropped": [
-    "author_gct_t11_base_39616",
-    "author_gct_t11_ref_39616",
-    "author_gct_t11_naive_both_39616",
-    "author_gct_t11_naive_s3_39616",
-    "author_gct_t11_naive_39616",
-    "author_gct_t11_s3base_39616",
-    "author_gct_t11_s3ref_39616",
-    "author_gct_t11_s3naive_39616"
+    "author_gct_t11_base_60396",
+    "author_gct_t11_ref_60396",
+    "author_gct_t11_naive_both_60396",
+    "author_gct_t11_naive_s3_60396",
+    "author_gct_t11_naive_60396",
+    "author_gct_t11_s3base_60396",
+    "author_gct_t11_s3ref_60396",
+    "author_gct_t11_s3naive_60396"
   ],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "1175 passed, 1 deselected in 50.60s",
+      "note": "1175 passed, 1 deselected in 50.40s",
       "counts": {
         "passed": 1175
       },
-      "seconds": 52.2,
+      "seconds": 52.1,
       "log_tail": ""
     },
     {
@@ -40,13 +40,13 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "2 failed in 0.51s",
+      "note": "2 failed in 0.43s",
       "outcomes": {
         "tests.hidden.test_hidden_t11::test_an_outage_past_the_budget_can_be_requeued_and_then_succeeds": "failed",
         "tests.hidden.test_hidden_t11::test_only_transient_exhausted_files_are_requeued": "failed"
       },
       "not_failing": [],
-      "seconds": 1.2
+      "seconds": 1.1
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -70,7 +70,7 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "1178 passed, 1 deselected in 47.59s",
+      "note": "1178 passed, 1 deselected in 47.53s",
       "counts": {
         "passed": 1178
       },
@@ -113,7 +113,7 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "1.1s"
+      "note": "1.2s"
     },
     {
       "name": "naive-both.patch: at least one hidden test fails",
@@ -167,16 +167,15 @@
     {
       "name": "s3: acceptance tests run on the S3 branch (may pass there: key says so)",
       "ok": true,
-      "note": "2 passed in 0.48s",
+      "note": "1 passed in 0.58s",
       "outcomes": {
-        "tests.acceptance.test_transient_errors::test_example_1_one_429_then_success_ends_ready": "passed",
         "tests.acceptance.test_transient_errors::test_example_3_a_corrupt_file_fails_at_once": "passed"
       }
     },
     {
       "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
       "ok": true,
-      "note": "1180 passed, 1 deselected in 47.40s",
+      "note": "1179 passed, 1 deselected in 48.24s",
       "failing": [],
       "log_tail": ""
     },

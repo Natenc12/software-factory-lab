@@ -6,30 +6,31 @@
   "base_sha": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "s3_base_ref": "base/T10-s3",
   "s3_sha": "e1fa196d0091c9caa46bd6ac6ee1d3db4bf3ea9e",
-  "started": "2026-11-22T18:03:48+00:00",
-  "finished": "2026-11-22T18:10:43+00:00",
+  "started": "2026-11-22T20:01:17+00:00",
+  "finished": "2026-11-22T20:08:42+00:00",
   "databases_dropped": [
-    "author_gct_t10_base_32251",
-    "author_gct_t10_ref_32251",
-    "author_gct_t10_naive_askwords_32251",
-    "author_gct_t10_naive_headers_32251",
-    "author_gct_t10_naive_noconflict_32251",
-    "author_gct_t10_naive_s3_32251",
-    "author_gct_t10_naive_stagefirst_32251",
-    "author_gct_t10_s3base_32251",
-    "author_gct_t10_s3ref_32251",
-    "author_gct_t10_s3naive_32251"
+    "author_gct_t10_base_85060",
+    "author_gct_t10_ref_85060",
+    "author_gct_t10_naive_askwords_85060",
+    "author_gct_t10_naive_headers_85060",
+    "author_gct_t10_naive_lateslips_85060",
+    "author_gct_t10_naive_noconflict_85060",
+    "author_gct_t10_naive_s3_85060",
+    "author_gct_t10_naive_stagefirst_85060",
+    "author_gct_t10_s3base_85060",
+    "author_gct_t10_s3ref_85060",
+    "author_gct_t10_s3naive_85060"
   ],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "1175 passed, 1 deselected in 49.70s",
+      "note": "1175 passed, 1 deselected in 47.79s",
       "counts": {
         "passed": 1175
       },
-      "seconds": 51.4,
+      "seconds": 49.3,
       "log_tail": ""
     },
     {
@@ -42,7 +43,7 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "9 failed in 0.78s",
+      "note": "9 failed in 0.65s",
       "outcomes": {
         "tests.hidden.test_hidden_t10::test_post_courses_creates_a_course_that_old_routes_accept_as_a_class": "failed",
         "tests.hidden.test_hidden_t10::test_uploads_by_course_id_answer_in_course_words_and_old_replies_are_unchanged": "failed",
@@ -55,7 +56,7 @@
         "tests.hidden.test_hidden_t10::test_course_scoped_upload_and_ask_follow_every_earlier_rule": "failed"
       },
       "not_failing": [],
-      "seconds": 1.5
+      "seconds": 1.2
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -93,12 +94,12 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "1188 passed, 1 deselected in 48.88s",
+      "note": "1188 passed, 1 deselected in 45.93s",
       "counts": {
         "passed": 1188
       },
       "failing": [],
-      "seconds": 49.8,
+      "seconds": 46.7,
       "log_tail": ""
     },
     {
@@ -136,7 +137,7 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "1.7s"
+      "note": "1.5s"
     },
     {
       "name": "naive-askwords.patch: at least one hidden test fails",
@@ -162,6 +163,20 @@
     },
     {
       "name": "naive-headers.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive-lateslips.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t10::test_course_scoped_upload_and_ask_follow_every_earlier_rule",
+        "tests.hidden.test_hidden_t10::test_every_reply_to_an_old_name_request_carries_the_deprecation_header"
+      ],
+      "note": "2/9 hidden fail"
+    },
+    {
+      "name": "naive-lateslips.patch: existing tests still pass (a competent fix)",
       "ok": true,
       "failing": []
     },
@@ -215,7 +230,7 @@
     {
       "name": "s3: acceptance tests fail on the S3 branch",
       "ok": true,
-      "note": "4 failed, 1 passed in 0.56s",
+      "note": "4 failed, 1 passed in 0.53s",
       "outcomes": {
         "tests.acceptance.test_courses_in_the_api::test_example_1_post_courses": "failed",
         "tests.acceptance.test_courses_in_the_api::test_examples_2_3_upload_by_course_id": "failed",
@@ -227,7 +242,7 @@
     {
       "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
       "ok": true,
-      "note": "1193 passed, 1 deselected in 48.07s",
+      "note": "1193 passed, 1 deselected in 47.79s",
       "failing": [],
       "log_tail": ""
     },

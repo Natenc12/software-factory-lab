@@ -6,7 +6,7 @@
   "base_ref": "base/T11",
   "base_commit": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "s3_base_ref": "base/T11-s3",
-  "s3_base_commit": "fd612d2fae1db029276b57662ec713e35145f594",
+  "s3_base_commit": "0fedf18653d1f27d60ba0112bd5f8a32dfb15d9d",
   "db": "postgres",
   "deliverable": "pull_request",
   "spec_words": {

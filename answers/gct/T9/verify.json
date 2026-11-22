@@ -6,30 +6,30 @@
   "base_sha": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "s3_base_ref": "base/T9-s3",
   "s3_sha": "4528b8c91e726a423b36d1b8cc94be93dd9b3718",
-  "started": "2026-11-22T17:56:40+00:00",
-  "finished": "2026-11-22T18:03:48+00:00",
+  "started": "2026-11-22T19:23:31+00:00",
+  "finished": "2026-11-22T19:30:43+00:00",
   "databases_dropped": [
-    "author_gct_t9_base_24691",
-    "author_gct_t9_ref_24691",
-    "author_gct_t9_naive_backfill_24691",
-    "author_gct_t9_naive_deletebytes_24691",
-    "author_gct_t9_naive_failure_24691",
-    "author_gct_t9_naive_reupload_24691",
-    "author_gct_t9_naive_s3_24691",
-    "author_gct_t9_s3base_24691",
-    "author_gct_t9_s3ref_24691",
-    "author_gct_t9_s3naive_24691"
+    "author_gct_t9_base_21772",
+    "author_gct_t9_ref_21772",
+    "author_gct_t9_naive_backfill_21772",
+    "author_gct_t9_naive_deletebytes_21772",
+    "author_gct_t9_naive_failure_21772",
+    "author_gct_t9_naive_reupload_21772",
+    "author_gct_t9_naive_s3_21772",
+    "author_gct_t9_s3base_21772",
+    "author_gct_t9_s3ref_21772",
+    "author_gct_t9_s3naive_21772"
   ],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "1175 passed, 1 deselected in 51.01s",
+      "note": "1175 passed, 1 deselected in 50.70s",
       "counts": {
         "passed": 1175
       },
-      "seconds": 52.6,
+      "seconds": 52.4,
       "log_tail": ""
     },
     {
@@ -42,7 +42,7 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "9 failed in 1.89s",
+      "note": "9 failed in 2.18s",
       "outcomes": {
         "tests.hidden.test_hidden_t9::test_a_ready_file_keeps_answering_until_the_new_version_is_published": "failed",
         "tests.hidden.test_hidden_t9::test_a_failed_replacement_leaves_the_file_as_it_was": "failed",
@@ -55,7 +55,7 @@
         "tests.hidden.test_hidden_t9::test_restore_refusals": "failed"
       },
       "not_failing": [],
-      "seconds": 2.6
+      "seconds": 3.0
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -92,12 +92,12 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "1186 passed, 1 deselected in 48.67s",
+      "note": "1186 passed, 1 deselected in 49.28s",
       "counts": {
         "passed": 1186
       },
       "failing": [],
-      "seconds": 49.6,
+      "seconds": 50.2,
       "log_tail": ""
     },
     {
@@ -135,7 +135,7 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "3.0s"
+      "note": "2.7s"
     },
     {
       "name": "naive-backfill.patch: at least one hidden test fails",
@@ -220,7 +220,7 @@
     {
       "name": "s3: acceptance tests fail on the S3 branch",
       "ok": true,
-      "note": "2 failed in 0.90s",
+      "note": "2 failed in 0.85s",
       "outcomes": {
         "tests.acceptance.test_replace_a_file::test_examples_1_2_3_replace_a_ready_file": "failed",
         "tests.acceptance.test_replace_a_file::test_example_6_replace_a_failed_file": "failed"
@@ -229,7 +229,7 @@
     {
       "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
       "ok": true,
-      "note": "1188 passed, 1 deselected in 49.24s",
+      "note": "1188 passed, 1 deselected in 48.33s",
       "failing": [],
       "log_tail": ""
     },

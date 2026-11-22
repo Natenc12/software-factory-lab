@@ -174,4 +174,15 @@ Not done: the grader-wide docstring change (needs the owner's word, as the audit
 
 Re-checked after the fixes:
 
-RECHECK
+- `verify_ticket.py`: GREEN for T9, T10, T11 and T12, including every careless variant (the new
+  `naive-lateslips.patch` fails 1 of T10's 9 hidden tests). T10's first run hit
+  `test_the_worker_lock_is_released_when_the_holding_connection_closes` under a careless variant that
+  does not touch the queue (the timing-sensitive test in stage 1's flaw 4); a rerun was green.
+- `python3 -m grader.dryrun gct --only T9 --only T10 --only T11 --only T12`: GREEN.
+- Real grader, updated answers: my final blind fixes for T9 and T10 still pass (9/9 each, no trap);
+  the T11 and T12 blind fixes still fail as built as asked. The audit's own second fixes for T11 and
+  T12 were not saved, so I rebuilt stand-ins from its description (the reference fix with its new
+  test appended to the existing `test_queue.py` / `test_files_router.py`): both pass, 2/2, no trap.
+  The audit's own T9 and T10 blind fixes were not saved either; not re-checked.
+- `base/T11-s3` is now `0fedf18653d1f27d60ba0112bd5f8a32dfb15d9d` (branch and
+  `stage-2-candidate/base/T11-s3` tag re-pushed); no other gct-lab ref changed.

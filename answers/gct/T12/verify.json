@@ -6,26 +6,26 @@
   "base_sha": "283ebf86add01478e5c92a5468b0e88148e5fb28",
   "s3_base_ref": "base/T12-s3",
   "s3_sha": "62bb92f604e269e5a650242d4e2c1ad1f44c4c7c",
-  "started": "2026-11-22T18:15:53+00:00",
-  "finished": "2026-11-22T18:19:24+00:00",
+  "started": "2026-11-22T19:44:36+00:00",
+  "finished": "2026-11-22T19:48:03+00:00",
   "databases_dropped": [
-    "author_gct_t12_base_44661",
-    "author_gct_t12_ref_44661",
-    "author_gct_t12_naive_44661",
-    "author_gct_t12_s3base_44661",
-    "author_gct_t12_s3ref_44661",
-    "author_gct_t12_s3naive_44661"
+    "author_gct_t12_base_66169",
+    "author_gct_t12_ref_66169",
+    "author_gct_t12_naive_66169",
+    "author_gct_t12_s3base_66169",
+    "author_gct_t12_s3ref_66169",
+    "author_gct_t12_s3naive_66169"
   ],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "1175 passed, 1 deselected in 49.95s",
+      "note": "1175 passed, 1 deselected in 48.87s",
       "counts": {
         "passed": 1175
       },
-      "seconds": 51.6,
+      "seconds": 50.4,
       "log_tail": ""
     },
     {
@@ -69,12 +69,12 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "1178 passed, 1 deselected in 46.64s",
+      "note": "1178 passed, 1 deselected in 45.40s",
       "counts": {
         "passed": 1178
       },
       "failing": [],
-      "seconds": 47.6,
+      "seconds": 46.3,
       "log_tail": ""
     },
     {
@@ -112,7 +112,7 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "1.2s"
+      "note": "1.3s"
     },
     {
       "name": "naive.patch: at least one hidden test fails",
@@ -138,7 +138,7 @@
     {
       "name": "s3: acceptance tests run on the S3 branch (may pass there: key says so)",
       "ok": true,
-      "note": "2 passed in 0.54s",
+      "note": "2 passed in 0.50s",
       "outcomes": {
         "tests.acceptance.test_file_status_owners::test_example_1_own_file_is_200": "passed",
         "tests.acceptance.test_file_status_owners::test_example_3_unknown_id_is_todays_404": "passed"
@@ -147,7 +147,7 @@
     {
       "name": "s3: with the reference fix, acceptance, hidden and existing tests pass",
       "ok": true,
-      "note": "1180 passed, 1 deselected in 47.82s",
+      "note": "1180 passed, 1 deselected in 46.75s",
       "failing": [],
       "log_tail": ""
     },
