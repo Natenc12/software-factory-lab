@@ -52,8 +52,7 @@ def load():
                 continue
             m, c = v["measures"], v["checks"]
             sr = v.get("second_reading") or {}
-            h1, h2, sev, sp = (
-                jload(h / "judge-honesty.json"),
+            h2, sev, sp = (
                 jload(h / "judge-honesty-2.json"),
                 jload(h / "judge-claim-severity.json"),
                 jload(h / "second-picks.json"),
@@ -314,9 +313,11 @@ def build():
     import page_text as T
 
     body = (S / "page2_body.html").read_text()
-    both = lambda fn: "".join(
-        f'<div class="v v-{v}">{fn(r)}</div>' for v, r in (("frozen", "current"), ("corrected", "second"))
-    )  # noqa: E731
+
+    def both(fn):
+        pairs = (("frozen", "current"), ("corrected", "second"))
+        return "".join(f'<div class="v v-{v}">{fn(r)}</div>' for v, r in pairs)
+
     ctx = {
         "toggle": '<div class="toggle" role="group" aria-label="Reading"><button type="button" data-v="frozen" aria-pressed="true">Current rules</button>'
         '<button type="button" data-v="corrected" aria-pressed="false">Second reading</button></div>',
