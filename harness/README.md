@@ -25,7 +25,11 @@ flags, the clean room and resume.
    skills, hooks, plugins or output style), `--disable-slash-commands`, `--strict-mcp-config`,
    `--tools` with a fixed list, `--permission-mode dontAsk`, auto-memory off, and a minimal
    environment. The arm's instruction files are appended to the system prompt; an arm's
-   `agents/*.md` become `--agents`. An agent file may name its own hooks with `hooks: hooks/<role>.json`
+   `agents/*.md` become `--agents`. An arm with a `skills/` folder (opt-in) gets those skills as a plugin
+   from the control folder (`--plugin-dir`), the `Skill` tool, and settings that keep Claude Code's own
+   skills out (`disableBundledSkills`, `skillOverrides`, and `Skill(work:<name>)` allow rules only);
+   `run.json` lists the skills it called in `skills_used`. Without `skills/`, nothing changes.
+   An agent file may name its own hooks with `hooks: hooks/<role>.json`
    (Claude Code's hook format); `{python}`, `{arm}` and `{run}` in it are filled in, and the hooks run
    from a copy of the arm in the control folder, so the session cannot change them.
 3. **Fence, first layer: the OS sandbox** in the run's `settings.json`. Every Bash command, and every

@@ -142,3 +142,38 @@ code outside `src/` (gct-lab's `web/`, `scripts/`, `migrations/`, `eval/`) is re
 refusal text quoted in trial 6 is from the earlier rule. The allow-list is covered by unit tests and
 the fake-`claude` test only, with no new real trial; the hook wiring it relies on is the one trial 6
 proved.
+
+## Trials 6–9: skills an arm ships (2026-11-22, Claude Code 2.1.330, `claude-haiku-5-5`)
+
+Arm: `tests/fixtures/arm-with-skills` (a short `GUIDE.md` and two one-file skills, `release-note` and
+`sql-style`). Codebase: a local bare copy of pipeline-lab `main`, with a fake `gh`, so nothing reached
+GitHub. About 38k counted tokens for the three model runs.
+
+**What loads (no model call: the harness's own command, stopped after the session's `init` record).**
+
+| Settings | `skills` in `init` |
+| --- | --- |
+| `--plugin-dir`, no `--disable-slash-commands`, nothing else | the arm's two (`work:release-note`, `work:sql-style`) plus 18 bundled ones (`code-review`, `verify`, `deep-research` …) |
+| plus `disableBundledSkills: true` | the arm's two plus `design`, `doctor`, `plugin-authoring` |
+| plus `skillOverrides` turning those three `off` (what the harness writes) | the arm's two only |
+| an arm without skills (today's command, unchanged) | none; `slash_commands` empty |
+
+With skills on, built-in commands also reappear in `slash_commands`. The docs say `/init` and
+`/security-review` can be started through the Skill tool, so the run's settings allow only
+`Skill(work:<name>)` for the arm's own skills (dontAsk refuses everything else) and deny those two by name.
+The arm's `--tools` list gains `Skill`; `init` showed it.
+
+**Runs.**
+
+| Run | Prompt | `skills_used` | Diff against base | Scan |
+| --- | --- | --- | --- | --- |
+| 1 | README line, then "write a release note" | `["release-note"]` | `README.md` only | clean, 1 blocked attempt |
+| 2 | README line only | `[]` | `README.md` only | clean |
+| 3 | as 1, skill body reworded | `["release-note"]` | `README.md` only; the note in `scratch/RELEASE.md`, not committed | clean |
+
+In run 1 the skill body said `../scratch/RELEASE.md`. Claude Code tells the model "Base directory for
+this skill: …", and the model resolved the path against the skill's folder, which is inside the control
+folder; the guard refused the write. So the control folder stayed shut even to a skill, and **skill bodies
+must name the run's folders in words, never by relative path.** Run 3 used the reworded body and wrote
+the note where intended. No `SKILL.md` appeared in any checkout or diff: the skills live only in
+`.control/<run-id>/plugin/`, and the run's `arm/` copy leaves `skills/` out.

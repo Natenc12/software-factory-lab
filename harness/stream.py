@@ -168,6 +168,32 @@ class StreamState:
         return int(m.group(1)) if m else None
 
 
+def skills_used(transcript_lines) -> list[str]:
+    """Names of the skills a run called with the Skill tool, in call order (subagents included).
+
+    A plugin skill is called `<plugin>:<skill>`; the plugin part is dropped. A record repeated by
+    streaming is counted once, by its tool-use id.
+    """
+    names, seen = [], set()
+    for line in transcript_lines:
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict) or rec.get("type") != "assistant":
+            continue
+        for block in (rec.get("message") or {}).get("content") or []:
+            if not isinstance(block, dict) or block.get("type") != "tool_use" or block.get("name") != "Skill":
+                continue
+            if block.get("id") in seen:
+                continue
+            seen.add(block.get("id"))
+            inp = block.get("input") or {}
+            raw = str(inp.get("skill") or inp.get("command") or inp.get("name") or "?").lstrip("/").split()[0]
+            names.append(raw.split(":", 1)[-1])
+    return names
+
+
 def find_stop(text: str) -> str | None:
     """The question in the last line that starts with `STOP:` (or `STOP 2:`, `STOP ask:`), if any."""
     matches = list(STOP_RE.finditer(text or ""))

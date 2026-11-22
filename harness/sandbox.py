@@ -145,6 +145,61 @@ def arm_files(arm: Path | None) -> tuple[list[Path], list[Path]]:
     return instructions, agents
 
 
+# An arm's own skills ship as a plugin in the control folder, so they never sit in the run's checkout
+# or reach a pull request's diff. Claude Code names plugin skills `<plugin>:<skill>`.
+SKILL_PLUGIN = "work"
+# Claude Code 2.1.330 keeps these three skills loaded even with disableBundledSkills (seen in the
+# session's init record, 2026-11-22), so a run with skills switches them off by name.
+BUILTIN_SKILLS_LEFT = ("design", "doctor", "plugin-authoring")
+# Built-in commands the docs say the Skill tool can start; a run with skills may not.
+BUILTIN_COMMANDS_VIA_SKILL = ("init", "security-review", "review", "ultrareview")
+
+
+def skill_files(arm: Path | None) -> list[Path]:
+    """An arm folder's skills: `skills/<name>/SKILL.md`, one file each (the guard blocks reads elsewhere)."""
+    if not arm or not arm.is_dir() or not (arm / "skills").is_dir():
+        return []
+    found = []
+    for folder in sorted(p for p in (arm / "skills").iterdir() if not p.name.startswith(".")):
+        extra = sorted(f.name for f in folder.iterdir()) if folder.is_dir() else [folder.name]
+        if extra != ["SKILL.md"]:
+            raise RuntimeError(f"skill {folder.name}: a skill folder holds only SKILL.md, found {extra}")
+        found.append(folder / "SKILL.md")
+    return found
+
+
+def parse_skill(path: Path) -> dict:
+    """A skill's name, its description (loaded up front) and its body (loaded only when the skill is used)."""
+    text = path.read_text(encoding="utf-8")
+    if not text.startswith("---"):
+        raise RuntimeError(f"{path}: a skill starts with front matter (name, description)")
+    head, _, body = text[3:].partition("\n---")
+    meta = {}
+    for line in head.splitlines():
+        if ":" in line:
+            k, v = line.split(":", 1)
+            meta[k.strip()] = v.strip().strip("\"'")
+    if meta.get("name") != path.parent.name or not meta.get("description"):
+        raise RuntimeError(f"{path}: front matter needs name: {path.parent.name} and a description")
+    return {"name": meta["name"], "description": meta["description"], "body": body.lstrip("-\n").strip()}
+
+
+def write_skill_plugin(arm: Path, ctl: Path) -> Path | None:
+    """Copy the arm's skills into a plugin folder for `--plugin-dir`. None when the arm has no skills."""
+    skills = skill_files(arm)
+    if not skills:
+        return None
+    plugin = ctl / "plugin"
+    (plugin / ".claude-plugin").mkdir(parents=True)
+    manifest = {"name": SKILL_PLUGIN, "version": "1.0.0", "description": "Skills for working a ticket"}
+    write_json(plugin / ".claude-plugin" / "plugin.json", manifest)
+    for path in skills:
+        parse_skill(path)
+        (plugin / "skills" / path.parent.name).mkdir(parents=True)
+        shutil.copyfile(path, plugin / "skills" / path.parent.name / "SKILL.md")
+    return plugin
+
+
 def guard_config(root: Path, runs_root: Path, extra_forbidden: list[str]) -> dict:
     """The guard's view of the run: its sandbox, its private folders, and places it may never touch."""
     home = os.path.realpath(os.path.expanduser("~"))
@@ -162,10 +217,14 @@ def guard_config(root: Path, runs_root: Path, extra_forbidden: list[str]) -> dic
     }
 
 
-def settings(root: Path, cfg: dict, allow_domains: list[str] = NET_ALLOW, unix_sockets: list[str] = ()) -> dict:
+def settings(
+    root: Path, cfg: dict, allow_domains: list[str] = NET_ALLOW, unix_sockets: list[str] = (), skills: list[str] = ()
+) -> dict:
     """The run's settings file: OS sandbox first, then permission rules and the guard hook.
 
-    Absolute paths in permission rules start with `//`; sandbox paths are plain absolute paths.
+    Absolute paths in permission rules start with `//`; sandbox paths are plain absolute paths. With
+    `skills` (the arm's skill names), the run may call those skills and no others: Claude Code's bundled
+    skills are off, and under dontAsk only the named `Skill(...)` rules are allowed.
     """
     ctl = control_dir(root)
     home = cfg["home"]
@@ -207,7 +266,7 @@ def settings(root: Path, cfg: dict, allow_domains: list[str] = NET_ALLOW, unix_s
         },
     }
     file_tools = [t for t in ALLOWED_TOOLS.split() if t not in ("Edit", "Write", "NotebookEdit")]
-    return {
+    out = {
         "autoMemoryEnabled": False,
         "includeCoAuthoredBy": False,
         # `Edit(...)` covers Write and NotebookEdit; scoped, because an Edit allow rule also widens
@@ -216,6 +275,12 @@ def settings(root: Path, cfg: dict, allow_domains: list[str] = NET_ALLOW, unix_s
         "sandbox": sandbox,
         "hooks": {"PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": guard_cmd}]}]},
     }
+    if skills:
+        out["disableBundledSkills"] = True
+        out["skillOverrides"] = {name: "off" for name in BUILTIN_SKILLS_LEFT}
+        out["permissions"]["allow"] += [f"Skill({SKILL_PLUGIN}:{name})" for name in skills]
+        out["permissions"]["deny"] += [f"Skill({name})" for name in BUILTIN_COMMANDS_VIA_SKILL]
+    return out
 
 
 def create(
@@ -291,7 +356,9 @@ def create(
         ctl.mkdir(parents=True)
         instructions, agents = arm_files(arm)
         if arm and arm.is_dir():
-            shutil.copytree(arm, root / "arm")
+            # The arm's skills reach the session only through the Skill tool, from the control folder.
+            top_skills = lambda d, names: ["skills"] if Path(d) == arm else []  # noqa: E731
+            shutil.copytree(arm, root / "arm", ignore=top_skills)
         elif arm:
             (root / "arm").mkdir()
             shutil.copyfile(arm, root / "arm" / arm.name)
@@ -304,9 +371,11 @@ def create(
             values = {"python": sys.executable, "arm": str(ctl / "arm"), "run": str(root)}
             write_json(ctl / "agents.json", dict(parse_agent(p, values) for p in agents))
 
+        plugin = write_skill_plugin(arm, ctl) if arm else None
         cfg = guard_config(root, runs_root, list(extra_forbidden))
         sockets = [manifest["database"]["socket"]] if db == "postgres" else []
-        run_settings = settings(root, cfg, [*NET_ALLOW, *allow_domains], sockets)
+        skills = [p.parent.name for p in skill_files(arm)] if plugin else []
+        run_settings = settings(root, cfg, [*NET_ALLOW, *allow_domains], sockets, skills=skills)
         for folder in (ctl, hdir):  # live copies in the control folder, a record copy in harness/
             write_json(folder / "guard.json", cfg)
             write_json(folder / "settings.json", run_settings)
