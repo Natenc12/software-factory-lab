@@ -1,0 +1,33 @@
+{
+ "hashes": {
+  "arms": "5353ba4315aa642502e71660fcb4ad62a8884459",
+  "tickets": "eed1e90c8eac92999eec45917ffa01c135cbf292",
+  "answers": "32848da39f26b0f418021674af25d6a319a5d42f",
+  "grader": "92e99010462b89343bb506371414f8467a699599",
+  "harness": "b0cb129621e0e9bc6eb1737de7a7bda36bf62732"
+ },
+ "bases": {
+  "hono-lab": {
+   "base/T1": "0cc562dd4ec413007f571fc4ede89b415b833afb",
+   "base/T2": "22247310f3d457462b2ddc9adf69e7b7a4f4aa70",
+   "base/T3": "ae300f52d9588ffe6dfd5ebfec0b725c4ff3961d",
+   "base/T4": "e589c04d86851873f721e50f37bd2dfdbbe9913c",
+   "base/T5": "615362c3d5535151a5ffc741006936e865715961",
+   "base/T6": "e4a792524930039d99162e3b3f46ce623410b444",
+   "base/T7": "e4a792524930039d99162e3b3f46ce623410b444",
+   "base/T8": "e4a792524930039d99162e3b3f46ce623410b444",
+   "main": "e4a792524930039d99162e3b3f46ce623410b444"
+  },
+  "sqlglot-lab": {
+   "base/T1": "7dca8e2e229a52165304f06c6e2c38d22ef189dc",
+   "base/T2": "08e3bd7720a0d5fc1152e8452e553925870f182f",
+   "base/T3": "f1571195a916ead0545e4e3125349abdd627b918",
+   "base/T4": "240ad4f49d49008989ba5f0f251be7eb32602553",
+   "base/T5": "06e1c2b684446a4d0ec6ad3a0dbbeadd8ca8cecf",
+   "base/T6": "aee8304fc6d572aed610c3183668bddb524a44ac",
+   "base/T7": "aee8304fc6d572aed610c3183668bddb524a44ac",
+   "base/T8": "aee8304fc6d572aed610c3183668bddb524a44ac",
+   "main": "aee8304fc6d572aed610c3183668bddb524a44ac"
+  }
+ }
+}

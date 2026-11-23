@@ -2,6 +2,31 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
+## Stage 4 frozen · 2026-11-23
+
+Freeze note: https://claude.ai/artifact/BeEwe3J8k5wcDMzLiuDmxD (copy: `results/stage-4/page/stage-4-freeze.html`).
+Record: `results/stage-4/FREEZE.md`. The stage was approved at gates 4 and 5; nothing here is a new
+gate. What was settled between gate 5 and the freeze:
+
+1. **An outside judge, the owner's offer.** After the orchestrator added an Opus check beside the
+   Fable judges (Fable's own runs are judged in this stage), the owner wrote: "You can also use astra
+   to judge i have codex on here if u want". Applied: a third judge through Codex (`gpt-6-astra`),
+   reported beside the others, deciding nothing. It runs only from a separate login the owner makes
+   once (`CODEX_HOME=~/.codex-judge codex login`), because Codex sends the owner's own instructions
+   file with every prompt from the normal login. Until that login exists the judge is "not run".
+2. **Wording fixed by the orchestrator before any run, shown to the owner on the freeze note:** the
+   charter's Q5 rule is decided on both codebases pooled (sixteen tickets, each weighted equally, per
+   eight); each codebase is reported beside it. The owner may ask for a different reading before
+   results arrive.
+3. **Sealed runs.** The sqlglot audit found the real fixes of replay tickets reachable from inside a
+   run (shared package caches, PyPI, other sessions' temp folders). Every stage 4 run is sealed
+   (pull request 58). The same temp-folder gap existed in stages 1 to 2b; no run used it
+   (`results/stage-4/FREEZE.md`, "Evidence").
+4. **Not taken up:** the owner sent a post describing a five-model team by role and asked whether it
+   was worth looking into. The orchestrator's answer: the team shape matches the costly `P4` arm; the
+   one new idea is a reviewer from another lab. Asked whether to note that as a later candidate, the
+   owner replied: "No, drop it".
+
 ## Practice repositories back to private · 2026-11-23
 
 The owner: "can u make the 3 repos private actually and just make the software factory public. like
