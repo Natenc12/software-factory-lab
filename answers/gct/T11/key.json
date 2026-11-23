@@ -35,8 +35,10 @@
       "symbol": "backoff_seconds"
     }
   ],
-  "tests_may_change": [],
-  "tests_may_change_note": "None: the amended request adds a queue function and leaves the worker's tests as they are. Building the request as written breaks four existing worker tests.",
+  "tests_may_change": [
+    "tests/gct/jobs/test_queue.py::test_every_writer_refuses_a_connection_already_in_a_transaction"
+  ],
+  "tests_may_change_note": "Post-freeze correction 2: the listed test is a census of queue.py's writers ('a new verb belongs on it the same day'), so a correct requeue_exhausted adds itself to it. Building the request as written breaks four existing worker tests, which stay protected.",
   "acceptance_test_paths": [
     "tests/acceptance/test_transient_errors.py"
   ],
