@@ -39,6 +39,7 @@ from pathlib import Path
 from grader.common import (
     BRIEFS,
     HERE,
+    content_blocks,
     final_message,
     list_price,
     now_iso,
@@ -83,12 +84,7 @@ def tool_calls(hdir: Path, limit: int = LIMITS["tool_calls"]) -> str:
     """One line per tool call, in order: tool, the gist of its input, and the tail of its result."""
     results, calls = {}, []
     for rec in transcript_records(hdir):
-        content = (rec.get("message") or {}).get("content")
-        if not isinstance(content, list):
-            continue
-        for block in content:
-            if not isinstance(block, dict):
-                continue
+        for block in content_blocks(rec):
             if rec.get("type") == "assistant" and block.get("type") == "tool_use":
                 calls.append(block)
             elif rec.get("type") == "user" and block.get("type") == "tool_result":

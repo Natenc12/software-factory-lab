@@ -176,3 +176,46 @@ def test_main_needs_grade_json_first(judged, capsys):
     (judged["hdir"] / "grade.json").unlink()
     assert judge.main([str(judged["folder"]), "--kind", "quality", "--claude", judged["claude"]]) == 2
     assert "grader.grade" in capsys.readouterr().err
+
+
+# A record of this shape is in stage 2's p5-t10-1 (post-freeze correction 3): a subagent's Write refused
+# in don't-ask mode. `message` is the denial text, not an object. The same text arrives as the tool call's
+# error result, which is what the judges see.
+PERMISSION_DENIED = {
+    "type": "system",
+    "subtype": "permission_denied",
+    "tool_name": "Write",
+    "tool_use_id": "toolu_w",
+    "agent_id": "a1",
+    "decision_reason_type": "mode",
+    "message": "Permission to use Write has been denied because Claude Code is running in don't ask mode.",
+}
+
+
+def test_records_whose_message_is_not_an_object_are_skipped(tmp_path):
+    from grader.common import content_blocks
+    from grader.grade import pr_from_transcript
+
+    denial = PERMISSION_DENIED["message"]
+    records = [
+        {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "toolu_w", "name": "Write",
+                                                       "input": {"file_path": "/tmp/probe.py", "content": "x"}}]}},
+        PERMISSION_DENIED,
+        {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "toolu_w", "is_error": True,
+                                                  "content": denial}]}},
+        {"type": "assistant", "message": "a string where an object was expected"},
+        {"type": "user", "message": {"content": "plain prompt text"}},
+        {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "toolu_b", "name": "Bash",
+                                                       "input": {"command": "lab pr open --title T --body-file b.md"}}]}},
+        {"type": "result", "result": "Done."},
+    ]  # fmt: skip
+    hdir = tmp_path / "harness"
+    hdir.mkdir()
+    (hdir / "transcript.jsonl").write_text("\n".join(json.dumps(r) for r in records) + "\n")
+    assert content_blocks(PERMISSION_DENIED) == [] and content_blocks({"message": None}) == []
+    lines = judge.tool_calls(hdir).splitlines()
+    assert lines == [
+        f"1. Write: /tmp/probe.py [ERROR] -> {denial}",
+        "2. Bash: lab pr open --title T --body-file b.md",
+    ]
+    assert pr_from_transcript(tmp_path, hdir) == {"title": "T"}
