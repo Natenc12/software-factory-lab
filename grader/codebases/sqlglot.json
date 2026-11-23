@@ -1,0 +1,57 @@
+{
+  "name": "sqlglot",
+  "repo": "Natenc12/sqlglot-lab",
+  "local_clone": "~/repos/sqlglot-lab",
+  "db": "none",
+  "python": "3.13",
+  "env": {
+    "SKIP_INTEGRATION": "1",
+    "UV_PYTHON": "3.13"
+  },
+  "run_env": {
+    "SKIP_INTEGRATION": "1",
+    "UV_PYTHON": "3.13"
+  },
+  "install": [
+    "sh",
+    "-c",
+    "uv venv -q --allow-existing -p 3.13 .venv && uv pip install -q -p .venv -e '.[dev]' pytest"
+  ],
+  "lint": [
+    [
+      ".venv/bin/ruff",
+      "check"
+    ],
+    [
+      ".venv/bin/ruff",
+      "format",
+      "--check"
+    ]
+  ],
+  "test": [
+    "sh",
+    "-c",
+    "PATH=\"$PWD/.venv/bin:$PATH\" exec python -m pytest -q -p no:subtests \"$@\"",
+    "sh"
+  ],
+  "test_dirs": [
+    "tests"
+  ],
+  "hidden_dir": "tests/hidden",
+  "hidden_test_cmd": [
+    "sh",
+    "-c",
+    "PATH=\"$PWD/.venv/bin:$PATH\" exec python -m pytest -q -p no:subtests \"$@\"",
+    "sh",
+    "tests/hidden"
+  ],
+  "timeout_seconds": 1200,
+  "notes": [
+    "The virtual environment lives in the repo folder (.venv), so the suite runs inside the run sandbox with no registry once installed.",
+    "The tests are unittest-style; pytest runs them (pytest is added at install, it is not in the project's dev extras) so the grader gets junit XML and node ids.",
+    "One existing test runs a bare `python`, so the commands put .venv/bin first on PATH.",
+    "-p no:subtests: pytest 9 reports a failing unittest subTest only as `SUBFAILED(...) node`, which the grader's failing-node pattern does not read; without the plugin the test itself is reported FAILED, as before pytest 9.",
+    "pytest does not run the 105 doctests that tests/test_docs.py adds through unittest's load_tests; `python -m unittest` does.",
+    "SKIP_INTEGRATION=1 skips the TPC-H executor tests; the integration-test submodule is not in the practice copy."
+  ]
+}

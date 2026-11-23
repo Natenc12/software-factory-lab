@@ -1,0 +1,13 @@
+{
+  "id": "T1",
+  "kind": "replay",
+  "title": "A column named `top` breaks Snowflake and Oracle queries",
+  "repo": "Natenc12/sqlglot-lab",
+  "base_ref": "base/T1",
+  "base_commit": null,
+  "s3_base_ref": null,
+  "db": "none",
+  "deliverable": "pull_request",
+  "spec_levels": ["S1"],
+  "spec_words": {"S1": 0}
+}
