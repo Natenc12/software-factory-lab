@@ -6,20 +6,20 @@
   "base_sha": "aee8304fc6d572aed610c3183668bddb524a44ac",
   "s3_base_ref": null,
   "s3_sha": null,
-  "started": "2026-11-23T17:08:45+00:00",
-  "finished": "2026-11-23T17:12:41+00:00",
+  "started": "2026-11-23T20:17:06+00:00",
+  "finished": "2026-11-23T20:21:24+00:00",
   "databases_dropped": [],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "26998 passed, 60 skipped in 81.70s (0:01:21)",
+      "note": "26998 passed, 60 skipped in 71.49s (0:01:11)",
       "counts": {
         "passed": 1606,
         "skipped": 60
       },
-      "seconds": 84.3,
+      "seconds": 72.5,
       "log_tail": ""
     },
     {
@@ -32,13 +32,14 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "24 failed, 2 passed in 0.93s",
+      "note": "25 failed, 2 passed in 0.62s",
       "outcomes": {
         "tests.hidden.test_hidden_t8.TestHiddenT8::test_date_arithmetic_folds_without_dateutil": "failed",
+        "tests.hidden.test_hidden_t8.TestHiddenT8::test_folds_in_a_process_that_cannot_import_dateutil": "failed",
         "tests.hidden.test_hidden_t8.TestHiddenT8::test_same_result_with_and_without_dateutil": "failed"
       },
       "not_failing": [],
-      "seconds": 2.2
+      "seconds": 1.0
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -52,9 +53,10 @@
     {
       "name": "reference: every hidden test passes",
       "ok": true,
-      "note": "2 hidden, 2 collected",
+      "note": "3 hidden, 3 collected",
       "outcomes": {
         "tests.hidden.test_hidden_t8.TestHiddenT8::test_date_arithmetic_folds_without_dateutil": "passed",
+        "tests.hidden.test_hidden_t8.TestHiddenT8::test_folds_in_a_process_that_cannot_import_dateutil": "passed",
         "tests.hidden.test_hidden_t8.TestHiddenT8::test_same_result_with_and_without_dateutil": "passed"
       },
       "not_passing": []
@@ -62,13 +64,13 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "27024 passed, 60 skipped in 65.94s (0:01:05)",
+      "note": "27025 passed, 60 skipped in 52.62s",
       "counts": {
-        "passed": 1608,
+        "passed": 1609,
         "skipped": 60
       },
       "failing": [],
-      "seconds": 67.6,
+      "seconds": 53.7,
       "log_tail": ""
     },
     {
@@ -106,15 +108,30 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "0.7s"
+      "note": "1.5s"
+    },
+    {
+      "name": "naive-setuppy.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t8.TestHiddenT8::test_date_arithmetic_folds_without_dateutil",
+        "tests.hidden.test_hidden_t8.TestHiddenT8::test_folds_in_a_process_that_cannot_import_dateutil"
+      ],
+      "note": "2/3 hidden fail"
+    },
+    {
+      "name": "naive-setuppy.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
     },
     {
       "name": "naive.patch: at least one hidden test fails",
       "ok": true,
       "failing": [
-        "tests.hidden.test_hidden_t8.TestHiddenT8::test_date_arithmetic_folds_without_dateutil"
+        "tests.hidden.test_hidden_t8.TestHiddenT8::test_date_arithmetic_folds_without_dateutil",
+        "tests.hidden.test_hidden_t8.TestHiddenT8::test_folds_in_a_process_that_cannot_import_dateutil"
       ],
-      "note": "1/2 hidden fail"
+      "note": "2/3 hidden fail"
     },
     {
       "name": "naive.patch: existing tests still pass (a competent fix)",

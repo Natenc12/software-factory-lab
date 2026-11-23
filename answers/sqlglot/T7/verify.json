@@ -6,20 +6,20 @@
   "base_sha": "aee8304fc6d572aed610c3183668bddb524a44ac",
   "s3_base_ref": null,
   "s3_sha": null,
-  "started": "2026-11-23T17:23:39+00:00",
-  "finished": "2026-11-23T17:27:11+00:00",
+  "started": "2026-11-23T20:12:53+00:00",
+  "finished": "2026-11-23T20:17:06+00:00",
   "databases_dropped": [],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "26998 passed, 60 skipped in 64.62s (0:01:04)",
+      "note": "26998 passed, 60 skipped in 62.23s (0:01:02)",
       "counts": {
         "passed": 1606,
         "skipped": 60
       },
-      "seconds": 65.6,
+      "seconds": 63.4,
       "log_tail": ""
     },
     {
@@ -32,13 +32,13 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "11 failed, 2 passed in 0.38s",
+      "note": "11 failed, 2 passed in 0.55s",
       "outcomes": {
         "tests.hidden.test_hidden_t7.TestHiddenT7::test_arguments_after_a_non_null_constant_are_dropped": "failed",
         "tests.hidden.test_hidden_t7.TestHiddenT7::test_null_arguments_are_dropped": "failed"
       },
       "not_failing": [],
-      "seconds": 0.8
+      "seconds": 1.0
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -62,13 +62,13 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "27014 passed, 60 skipped in 70.32s (0:01:10)",
+      "note": "27015 passed, 60 skipped in 58.39s",
       "counts": {
         "passed": 1608,
         "skipped": 60
       },
       "failing": [],
-      "seconds": 72.3,
+      "seconds": 59.4,
       "log_tail": ""
     },
     {
@@ -107,6 +107,19 @@
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
       "note": "1.6s"
+    },
+    {
+      "name": "naive-numbers-only.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t7.TestHiddenT7::test_arguments_after_a_non_null_constant_are_dropped"
+      ],
+      "note": "1/2 hidden fail"
+    },
+    {
+      "name": "naive-numbers-only.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
     },
     {
       "name": "naive.patch: at least one hidden test fails",

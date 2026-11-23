@@ -6,20 +6,20 @@
   "base_sha": "08e3bd7720a0d5fc1152e8452e553925870f182f",
   "s3_base_ref": null,
   "s3_sha": null,
-  "started": "2026-11-23T18:52:21+00:00",
-  "finished": "2026-11-23T18:55:56+00:00",
+  "started": "2026-11-23T19:18:51+00:00",
+  "finished": "2026-11-23T19:25:30+00:00",
   "databases_dropped": [],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "26811 passed, 60 skipped in 89.19s (0:01:29)",
+      "note": "26811 passed, 60 skipped in 97.72s (0:01:37)",
       "counts": {
         "passed": 1584,
         "skipped": 60
       },
-      "seconds": 90.2,
+      "seconds": 98.9,
       "log_tail": ""
     },
     {
@@ -32,13 +32,13 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "2 failed in 0.46s",
+      "note": "2 failed in 0.44s",
       "outcomes": {
         "tests.hidden.test_hidden_t2.TestHiddenT2::test_comment_markers_stay_inside_unquoted_file_uris": "failed",
         "tests.hidden.test_hidden_t2.TestHiddenT2::test_comment_markers_stay_inside_unquoted_stage_paths": "failed"
       },
       "not_failing": [],
-      "seconds": 0.9
+      "seconds": 0.8
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -65,13 +65,13 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "26851 passed, 60 skipped in 55.90s",
+      "note": "26851 passed, 60 skipped in 90.56s (0:01:30)",
       "counts": {
         "passed": 1587,
         "skipped": 60
       },
       "failing": [],
-      "seconds": 56.8,
+      "seconds": 91.5,
       "log_tail": ""
     },
     {
@@ -109,7 +109,33 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "0.8s"
+      "note": "0.9s"
+    },
+    {
+      "name": "naive-few-terminators.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t2.TestHiddenT2::test_comment_markers_stay_inside_unquoted_stage_paths"
+      ],
+      "note": "1/2 hidden fail"
+    },
+    {
+      "name": "naive-few-terminators.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive-quote-anywhere.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t2.TestHiddenT2::test_comment_markers_stay_inside_unquoted_stage_paths"
+      ],
+      "note": "1/2 hidden fail"
+    },
+    {
+      "name": "naive-quote-anywhere.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
     },
     {
       "name": "naive.patch: at least one hidden test fails",

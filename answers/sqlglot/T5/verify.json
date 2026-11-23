@@ -6,20 +6,20 @@
   "base_sha": "06e1c2b684446a4d0ec6ad3a0dbbeadd8ca8cecf",
   "s3_base_ref": null,
   "s3_sha": null,
-  "started": "2026-11-23T17:19:40+00:00",
-  "finished": "2026-11-23T17:23:39+00:00",
+  "started": "2026-11-23T19:30:24+00:00",
+  "finished": "2026-11-23T19:34:23+00:00",
   "databases_dropped": [],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "26964 passed, 60 skipped in 92.07s (0:01:32)",
+      "note": "26964 passed, 60 skipped in 64.71s (0:01:04)",
       "counts": {
         "passed": 1603,
         "skipped": 60
       },
-      "seconds": 93.1,
+      "seconds": 65.5,
       "log_tail": ""
     },
     {
@@ -32,7 +32,7 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "11 failed, 1 passed in 2.13s",
+      "note": "13 failed, 1 passed in 2.11s",
       "outcomes": {
         "tests.hidden.test_hidden_t5.TestHiddenT5::test_dialects_without_update_or_report_it": "failed",
         "tests.hidden.test_hidden_t5.TestHiddenT5::test_update_or_in_the_default_dialect": "failed",
@@ -71,13 +71,13 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "26987 passed, 60 skipped in 71.05s (0:01:11)",
+      "note": "26989 passed, 60 skipped in 53.21s",
       "counts": {
         "passed": 1608,
         "skipped": 60
       },
       "failing": [],
-      "seconds": 72.0,
+      "seconds": 54.1,
       "log_tail": ""
     },
     {
@@ -115,7 +115,20 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "0.9s"
+      "note": "0.8s"
+    },
+    {
+      "name": "naive-blocklist.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t5.TestHiddenT5::test_dialects_without_update_or_report_it"
+      ],
+      "note": "1/4 hidden fail"
+    },
+    {
+      "name": "naive-blocklist.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
     },
     {
       "name": "naive.patch: at least one hidden test fails",

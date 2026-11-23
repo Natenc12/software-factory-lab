@@ -6,20 +6,20 @@
   "base_sha": "aee8304fc6d572aed610c3183668bddb524a44ac",
   "s3_base_ref": null,
   "s3_sha": null,
-  "started": "2026-11-23T17:01:12+00:00",
-  "finished": "2026-11-23T17:08:44+00:00",
+  "started": "2026-11-23T19:30:11+00:00",
+  "finished": "2026-11-23T19:35:02+00:00",
   "databases_dropped": [],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "26998 passed, 60 skipped in 160.46s (0:02:40)",
+      "note": "26998 passed, 60 skipped in 67.04s (0:01:07)",
       "counts": {
         "passed": 1606,
         "skipped": 60
       },
-      "seconds": 162.1,
+      "seconds": 68.2,
       "log_tail": ""
     },
     {
@@ -32,14 +32,14 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "3 failed in 2.01s",
+      "note": "3 failed in 0.41s",
       "outcomes": {
         "tests.hidden.test_hidden_t6.TestHiddenT6::test_distance_is_written_as_a_distance_for_snowflake": "failed",
         "tests.hidden.test_hidden_t6.TestHiddenT6::test_duckdb_list_cosine_similarity": "failed",
         "tests.hidden.test_hidden_t6.TestHiddenT6::test_snowflake_similarity_stays_a_similarity": "failed"
       },
       "not_failing": [],
-      "seconds": 4.0
+      "seconds": 0.9
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -71,13 +71,13 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "27010 passed, 60 skipped in 106.17s (0:01:46)",
+      "note": "27010 passed, 60 skipped in 51.66s",
       "counts": {
         "passed": 1610,
         "skipped": 60
       },
       "failing": [],
-      "seconds": 107.7,
+      "seconds": 52.5,
       "log_tail": ""
     },
     {
@@ -115,7 +115,20 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "1.0s"
+      "note": "0.8s"
+    },
+    {
+      "name": "naive-array-distance.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t6.TestHiddenT6::test_duckdb_list_cosine_similarity"
+      ],
+      "note": "1/3 hidden fail"
+    },
+    {
+      "name": "naive-array-distance.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
     },
     {
       "name": "naive-distance.patch: at least one hidden test fails",

@@ -6,20 +6,20 @@
   "base_sha": "f1571195a916ead0545e4e3125349abdd627b918",
   "s3_base_ref": null,
   "s3_sha": null,
-  "started": "2026-11-23T17:24:38+00:00",
-  "finished": "2026-11-23T17:29:18+00:00",
+  "started": "2026-11-23T19:26:39+00:00",
+  "finished": "2026-11-23T19:30:24+00:00",
   "databases_dropped": [],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "26195 passed, 60 skipped in 79.11s (0:01:19)",
+      "note": "26195 passed, 60 skipped in 66.16s (0:01:06)",
       "counts": {
         "passed": 1531,
         "skipped": 60
       },
-      "seconds": 80.3,
+      "seconds": 67.0,
       "log_tail": ""
     },
     {
@@ -32,13 +32,13 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "39 failed, 21 passed in 2.98s",
+      "note": "39 failed, 21 passed in 0.90s",
       "outcomes": {
         "tests.hidden.test_hidden_t3.TestHiddenT3::test_correlated_in_and_any_keep_false_and_null_apart": "failed",
         "tests.hidden.test_hidden_t3.TestHiddenT3::test_the_reported_query_keeps_its_rows": "failed"
       },
       "not_failing": [],
-      "seconds": 4.0
+      "seconds": 1.3
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -63,13 +63,13 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "26335 passed, 60 skipped in 59.13s",
+      "note": "26335 passed, 60 skipped in 48.44s",
       "counts": {
         "passed": 1533,
         "skipped": 60
       },
       "failing": [],
-      "seconds": 60.4,
+      "seconds": 49.3,
       "log_tail": ""
     },
     {
@@ -107,7 +107,7 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "1.2s"
+      "note": "1.1s"
     },
     {
       "name": "naive-where-only.patch: at least one hidden test fails",

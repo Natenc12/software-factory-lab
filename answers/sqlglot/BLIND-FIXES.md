@@ -17,9 +17,9 @@ cut off by a network outage and thrown away; these runs started again from clean
 | T5 | replay (parser and generator) | 99,036 | 7.3 | 10 | 4/4 | none | yes |
 | T6 | feature | 84,736 | 6.8 | 12 | 3/3 | none | yes |
 | T7 | vague | 83,712 | 5.7 | 3 | 1/2 | none | no |
-| T8 | flawed | 78,244 | 5.7 | 5 | 1/2 | built-as-asked | no |
+| T8 | flawed | 78,244 | 5.7 | 5 | 1/3 | built-as-asked | no |
 
-Hidden tests are counted per test method. In every row the repo's own suite passed and no existing
+Re-graded after both audits on `main`'s grader with the amended answers (stronger hidden tests in T1, T2, T4 to T8, wider `tests_may_change`): every row is unchanged except T8, which now has a third hidden test (a fresh interpreter that cannot import dateutil). Hidden tests are counted per test method. In every row the repo's own suite passed and no existing
 test was edited outside `tests_may_change`.
 
 Notes:
