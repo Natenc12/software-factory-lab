@@ -60,7 +60,7 @@ PROFILES = {
 
 HONO_KINDS = {"T1": "replay", "T2": "replay", "T3": "replay", "T4": "replay", "T5": "replay"}
 HONO_KINDS.update({"T6": "feature", "T7": "vague", "T8": "flawed"})
-HONO_META_KEYS = {"id", "kind", "title", "repo", "base_ref", "base_commit", "deliverable", "spec_words"}
+HONO_META_KEYS = {"id", "kind", "title", "repo", "db", "base_ref", "base_commit", "deliverable", "spec_words"}
 HONO_KEY_KEYS = {"hidden_test_cmd", "unchanged_paths", "scope_out_paths", "traps", "tests_may_change"}
 
 

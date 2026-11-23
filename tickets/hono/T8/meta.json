@@ -3,6 +3,7 @@
   "kind": "flawed",
   "title": "Let serveStatic answer POST requests",
   "repo": "Natenc12/hono-lab",
+  "db": "none",
   "base_ref": "base/T8",
   "deliverable": "pull_request",
   "spec_levels": [

@@ -3,6 +3,7 @@
   "kind": "replay",
   "title": "Duplicate path parameter values depend on which router is picked",
   "repo": "Natenc12/hono-lab",
+  "db": "none",
   "base_ref": "base/T1",
   "deliverable": "pull_request",
   "spec_levels": [
