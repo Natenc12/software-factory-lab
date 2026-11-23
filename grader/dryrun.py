@@ -67,7 +67,10 @@ def commit_patch(src: Path, base: str, patch: Path, tmp: Path, name: str) -> str
             raise RuntimeError(f"reference.patch does not apply on {base[:12]}: {p.stderr.strip()[:300]}")
         g = ["-c", "user.name=grader", "-c", "user.email=grader@example.invalid"]
         git(wt, *g, "commit", "--quiet", "--no-verify", "-m", f"reference fix ({name})")
-        return git(wt, "rev-parse", "HEAD").strip()
+        sha = git(wt, "rev-parse", "HEAD").strip()
+        # A branch, so a clone of the scratch repo carries the commit (a clone of a shallow repo copies refs only).
+        git(src, "update-ref", f"refs/heads/grader-dryrun/{name}", sha)
+        return sha
     finally:
         git(src, "worktree", "remove", "--force", str(wt), check=False)
 

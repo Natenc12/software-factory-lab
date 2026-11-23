@@ -4,6 +4,12 @@
                                        [--answers-root ...] [--out-dir results/stage-1]
     python -m grader.make_plan stage-2 [--ticket-ceiling T9=900000 ...] [--budget N] [--out-dir ...]
 
+Stage 4 (`make_plan stage-4 --codebase hono|sqlglot`, gate 5): rows P5P (arms/P5P on Opus 5.5, run
+ids p5p-...), P5PF (arms/P5P on Fable 5.2, p5pf-...) and P6 (arms/P6, lead on Fable 5.2, p6-...), on the
+codebase's eight tickets at S1, repeats 1 and 2: 48 runs into results/stage-4-<codebase>/, stage folder
+stage-4-<codebase>, the model set per run. Ceilings: P1's for P5P and P5PF, 1.2M for P6;
+`--row-ceiling P6=...` sets a row's ceiling, `--ticket-ceiling` raises every row on a ticket (never lowers).
+
 Stage 2b (`make_plan stage-2b`, same options): on the same eight tickets, repeat 3 of P5P and of P1A
 (16 runs) and repeats 1 and 2 of P5PA, the pointed skills plus the architecture brief (16 runs).
 
@@ -44,6 +50,7 @@ from grader.common import (
     LAB_ROOT,
     STAGE2_TICKETS,
     STAGE2B_ARMS,
+    STAGE4_ROWS,
     TICKETS_ROOT,
     load_config,
     now_iso,
@@ -72,6 +79,8 @@ ROUNDS = {
     },
 }
 TICKETS = [f"T{i}" for i in range(1, 9)]
+STAGE4_CEILINGS = {"P5P": CEILINGS["P1"], "P5PF": CEILINGS["P1"], "P6": 1_200_000}
+STAGE4_REPEATS = (1, 2)
 METER_TICKET = "T1"
 SPEC_LEVELS = ("S0", "S2", "S3")
 MODEL = "claude-opus-5-5"
@@ -288,9 +297,100 @@ def plan_stage2(a) -> int:
     return 0
 
 
+def plan_stage4(a) -> int:
+    """Stage 4 (gate 5): three rows on one codebase's eight tickets at S1, repeats 1 and 2 (48 runs)."""
+    stage = f"stage-4-{a.codebase}"
+    out_dir = Path(a.out_dir or LAB_ROOT / "results" / stage)
+    tickets_root, answers_root, arms_root = Path(a.tickets_root), Path(a.answers_root), Path(a.arms_root)
+    overrides = parse_ticket_ceilings(a.ticket_ceiling)
+    rows = dict(STAGE4_CEILINGS)
+    for item in a.row_ceiling or []:
+        row, _, n = item.partition("=")
+        if row.strip().upper() not in STAGE4_ROWS or not n.strip().isdigit():
+            raise SystemExit(f"--row-ceiling wants <row>=<tokens> with a row of {', '.join(STAGE4_ROWS)}, got {item!r}")
+        rows[row.strip().upper()] = int(n)
+    texts, sheets, problems = write_sheets(a.codebase, TICKETS, answers_root, out_dir)
+    metas = {}
+    for t in TICKETS:
+        meta = read_json(tickets_root / a.codebase / t / "meta.json")
+        if not meta:
+            problems.append(f"{t}: {tickets_root / a.codebase / t / 'meta.json'} missing")
+        if not (tickets_root / a.codebase / t / "S1.md").is_file():
+            problems.append(f"{t}: {tickets_root / a.codebase / t / 'S1.md'} missing")
+        for need in ("key.json", "reference.patch"):
+            if not (answers_root / a.codebase / t / need).is_file():
+                problems.append(f"{t}: answers: {answers_root / a.codebase / t / need} missing")
+        metas[t] = meta or {}
+    for folder in sorted({arm for arm, _ in STAGE4_ROWS.values()}):
+        if arm_dir(folder, arms_root) is None:
+            problems.append(f"arm {folder}: folder {arms_root / folder} missing")
+    unknown = sorted(set(overrides) - set(TICKETS))
+    if unknown:
+        problems.append(f"--ticket-ceiling names tickets not on the stage 4 plan: {unknown}")
+    extras = codebase_run_extras(a.codebase)
+
+    def one(row: str, t: str, repeat: int) -> dict:
+        folder, model = STAGE4_ROWS[row]
+        meta = metas[t]
+        ticket = tickets_root / a.codebase / t / "S1.md"
+        try:
+            ticket_path = str(ticket.relative_to(LAB_ROOT))
+        except ValueError:
+            ticket_path = str(ticket)
+        r = {
+            "run_id": run_id(row, t, "S1", repeat),
+            "ticket": ticket_path,
+            "base": meta.get("base_ref"),
+            "repo": meta.get("repo"),
+            "db": meta.get("db"),
+            "model": model,
+            # A ticket's override raises every row on it, but never lowers a row's own ceiling.
+            "ceiling": max(rows[row], overrides.get(t, 0)),
+            "reply_sheet": sheets.get(t),
+            "redact": sorted({row, row.lower(), folder, folder.lower()}),
+        }
+        r.update(extras)
+        if arm_dir(folder, arms_root):
+            r["arm"] = arm_dir(folder, arms_root)
+        return r
+
+    runs = [one(row, t, n) for n in STAGE4_REPEATS for t in TICKETS for row in STAGE4_ROWS]
+    if problems and not a.force:
+        for p in problems:
+            print(f"problem: {p}", file=sys.stderr)
+        print(f"{len(problems)} problems; nothing written (use --force to write anyway)", file=sys.stderr)
+        return 1
+    for t, text in texts.items():
+        path = out_dir / "sheets" / f"{a.codebase}-{t}.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    plan = {
+        "stage": stage,
+        "budget_tokens": a.budget or STAGE_BUDGET,
+        "parallel": 4,
+        "written": now_iso(),
+        "codebase": a.codebase,
+        "defaults": {"judge_model": REPLY_JUDGE, "effort": EFFORT},
+        "rows": {
+            row: {"arm": folder, "model": model, "ceiling": rows[row]} for row, (folder, model) in STAGE4_ROWS.items()
+        },
+        "ticket_ceilings": overrides,
+        "tickets": TICKETS,
+        "repeats": list(STAGE4_REPEATS),
+        "parts": {row: [r["run_id"] for r in runs if r["run_id"].startswith(row.lower() + "-")] for row in STAGE4_ROWS},
+        "runs": runs,
+        "problems": problems,
+    }
+    out_dir.mkdir(parents=True, exist_ok=True)
+    write_json(out_dir / "plan.json", plan)
+    print(f"wrote {out_dir / 'plan.json'} ({len(runs)} runs, stage folder {stage}); ceilings "
+          f"{ {r: x['ceiling'] for r, x in plan['rows'].items()} }; ticket ceilings {overrides or 'none'}")  # fmt: skip
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m grader.make_plan", description=__doc__.split("\n\n")[0])
-    ap.add_argument("stage", choices=["stage-1", "stage-2", "stage-2b"])
+    ap.add_argument("stage", choices=["stage-1", "stage-2", "stage-2b", "stage-4"])
     ap.add_argument("--codebase", default="gct")
     ap.add_argument("--best-process", choices=["P1", "P1R", "P3", "P2", "P4"], help="fill wave 2 with this arm on S3")
     ap.add_argument("--tickets-root", default=str(TICKETS_ROOT))
@@ -301,7 +401,21 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--ticket-ceiling", action="append", default=[], metavar="T9=900000",
                     help="stage 2 and 2b: ceiling for every arm on that ticket (repeatable)")  # fmt: skip
     ap.add_argument("--budget", type=int, help="stage 2: the stage's token figure (default 24,000,000)")
+    ap.add_argument("--row-ceiling", action="append", default=[], metavar="P6=1500000",
+                    help="stage 4: ceiling for one row (P5P, P5PF, P6) on every ticket (repeatable)")  # fmt: skip
     a = ap.parse_args(argv)
+    if a.stage == "stage-4":
+        if a.best_process:
+            ap.error("--best-process is for stage 1")
+        if a.codebase in ("gct", "pipeline-lab"):
+            ap.error("stage 4 runs on the new codebases: pass --codebase hono or --codebase sqlglot")
+        try:
+            return plan_stage4(a)
+        except SystemExit as e:
+            print(str(e), file=sys.stderr)
+            return 2
+    if a.row_ceiling:
+        ap.error("--row-ceiling is for stage 4")
     if a.stage in ROUNDS:
         if a.best_process:
             ap.error("--best-process is for stage 1")
