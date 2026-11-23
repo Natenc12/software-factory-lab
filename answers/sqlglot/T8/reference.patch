@@ -1,0 +1,178 @@
+diff --git a/README.md b/README.md
+index fad330535..ad2e24f0c 100644
+--- a/README.md
++++ b/README.md
+@@ -35,7 +35,7 @@ You can still contribute by [opening an issue](https://github.com/tobymao/sqlglo
+ * [Documentation](#documentation)
+ * [Run Tests and Lint](#run-tests-and-lint)
+ * [Benchmarks](#benchmarks)
+-* [Optional Dependencies](#optional-dependencies)
++* [Constant Date Arithmetic](#constant-date-arithmetic)
+ * [Supported Dialects](#supported-dialects)
+ 
+ ## Install
+@@ -583,21 +583,22 @@ make bench-transpile  # Run transpilation benchmark
+ make bench-optimize   # Run optimization benchmark
+ ```
+ 
+-## Optional Dependencies
++## Constant Date Arithmetic
+ 
+-SQLGlot uses [dateutil](https://github.com/dateutil/dateutil) to simplify constant date and interval arithmetic. With dateutil installed, the optimizer simplifies:
++The optimizer simplifies constant date and interval arithmetic, using only the standard library:
+ 
+ ```sql
+ DATE '2021-01-01' + INTERVAL '1' MONTH
+ ```
+ 
+-to:
++becomes:
+ 
+ ```sql
+ CAST('2021-02-01' AS DATE)
+ ```
+ 
+-Without dateutil, the optimizer leaves this arithmetic unevaluated.
++Month and year steps keep the day of the month, clamped to the month's last day, so
++`DATE '2021-01-31' + INTERVAL '1' MONTH` becomes `CAST('2021-02-28' AS DATE)`.
+ 
+ ## Supported Dialects
+ 
+diff --git a/sqlglot/optimizer/simplify.py b/sqlglot/optimizer/simplify.py
+index 23e4a4599..45f51c530 100644
+--- a/sqlglot/optimizer/simplify.py
++++ b/sqlglot/optimizer/simplify.py
+@@ -1,6 +1,7 @@
+ from __future__ import annotations
+ 
+-from datetime import date, datetime, timedelta
++import calendar
++from datetime import date, datetime, time, timedelta
+ import logging
+ import functools
+ import itertools
+@@ -19,7 +20,6 @@ from sqlglot.schema import ensure_schema
+ 
+ 
+ if t.TYPE_CHECKING:
+-    from dateutil.relativedelta import relativedelta
+     from sqlglot.dialects.dialect import DialectType
+     from typing_extensions import TypeIs
+ 
+@@ -470,12 +470,12 @@ def _comparable_datetimes(
+     return left, right
+ 
+ 
+-def extract_interval(expression: exp.Expr) -> relativedelta | None:
++def extract_interval(expression: exp.Expr) -> Interval | None:
+     try:
+         n = to_int(expression.this.to_py())
+         unit = expression.text("unit").lower()
+         return interval(unit, n) if n is not None else None
+-    except (UnsupportedUnit, ModuleNotFoundError, ValueError):
++    except (UnsupportedUnit, ValueError):
+         return None
+ 
+ 
+@@ -486,7 +486,7 @@ def _is_exact_interval_move(op: exp.Expr, literal: exp.Expr, interval: exp.Inter
+     if delta is None or value is None:
+         return False
+ 
+-    if not (delta.months or delta.years):
++    if not delta.months:
+         return True
+ 
+     if isinstance(op, (exp.Sub, exp.DateSub, exp.DatetimeSub)):
+@@ -516,29 +516,62 @@ def date_literal(date: object, target_type=None) -> exp.Expr:
+     return exp.cast(exp.Literal.string(date), target_type)
+ 
+ 
+-def interval(unit: str, n: int = 1) -> relativedelta:
+-    from dateutil.relativedelta import relativedelta
++class Interval:
++    """A calendar interval: whole months first, clamped to the last day of the month, then a duration.
+ 
++    Adding one month to Jan 31 gives Feb 28 (or 29). A date plus a sub-day duration becomes a datetime.
++    """
++
++    __slots__ = ("months", "duration")
++
++    def __init__(self, months: int = 0, duration: timedelta = timedelta()) -> None:
++        self.months = months
++        self.duration = duration
++
++    def __neg__(self) -> Interval:
++        return Interval(-self.months, -self.duration)
++
++    def __radd__(self, other: object) -> object:
++        if not isinstance(other, date):
++            return NotImplemented
++        if self.duration % timedelta(days=1) and not isinstance(other, datetime):
++            other = datetime.combine(other, time())
++        if self.months:
++            year, month = divmod(other.month - 1 + self.months, 12)
++            year += other.year
++            month += 1
++            other = other.replace(
++                year=year, month=month, day=min(other.day, calendar.monthrange(year, month)[1])
++            )
++        return other + self.duration
++
++    __add__ = __radd__
++
++    def __rsub__(self, other: object) -> object:
++        return (-self).__radd__(other)
++
++
++def interval(unit: str, n: int = 1) -> Interval:
+     if unit == "year":
+-        return relativedelta(years=1 * n)
++        return Interval(months=12 * n)
+     if unit == "quarter":
+-        return relativedelta(months=3 * n)
++        return Interval(months=3 * n)
+     if unit == "month":
+-        return relativedelta(months=1 * n)
++        return Interval(months=n)
+     if unit == "week":
+-        return relativedelta(weeks=1 * n)
++        return Interval(duration=timedelta(weeks=n))
+     if unit == "day":
+-        return relativedelta(days=1 * n)
++        return Interval(duration=timedelta(days=n))
+     if unit == "hour":
+-        return relativedelta(hours=1 * n)
++        return Interval(duration=timedelta(hours=n))
+     if unit == "minute":
+-        return relativedelta(minutes=1 * n)
++        return Interval(duration=timedelta(minutes=n))
+     if unit == "second":
+-        return relativedelta(seconds=1 * n)
++        return Interval(duration=timedelta(seconds=n))
+     if unit == "millisecond":
+-        return relativedelta(microseconds=1000 * n)
++        return Interval(duration=timedelta(milliseconds=n))
+     if unit == "microsecond":
+-        return relativedelta(microseconds=1 * n)
++        return Interval(duration=timedelta(microseconds=n))
+ 
+     raise UnsupportedUnit(f"Unsupported unit: {unit}")
+ 
+@@ -1224,7 +1257,7 @@ class Simplifier:
+         return expression
+ 
+     @annotate_types_on_change
+-    @catch(ModuleNotFoundError, UnsupportedUnit, OverflowError, ValueError)
++    @catch(UnsupportedUnit, OverflowError, ValueError)
+     def simplify_equality(self, expression: exp.Expr) -> exp.Expr:
+         """
+         Use the subtraction and addition properties of equality to simplify expressions:
+@@ -1600,7 +1633,7 @@ class Simplifier:
+         )
+ 
+     @annotate_types_on_change
+-    @catch(ModuleNotFoundError, UnsupportedUnit)
++    @catch(UnsupportedUnit)
+     def simplify_datetrunc(self, expression: exp.Expr) -> exp.Expr:
+         """Simplify expressions like `DATE_TRUNC('year', x) >= CAST('2021-01-01' AS DATE)`"""
+         comparison = expression.__class__

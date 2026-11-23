@@ -6,20 +6,20 @@
   "base_sha": "08e3bd7720a0d5fc1152e8452e553925870f182f",
   "s3_base_ref": null,
   "s3_sha": null,
-  "started": "2026-11-23T14:55:22+00:00",
-  "finished": "2026-11-23T14:58:18+00:00",
+  "started": "2026-11-23T15:01:23+00:00",
+  "finished": "2026-11-23T15:03:52+00:00",
   "databases_dropped": [],
-  "ok": false,
+  "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "26811 passed, 60 skipped in 51.87s",
+      "note": "26811 passed, 60 skipped in 55.87s",
       "counts": {
         "passed": 1584,
         "skipped": 60
       },
-      "seconds": 52.7,
+      "seconds": 56.7,
       "log_tail": ""
     },
     {
@@ -32,13 +32,13 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "2 failed in 0.52s",
+      "note": "2 failed in 0.37s",
       "outcomes": {
         "tests.hidden.test_hidden_t2.TestHiddenT2::test_comment_markers_stay_inside_unquoted_file_uris": "failed",
         "tests.hidden.test_hidden_t2.TestHiddenT2::test_comment_markers_stay_inside_unquoted_stage_paths": "failed"
       },
       "not_failing": [],
-      "seconds": 0.9
+      "seconds": 0.7
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -65,13 +65,13 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "26851 passed, 60 skipped in 57.34s",
+      "note": "26851 passed, 60 skipped in 40.03s",
       "counts": {
         "passed": 1587,
         "skipped": 60
       },
       "failing": [],
-      "seconds": 58.2,
+      "seconds": 40.7,
       "log_tail": ""
     },
     {
@@ -115,16 +115,14 @@
       "name": "naive.patch: at least one hidden test fails",
       "ok": true,
       "failing": [
-        "tests.hidden.test_hidden_t2.TestHiddenT2::test_comment_markers_stay_inside_unquoted_file_uris"
+        "tests.hidden.test_hidden_t2.TestHiddenT2::test_comment_markers_stay_inside_unquoted_stage_paths"
       ],
       "note": "1/2 hidden fail"
     },
     {
       "name": "naive.patch: existing tests still pass (a competent fix)",
-      "ok": false,
-      "failing": [
-        "tests.dialects.test_snowflake.TestSnowflake::test_put_to_stage"
-      ]
+      "ok": true,
+      "failing": []
     }
   ]
 }

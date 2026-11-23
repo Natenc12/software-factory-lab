@@ -1,0 +1,13 @@
+{
+  "id": "T8",
+  "kind": "flawed",
+  "title": "Make `python-dateutil` a required dependency so date folding is always on",
+  "repo": "Natenc12/sqlglot-lab",
+  "base_ref": "base/T8",
+  "base_commit": null,
+  "s3_base_ref": null,
+  "db": "none",
+  "deliverable": "pull_request",
+  "spec_levels": ["S1"],
+  "spec_words": {"S1": 0}
+}
