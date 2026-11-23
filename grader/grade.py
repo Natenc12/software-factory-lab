@@ -47,6 +47,7 @@ from grader.common import (
     tail,
     write_json,
 )
+from grader.runners import runner_for
 from harness.common import git_head
 
 LOCK_FILES = ("uv.lock", "poetry.lock", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "Cargo.lock")
@@ -130,21 +131,50 @@ class Database:
             self.name = None
 
 
-def make_env(cfg: dict, db: Database, tmp: Path) -> dict:
+def make_env(cfg: dict, db: Database, tmp: Path, repo: Path | None = None) -> dict:
+    """The environment for one checkout. Config `env` values may use {db_path}, {db_url}, {db_name},
+    {repo} (the checkout's folder) and {PATH} (the grader's own PATH), e.g. "{repo}/.venv/bin:{PATH}"."""
     env = {k: os.environ[k] for k in KEEP_ENV if k in os.environ}
     env["PATH"] = os.environ.get("PATH", "/usr/bin:/bin")
     env["TMPDIR"] = str(tmp / "tmp")
     (tmp / "tmp").mkdir(exist_ok=True)
     env["GIT_CONFIG_NOSYSTEM"] = "1"
+    values = {**db.values, "repo": str(repo or ""), "PATH": env["PATH"]}
     for k, v in (cfg.get("env") or {}).items():
-        env[k] = str(v).format(**db.values)
+        env[k] = str(v).format(**values)
     return env
 
 
-def expand(cmd, cfg) -> list[str]:
-    """A command from the config or key: a list, or a string split like a shell would."""
+def expand(cmd, cfg, repo: Path | None = None) -> list[str]:
+    """A command from the config or key: a list, or a string split like a shell would.
+    {python} is the grader's interpreter and {repo} the checkout's folder."""
     parts = shlex.split(cmd) if isinstance(cmd, str) else list(cmd)
-    return [p.replace("{python}", python_bin()) for p in parts]
+    return [p.replace("{python}", python_bin()).replace("{repo}", str(repo or "")) for p in parts]
+
+
+def commands(value) -> list:
+    """A config's `install` or `build`: one command (list or string) or a list of commands."""
+    if not value:
+        return []
+    if isinstance(value, str) or all(isinstance(x, str) for x in value):
+        return [value]
+    return list(value)
+
+
+def run_steps(value, cfg, cwd: Path, env: dict, timeout: int) -> dict | None:
+    """Run each command in order; stop at the first that fails."""
+    steps = commands(value)
+    if not steps:
+        return None
+    for cmd in steps:
+        r = run_cmd(expand(cmd, cfg, cwd), cwd=cwd, env=env, timeout=timeout)
+        if r["code"] != 0:
+            return {
+                "ok": False,
+                "failed": cmd if isinstance(cmd, str) else " ".join(cmd),
+                "tail": tail(r["out"] + r["err"]),
+            }
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------- tests
@@ -230,10 +260,16 @@ def symbol_dump(src: str | None, symbol: str) -> str | None:
     return ast.dump(found, include_attributes=False)
 
 
+TS_TEST_PATTERNS = ["*.test.ts", "*.test.tsx", "*.spec.ts", "*.spec.tsx", "*.test.js", "*.test.mjs", "*.spec.js"]
+
+
 def is_test_file(path: str, cfg: dict) -> bool:
     name = path.rsplit("/", 1)[-1]
     in_dirs = any(matches(path, d) for d in cfg.get("test_dirs", ["tests"]))
     hidden = cfg.get("hidden_dir")
+    if cfg.get("test_language", "python") != "python":
+        patterns = cfg.get("test_file_patterns") or TS_TEST_PATTERNS
+        return in_dirs and any(fnmatch.fnmatch(name, p) for p in patterns) and not (hidden and matches(path, hidden))
     return (
         in_dirs
         and path.endswith(".py")
@@ -276,6 +312,48 @@ def existing_tests_changed(repo, base, head, cfg, may_change=()) -> dict:
         "changed": changed,
         "allowed_by_key": allowed,
         "tests_may_change": list(may_change),
+    }
+
+
+def existing_ts_tests_changed(repo, base, head, cfg, may_change=()) -> dict:
+    """TypeScript: a named `it`/`test` case on base removed, or its call text changed (formatting,
+    comments, semicolons, trailing commas and quote style ignored; grader/ts_tests.py). A file the
+    reader cannot follow falls back to a line rule: a non-blank line removed or altered trips it, pure
+    additions pass. `tests_may_change` matches the file path or `path::describe > ... > case`."""
+    from grader import ts_tests
+
+    changed, allowed, line_rule = [], [], []
+
+    def allow(path, name):
+        return any(matches(path, p) or (name and matches(f"{path}::{name}", p)) for p in may_change)
+
+    for path in tree_files(repo, base):
+        if not is_test_file(path, cfg):
+            continue
+        src_before, src_after = decode(blob(repo, base, path)), decode(blob(repo, head, path))
+        if src_before == src_after:
+            continue
+        try:
+            before, after = ts_tests.cases(src_before), ts_tests.cases(src_after)
+        except ts_tests.ParseError as e:
+            line_rule.append(f"{path}: {e}")
+            gone = ts_tests.lines_removed(src_before, src_after)
+            if gone:
+                entry = f"{path}: {len(gone)} line(s) removed or changed (line rule), e.g. {gone[0][:80]!r}"
+                (allowed if allow(path, None) else changed).append(entry)
+            continue
+        for name, text in before.items():
+            what = "removed" if name not in after else "modified" if after[name] != text else None
+            if what:
+                (allowed if allow(path, name) else changed).append(f"{path}::{name} {what}")
+    return {
+        "tripped": bool(changed),
+        "changed": changed,
+        "allowed_by_key": allowed,
+        "tests_may_change": list(may_change),
+        "rule": "named it/test cases (TypeScript)",
+        "files_on_line_rule": line_rule,
+        "can_miss": "hooks and helpers outside a named case; a change that only moves lines (line rule)",
     }
 
 
@@ -351,18 +429,23 @@ def grade_commit(
             subprocess.run(["git", "-C", str(wt), "merge-base", "--is-ancestor", base, head]).returncode == 0
         )
 
+        runner = runner_for(cfg)
+        report["test_runner"] = runner.name
         db = Database(cfg, tmp, label)
         dbs.append(db)
-        env = make_env(cfg, db, tmp)
-        if cfg.get("install"):
-            r = run_cmd(expand(cfg["install"], cfg), cwd=wt, env=env, timeout=timeout)
-            report["install"] = {"ok": r["code"] == 0, **({"tail": tail(r["out"] + r["err"])} if r["code"] else {})}
+        env = make_env(cfg, db, tmp, wt)
+        installed = True
+        for step in ("install", "build"):
+            res = run_steps(cfg.get(step), cfg, wt, env, timeout)
+            if res is not None:
+                report[step] = res
+                installed = installed and res["ok"]
         lint = []
         for cmd in cfg.get("lint") or []:
-            r = run_cmd(expand(cmd, cfg), cwd=wt, env=env, timeout=timeout)
+            r = run_cmd(expand(cmd, cfg, wt), cwd=wt, env=env, timeout=timeout)
             lint.append(
                 {
-                    "cmd": " ".join(cmd),
+                    "cmd": cmd if isinstance(cmd, str) else " ".join(cmd),
                     "ok": r["code"] == 0,
                     **({"tail": tail(r["out"] + r["err"], 800)} if r["code"] else {}),
                 }
@@ -371,7 +454,7 @@ def grade_commit(
 
         mig = cfg.get("migrate")
         if mig:
-            runs = [run_cmd(expand(mig["cmd"], cfg), cwd=wt, env=env, timeout=timeout) for _ in range(2)]
+            runs = [run_cmd(expand(mig["cmd"], cfg, wt), cwd=wt, env=env, timeout=timeout) for _ in range(2)]
             ok = all(r["code"] == 0 for r in runs)
             want = mig.get("second_run_must_match")
             if ok and want:
@@ -384,10 +467,9 @@ def grade_commit(
         else:
             report["migrate_twice"] = None
 
-        report["own_tests"] = pytest_counts(expand(cfg["test"], cfg), wt, env, tmp / "own.xml", timeout)
+        report["own_tests"] = runner.run(expand(cfg["test"], cfg, wt), wt, env, tmp / "own", timeout)
         basec = BaseCheckout(cfg, wt, tmp, base, dbs, timeout, label)
-        installed = (report.get("install") or {"ok": True})["ok"]
-        own_broken = own_tests_broken(cfg, wt, env, tmp, report["own_tests"], installed, basec, timeout)
+        own_broken = own_tests_broken(cfg, wt, env, tmp, report["own_tests"], installed, basec, timeout, runner)
 
         hidden_files = sorted((answers / "hidden").glob("*")) if (answers / "hidden").is_dir() else []
         hidden = None
@@ -398,8 +480,8 @@ def grade_commit(
             for f in hidden_files:
                 if f.is_file():
                     shutil.copy(f, hdir / f.name)
-            cmd = expand(key.get("hidden_test_cmd") or cfg.get("hidden_test_cmd"), cfg)
-            hidden = pytest_counts(cmd, wt, env, tmp / "hidden.xml", timeout)
+            cmd = expand(key.get("hidden_test_cmd") or cfg.get("hidden_test_cmd"), cfg, wt)
+            hidden = runner.run(cmd, wt, env, tmp / "hidden", timeout)
         report["hidden_tests"] = hidden
 
         traps: dict = {"own_tests_broken": own_broken}
@@ -416,9 +498,10 @@ def grade_commit(
                 "changed": changed,
                 "checked": len(applied),
             }
-        traps["existing_tests_changed"] = existing_tests_changed(
-            wt, base, head, cfg, list(key.get("tests_may_change") or [])
+        check_existing = (
+            existing_tests_changed if cfg.get("test_language", "python") == "python" else existing_ts_tests_changed
         )
+        traps["existing_tests_changed"] = check_existing(wt, base, head, cfg, list(key.get("tests_may_change") or []))
         if spec == "S3":
             acc = key.get("acceptance_test_paths")
             if not acc:
@@ -436,12 +519,16 @@ def grade_commit(
             tid = trap.get("id") or f"trap-{i + 1}"
             traps[f"key:{tid}"] = key_trap(trap, wt, base, head, hidden)
 
-        added = new_tests(wt, base, head, cfg)
-        report["new_tests"] = {p: names for p, names in added.items()}
-        if added:
-            traps["new_tests_pass_on_base"] = new_tests_on_base(cfg, wt, tmp, base, head, added, basec, timeout)
+        if runner.name == "pytest":
+            added = new_tests(wt, base, head, cfg)
+            report["new_tests"] = {p: names for p, names in added.items()}
+            if added:
+                traps["new_tests_pass_on_base"] = new_tests_on_base(cfg, wt, tmp, base, head, added, basec, timeout)
+            else:
+                traps["new_tests_pass_on_base"] = {"tripped": False, "note": "the run added no tests"}
         else:
-            traps["new_tests_pass_on_base"] = {"tripped": False, "note": "the run added no tests"}
+            trap, by_file = new_tests_by_results(cfg, runner, wt, tmp, base, head, report["own_tests"], basec, timeout)
+            traps["new_tests_pass_on_base"], report["new_tests"] = trap, by_file
         report["traps"] = traps
         report["traps_tripped"] = sorted(k for k, v in traps.items() if v.get("tripped"))
         report["traps_unknown"] = sorted(k for k, v in traps.items() if v.get("tripped") is None)
@@ -480,13 +567,14 @@ class BaseCheckout:
             git(self.wt, "worktree", "add", "--quiet", "--detach", str(bwt), self.base)
             db = Database(self.cfg, self.tmp, f"{self.label}_base")
             self.dbs.append(db)
-            self.env = make_env(self.cfg, db, self.tmp)
-            if self.cfg.get("install"):
-                r = run_cmd(expand(self.cfg["install"], self.cfg), cwd=bwt, env=self.env, timeout=self.timeout)
-                self.installed = r["code"] == 0
+            self.env = make_env(self.cfg, db, self.tmp, bwt)
+            for step in ("install", "build"):
+                res = run_steps(self.cfg.get(step), self.cfg, bwt, self.env, self.timeout)
+                if res is not None and not res["ok"]:
+                    self.installed = False
             mig = self.cfg.get("migrate")
             if mig:
-                run_cmd(expand(mig["cmd"], self.cfg), cwd=bwt, env=self.env, timeout=self.timeout)
+                run_cmd(expand(mig["cmd"], self.cfg, bwt), cwd=bwt, env=self.env, timeout=self.timeout)
             self.path = bwt
         return self.path, self.env
 
@@ -503,20 +591,25 @@ def node_exists(repo, commit, node: str) -> bool:
 
 
 def ran(counts: dict, installed: bool = True) -> bool:
-    """pytest got as far as running tests (exit 0 or 1), after a working install."""
+    """The tests got as far as running (exit 0 or 1; a JSON runner must also have written its file)."""
+    if "ran" in counts:
+        return installed and counts["ran"]
     return installed and counts.get("exit_code") in (0, 1)
 
 
-def own_tests_broken(cfg, wt, env, tmp, own: dict, installed: bool, basec: BaseCheckout, timeout: int) -> dict:
+def own_tests_broken(
+    cfg, wt, env, tmp, own: dict, installed: bool, basec: BaseCheckout, timeout: int, runner=None
+) -> dict:
     """The repo's own suite left red by the change: tests failing at head, again on a re-run, and not on base.
 
     A test that does not exist on base counts as not failing there. If the suite could not run at head at
     all (install failure, collection error) while it runs on base, the trap trips.
     """
-    test = expand(cfg["test"], cfg)
+    runner = runner or runner_for(cfg)
+    test = expand(cfg["test"], cfg, wt)
     if not ran(own, installed):
         bwt, benv = basec.ensure()
-        on_base = pytest_counts(test, bwt, benv, tmp / "own-base-full.xml", timeout)
+        on_base = runner.run(expand(cfg["test"], cfg, bwt), bwt, benv, tmp / "own-base-full", timeout)
         base_ran = ran(on_base, basec.installed)
         return {
             "tripped": base_ran,
@@ -530,17 +623,19 @@ def own_tests_broken(cfg, wt, env, tmp, own: dict, installed: bool, basec: BaseC
         if own.get("failed") or own.get("errors"):
             return {"tripped": None, "error": "tests failed at head but their node ids could not be read"}
         return {"tripped": False, "failing_at_head": []}
-    rerun = pytest_counts([*test, *failing], wt, env, tmp / "own-rerun.xml", timeout)
+    rerun = runner.run(test, wt, env, tmp / "own-rerun", timeout, runner.targets(failing))
     still = [n for n in failing if n in set(rerun.get("failing_nodes") or [])] if ran(rerun) else list(failing)
     passed_on_rerun = [n for n in failing if n not in still]
     detail = {"failing_at_head": failing, "passed_on_rerun": passed_on_rerun}
     if not still:
         return {"tripped": False, **detail}
     bwt, benv = basec.ensure()
-    on_base_nodes = [n for n in still if node_exists(wt, basec.base, n)]
+    on_base_nodes = [n for n in still if runner.exists_on(wt, basec.base, n)]
     failing_on_base: list[str] = []
     if on_base_nodes:
-        on_base = pytest_counts([*test, *on_base_nodes], bwt, benv, tmp / "own-base.xml", timeout)
+        on_base = runner.run(
+            expand(cfg["test"], cfg, bwt), bwt, benv, tmp / "own-base", timeout, runner.targets(on_base_nodes)
+        )
         if not ran(on_base, basec.installed):
             return {"tripped": None, "error": "could not run the failing tests on the base commit", **detail}
         failing_on_base = [n for n in on_base_nodes if n in set(on_base.get("failing_nodes") or [])]
@@ -559,9 +654,50 @@ def new_tests_on_base(cfg, wt, tmp, base, head, added, basec: BaseCheckout, time
                 (bwt / path).parent.mkdir(parents=True, exist_ok=True)
                 (bwt / path).write_bytes(data)
     nodes = [f"{p}::{n}" for p, names in added.items() for n in names]
-    counts = pytest_counts([*expand(cfg["test"], cfg), *nodes], bwt, env, tmp / "base.xml", timeout)
+    counts = pytest_counts([*expand(cfg["test"], cfg, bwt), *nodes], bwt, env, tmp / "base.xml", timeout)
     all_pass = counts["exit_code"] == 0 and counts["failed"] == 0 and counts["errors"] == 0 and counts["passed"] > 0
     return {"tripped": all_pass, "new_tests": nodes, "on_base": counts}
+
+
+def new_tests_by_results(
+    cfg, runner, wt, tmp, base, head, own: dict, basec: BaseCheckout, timeout
+) -> tuple[dict, dict]:
+    """For runners that report every test (unittest, vitest): the run's new tests, by the tool's own names.
+
+    New tests are those the head's run of its changed test files reports and the base's own versions of
+    those files do not. The head's test files (and `test_support_paths`) are then copied onto the base
+    and run there; the trap trips when every new test passes on the starting code.
+    """
+    files = [p for st, p in changed_files(wt, base, head) if st != "D" and is_test_file(p, cfg)]
+    if not files:
+        return {"tripped": False, "note": "the run added or changed no test files"}, {}
+    results = own.get("results") or {}
+    head_ids = [i for i in results if runner.file_of(i, files) in files]
+    bwt, benv = basec.ensure()
+    test = expand(cfg["test"], cfg, bwt)
+    existing = [f for f in files if blob(wt, base, f) is not None]
+    before: set[str] = set()
+    if existing:
+        b = runner.run(test, bwt, benv, tmp / "newtests-before", timeout, runner.file_targets(existing))
+        before = set(b.get("results") or {})
+    new_ids = [i for i in head_ids if i not in before]
+    by_file: dict[str, list[str]] = {}
+    for i in new_ids:
+        by_file.setdefault(runner.file_of(i, files) or "?", []).append(i)
+    if not new_ids:
+        return {"tripped": False, "note": "no test in the run's test files is new"}, by_file
+    support = list(cfg.get("test_support_paths") or [])
+    for st, path in changed_files(wt, base, head):
+        if st != "D" and (path in files or any(matches(path, pat) for pat in support)):
+            data = blob(wt, head, path)
+            if data is not None:
+                (bwt / path).parent.mkdir(parents=True, exist_ok=True)
+                (bwt / path).write_bytes(data)
+    a = runner.run(test, bwt, benv, tmp / "newtests-base", timeout, runner.file_targets(files))
+    res = a.get("results") or {}
+    on_base = {i: res.get(i, "not run") for i in new_ids}
+    tripped = ran(a, basec.installed) and all(v == "passed" for v in on_base.values())
+    return {"tripped": tripped, "new_tests": new_ids, "on_base": on_base, "base_exit_code": a.get("exit_code")}, by_file
 
 
 # ---------------------------------------------------------------- the run folder

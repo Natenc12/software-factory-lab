@@ -31,6 +31,13 @@ STAGE2_TICKETS = ["T2", "T5", "T6", "T7", "T9", "T10", "T11", "T12"]
 STAGE2B_ARMS = ["P5PA"]
 # Every add-on the stage 2 summary compares (stage 2's five and stage 2b's).
 SUMMARY_ADDONS = [*ADDON_ARMS, *STAGE2B_ARMS]
+# Stage 4 (gate 5): a way of working on a model. Row -> (arm folder, model). P6's model is its lead's;
+# its workers' model is set in arms/P6/agents/.
+STAGE4_ROWS = {
+    "P5P": ("P5P", "claude-opus-5-5"),
+    "P5PF": ("P5P", "claude-fable-5-2"),
+    "P6": ("P6", "claude-fable-5-2"),
+}
 
 # List prices in US dollars per million tokens. Source: the claude-api skill's model table (cached
 # 2026-11-03): Opus 5.5 $4 / $20, cache reads $0.20; Fable 5.2 $8 / $40, cache reads $0.20; Sonnet 5.5

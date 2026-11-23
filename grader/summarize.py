@@ -11,6 +11,14 @@ Two readings are reported, each with the decision rules applied to it. `decision
 reading, which decides. `decision_second_reading` (gate 2, item 3) uses each verdict's
 `second_reading.trustworthy_second_reading` and its agreed rescues; it is reported beside, not instead.
 
+Stage 4 (a stage folder named stage-4-<codebase>): the decision is the charter's Q5 rule, P5PF (P5P
+on Fable 5.2) against P5P (on Opus 5.5) on the tickets both have: Fable builds only if it gains at least
+one trustworthy pull request in eight, or needs at least 30% fewer correction rounds (when P5P has no
+correction rounds that half cannot be met, and the output says so). Per row, each ticket weighted
+equally: trustworthy, rescues, correction rounds and stops per 8, owner words per ticket, counted tokens
+and list price per run, list-price dollars by model (from run.json `by_model`) and `workers_started`.
+P6 is reported against both other rows and decides nothing.
+
 Stage 2 (any stage folder named stage-2..., so stage-2b too): the decision is the charter's Q3 rule
 instead, for each add-on arm (P1T, P1L, P1A, P5, P5P, and stage 2b's P5PA) against P1 on the tickets both have (default: the eight stage-2
 tickets; `--tickets` to change). Trustworthy rate, quality (mean of the three 1-5 scores) and rescues are
@@ -51,6 +59,7 @@ from grader.common import (
     PROCESS_ARMS,
     STAGE2_TICKETS,
     SUMMARY_ADDONS,
+    list_price,
     now_iso,
     parse_arm,
     read_json,
@@ -76,7 +85,8 @@ def load_verdicts(stages, root: str | None = None) -> tuple[list[dict], list[str
                 continue
             run = read_json(p.parent / "run.json") or {}
             v = {**v, "stage_folder": stage, "repeat": parse_arm(v["run_id"])["repeat"],
-                 "skills_used": run.get("skills_used") or []}  # fmt: skip
+                 "skills_used": run.get("skills_used") or [], "by_model": run.get("by_model") or {},
+                 "workers_started": run.get("workers_started"), "model": run.get("model")}  # fmt: skip
             if v["run_id"] in by_id:
                 repeated.append(v["run_id"])
             by_id[v["run_id"]] = v
@@ -369,6 +379,141 @@ def decide_q3(verdicts: list[dict], reading: str = "current", control: str = "P1
     return out
 
 
+Q5_TRUST_GAIN = 1.0
+Q5_FEWER_CORRECTIONS = 0.30
+
+
+def cells4(rows: list[dict], reading: str) -> dict[str, dict]:
+    """Per ticket: the cell's mean over its graded repeats of every stage 4 measure."""
+    out = {}
+    for t in sorted({v["ticket"] for v in rows}):
+        g = [v for v in rows if v["ticket"] == t and trust(v, reading) is not None]
+        if not g:
+            continue
+        m = [v.get("measures") or {} for v in g]
+
+        def mean_of(key, ms=m):
+            vals = [x.get(key) for x in ms if isinstance(x.get(key), int | float)]
+            return sum(vals) / len(vals) if vals else None
+
+        out[t] = {
+            "runs": len(g),
+            "trust": sum(1 for v in g if trust(v, reading)) / len(g),
+            "rescues": sum(rescues_of(v, reading) for v in g) / len(g),
+            "corrections": mean_of("correction_rounds"),
+            "stops": mean_of("stops_total"),
+            "words": mean_of("attention_words"),
+            "tokens": mean_of("counted_tokens"),
+            "list_usd": mean_of("list_price_usd"),
+        }
+    return out
+
+
+def row4(c: dict[str, dict], tickets: list[str], runs: list[dict]) -> dict:
+    """A row's stage 4 figures on `tickets`, each ticket weighted equally."""
+
+    def avg(key):
+        vals = [c[t][key] for t in tickets if c[t][key] is not None]
+        return sum(vals) / len(vals) if vals else None
+
+    per8 = {k: None if avg(k) is None else 8 * avg(k) for k in ("trust", "rescues", "corrections", "stops")}
+    by_model: dict[str, dict] = {}
+    for v in runs:
+        for model, u in (v.get("by_model") or {}).items():
+            x = by_model.setdefault(model, {"counted_tokens": 0, "list_price_usd": 0.0, "cli_cost_usd": 0.0})
+            x["counted_tokens"] += int(u.get("counted") or 0)
+            x["list_price_usd"] += list_price(model, u) or 0.0
+            x["cli_cost_usd"] += float(u.get("cost_usd") or 0)
+    return {
+        "tickets": tickets,
+        "runs": sum(c[t]["runs"] for t in tickets),
+        "trustworthy_per_8": r3(per8["trust"]),
+        "rescues_per_8": r3(per8["rescues"]),
+        "correction_rounds_per_8": r3(per8["corrections"]),
+        "stops_per_8": r3(per8["stops"]),
+        "owner_words_per_ticket": r3(avg("words")),
+        "counted_tokens_per_run": r3(avg("tokens")),
+        "list_price_usd_per_run": r3(avg("list_usd")),
+        "by_model": {
+            m: {k: round(x, 4) if isinstance(x, float) else x for k, x in d.items()}
+            for m, d in sorted(by_model.items())
+        },
+    }
+
+
+def workers_summary(runs: list[dict]) -> dict:
+    counts = [v["workers_started"] for v in runs if isinstance(v.get("workers_started"), int)]
+    return {
+        "runs": len(counts),
+        "runs_with_workers": sum(1 for n in counts if n > 0),
+        "total": sum(counts),
+        "mean": r3(sum(counts) / len(counts)) if counts else None,
+        "min": min(counts) if counts else None,
+        "max": max(counts) if counts else None,
+    }
+
+
+def decide_q5(verdicts: list[dict], reading: str = "current") -> dict:
+    """The charter's Q5 rule, P5PF (Fable builds) against P5P (Opus builds); P6 reported against both."""
+    graded = [v for v in verdicts if trust(v, reading) is not None]
+    by_row = {row: [v for v in graded if v["row"] == row] for row in ("P5P", "P5PF", "P6")}
+    c = {row: cells4(runs, reading) for row, runs in by_row.items()}
+    out: dict = {"rule": "Q5", "reading": reading, "rules_applied_literally": True,
+                 "rows": {row: row4(c[row], sorted(c[row], key=lambda t: int(t[1:])), by_row[row]) for row in c if c[row]}}  # fmt: skip
+    for row in out["rows"]:
+        out["rows"][row]["workers_started"] = workers_summary(by_row[row])
+    shared = sorted(set(c["P5P"]) & set(c["P5PF"]), key=lambda t: int(t[1:]))
+    if not shared:
+        out["fable_builds"] = None
+        out["why"] = "no ticket has graded runs of both P5P and P5PF"
+    else:
+        opus = row4(c["P5P"], shared, [v for v in by_row["P5P"] if v["ticket"] in shared])
+        fable = row4(c["P5PF"], shared, [v for v in by_row["P5PF"] if v["ticket"] in shared])
+        gain = fable["trustworthy_per_8"] - opus["trustworthy_per_8"]
+        oc, fc = opus["correction_rounds_per_8"], fable["correction_rounds_per_8"]
+        if oc is None or fc is None:
+            fewer, note, ratio = False, "correction rounds missing for a row", None
+        elif oc == 0:
+            fewer, ratio = False, None
+            note = "P5P had no correction rounds on these tickets, so 'at least 30% fewer' cannot be met"
+        else:
+            ratio = fc / oc
+            fewer, note = ratio <= 1 - Q5_FEWER_CORRECTIONS, None
+        cost = (
+            fable["list_price_usd_per_run"] / opus["list_price_usd_per_run"]
+            if fable["list_price_usd_per_run"] and opus["list_price_usd_per_run"]
+            else None
+        )
+        out.update(
+            shared_tickets=shared,
+            p5p=opus,
+            p5pf=fable,
+            trustworthy_gain_per_8=r3(gain),
+            gains_one_in_eight=gain >= Q5_TRUST_GAIN - 1e-9,
+            correction_rounds_ratio=r3(ratio),
+            thirty_percent_fewer_corrections=fewer,
+            corrections_note=note,
+            list_price_ratio_per_run=r3(cost),
+            fable_builds=gain >= Q5_TRUST_GAIN - 1e-9 or fewer,
+        )
+    if c["P6"]:
+        p6 = {}
+        for ctrl in ("P5P", "P5PF"):
+            tickets = sorted(set(c["P6"]) & set(c[ctrl]), key=lambda t: int(t[1:]))
+            if not tickets:
+                continue
+            a = row4(c["P6"], tickets, [v for v in by_row["P6"] if v["ticket"] in tickets])
+            b = row4(c[ctrl], tickets, [v for v in by_row[ctrl] if v["ticket"] in tickets])
+            diff = {k: r3(a[k] - b[k]) if a[k] is not None and b[k] is not None else None
+                    for k in ("trustworthy_per_8", "rescues_per_8", "correction_rounds_per_8", "stops_per_8",
+                              "owner_words_per_ticket", "counted_tokens_per_run", "list_price_usd_per_run")}  # fmt: skip
+            p6[f"against_{ctrl}"] = {"tickets": tickets, "differences": diff}
+        p6["workers_started"] = workers_summary(by_row["P6"])
+        p6["note"] = "reported only; P6 decides nothing"
+        out["p6"] = p6
+    return out
+
+
 def skills_by_row(verdicts: list[dict]) -> dict:
     out = {}
     for row in sorted({v["row"] for v in verdicts}):
@@ -416,7 +561,8 @@ def summarize(
     stages, root: str | None = None, out_dir: Path | None = None, rows_only=None, tickets_only=None, control: str = "P1"
 ) -> dict:
     stages = [stages] if isinstance(stages, str) else list(stages)
-    q3 = any(st.startswith("stage-2") for st in stages)
+    q5 = any(st.startswith("stage-4") for st in stages)
+    q3 = not q5 and any(st.startswith("stage-2") for st in stages)
     if q3 and tickets_only is None:
         tickets_only = STAGE2_TICKETS
     verdicts, repeated = load_verdicts(stages, root)
@@ -437,7 +583,9 @@ def summarize(
             r["run_id"] for r in plan.get("runs", []) if not rows_only or parse_arm(r["run_id"])["row"] in rows_only
         ]
     have = {v["run_id"] for v in verdicts}
-    if q3:
+    if q5:
+        current, second = decide_q5(verdicts, "current"), decide_q5(verdicts, "second")
+    elif q3:
         current, second = decide_q3(verdicts, "current"), decide_q3(verdicts, "second")
     else:
         current, second = decide(by_row["current"], verdicts, "current"), decide(by_row["second"], verdicts, "second")
@@ -447,7 +595,7 @@ def summarize(
         "stages": stages,
         "rows_only": list(rows_only) if rows_only else None,
         "tickets_only": list(tickets_only) if tickets_only else None,
-        "rule": "Q3" if q3 else "stage 1 rules",
+        "rule": "Q5" if q5 else "Q3" if q3 else "stage 1 rules",
         "time": now_iso(),
         "provisional": any(st.startswith("stage-1") for st in stages),
         "runs": len(verdicts),
@@ -479,6 +627,15 @@ def summarize(
 
 
 def describe(d: dict) -> str:
+    if d.get("rule") == "Q5":
+        if d.get("fable_builds") is None:
+            return d.get("why", "undecided")
+        return (
+            f"{'Fable builds' if d['fable_builds'] else 'Opus builds'} (trustworthy gain {d['trustworthy_gain_per_8']:+} "
+            f"per 8; correction rounds ratio {d['correction_rounds_ratio']}"
+            + (f", {d['corrections_note']}" if d.get("corrections_note") else "")
+            + ")"
+        )
     if d.get("rule") == "Q3":
         parts = [
             f"{arm}: {'goes in' if x.get('answer') else 'stays out' if x.get('answer') is False else 'undecided'}"

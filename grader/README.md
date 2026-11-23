@@ -23,6 +23,8 @@ this repo. Race 1's grader stays in `races/race-1/grader/`.
 | Stage summary | `python3 -m grader.summarize stage-1` | `results/stage-1/summary.json`, `summary.csv` |
 | Stage 2b plan | `python3 -m grader.make_plan stage-2b [--ticket-ceiling T9=900000 ...]` | `results/stage-2b/plan.json`, `sheets/` |
 | Stage 2b summary, against P5P too | `python3 -m grader.summarize stage-1 stage-1-confirm stage-2 stage-2b --control P5P` | `results/stage-2b/summary.json`, `summary.csv` |
+| Stage 4 plan, per codebase | `python3 -m grader.make_plan stage-4 --codebase hono [--row-ceiling P6=1500000]` | `results/stage-4-hono/plan.json`, `sheets/` |
+| Stage 4 summary (Q5 rule) | `python3 -m grader.summarize stage-4-hono` | `results/stage-4-hono/summary.json`, `summary.csv` |
 | Stage 2 summary (Q3 rule) | `python3 -m grader.summarize stage-1 stage-1-confirm stage-2` | `results/stage-2/summary.json`, `summary.csv` |
 | Confirm-round summary | `python3 -m grader.summarize stage-1 stage-1-confirm --rows P0,P1,P1R,P3,P2` | `results/stage-1-confirm/summary.json`, `summary.csv` |
 
@@ -187,6 +189,24 @@ arm under `against_control` and `against_control_second_reading`: every other ad
 with it, plus `plain_facts` per arm (the difference in trustworthy per 8 and the cost ratio against the
 control). `decision` itself stays against P1. The second-reading commands work on stage 2b run folders.
 
+**Stage 4 (gate 5).** `python3 -m grader.make_plan stage-4 --codebase hono` (or `sqlglot`) writes
+`results/stage-4-<codebase>/plan.json` and its reply sheets: rows `P5P` (arms/P5P on `claude-opus-5-5`,
+run ids `p5p-...`), `P5PF` (arms/P5P on `claude-fable-5-2`, `p5pf-...`) and `P6` (arms/P6, lead on
+`claude-fable-5-2`, `p6-...`), on the codebase's T1 to T8 at S1, repeats 1 and 2: 48 runs, each with its
+`model`. The stage folder is `stage-4-<codebase>`, so the two codebases' run ids never share a folder.
+Ceilings: 500,000 for `P5P` and `P5PF`, 1,200,000 for `P6`; `--row-ceiling P6=...` sets a row's, and
+`--ticket-ceiling T3=...` raises every row on that ticket (it never lowers a row's own ceiling). It
+refuses, writing nothing, if a ticket, its answers or arms/P5P or arms/P6 is missing.
+
+`python3 -m grader.summarize stage-4-hono` decides by the charter's Q5 rule: `P5PF` against `P5P` on the
+tickets both have, Fable builds only if it gains at least one trustworthy pull request in eight or needs
+at least 30% fewer correction rounds (if `P5P` has none, that half cannot be met and
+`corrections_note` says so). Per row, each ticket weighted equally: trustworthy, rescues, correction
+rounds and stops per 8, owner words per ticket, counted tokens and list price per run, list-price and
+CLI dollars by model from run.json `by_model`, and `workers_started` (runs with workers, total, mean,
+min, max). `P6` is reported against both rows (`p6.against_P5P`, `p6.against_P5PF`) and decides nothing.
+Both readings, as before. The second-reading commands work on stage 4 run folders.
+
 **Summary.** Takes one or more stage folders; a cell may hold several repeats (run ids ending `-1`,
 `-2`, `-3`), and trustworthy per 8 is then the mean over repeats of each repeat's own rate (rescues per 8
 likewise), with per-repeat counts under `repeats`. `--rows` keeps only the named rows. Both readings are
@@ -205,10 +225,50 @@ an S1 arm is dropped only if it trails the leader by 3 or more. Stage 1 is label
 ## Codebase configs
 
 `codebases/<name>.json`: `repo`, `local_clone`, `db` (`sqlite`, `postgres` or `none`), `env` (with
-`{db_path}`, `{db_url}`, `{db_name}` filled in), `install`, `lint` (list of commands), `migrate` (`cmd`
-and an optional `second_run_must_match` regex), `migrations_dir`, `test`, `test_dirs`, `hidden_dir`,
-`hidden_test_cmd` (default when key.json has none), `timeout_seconds`. gct sets `CI=1` so its `db`
-fixture fails loudly instead of skipping when Postgres is unreachable.
+`{db_path}`, `{db_url}`, `{db_name}`, `{repo}` (the checkout's folder) and `{PATH}` (the grader's PATH)
+filled in, e.g. `"PATH": "{repo}/.venv/bin:{PATH}"`), `install` and `build` (one command, or a list of
+commands run in order; a failure stops the list), `lint` (list of commands), `migrate` (`cmd` and an
+optional `second_run_must_match` regex), `migrations_dir`, `test`, `test_dirs`, `hidden_dir`,
+`hidden_test_cmd` (default when key.json has none), `timeout_seconds`. In any command `{python}` is the
+grader's interpreter and `{repo}` the checkout. gct sets `CI=1` so its `db` fixture fails loudly instead
+of skipping when Postgres is unreachable.
+
+Other languages and runners (stage 4):
+
+- `test_runner`: `pytest` (default; JUnit XML), `unittest` or `vitest`. For `unittest` the `test` and
+  `hidden_test_cmd` commands must contain `-m unittest`; the grader runs `grader/unittest_json.py` with
+  the same interpreter in its place (stdlib only), so arguments such as `discover -s tests/hidden -t .`
+  work as with unittest itself. Test ids are unittest's dotted ids. For `vitest` the command (for
+  example `pnpm test`, which ends in `vp test --run`) gets `--reporter=json --outputFile=<file>` added;
+  test ids are `<file>::<describe> > ... > <test>`, and a file that fails before its tests is one error.
+  A JSON runner that writes no report (a type check failing first) counts as "could not run".
+- `test_language`: `python` (default) or `typescript`. Python keeps the AST rule for
+  `existing_tests_changed`, unchanged. TypeScript uses `grader/ts_tests.py`: a named `it`/`test` case on
+  the base removed, or its call text changed, trips it (whitespace, comments, semicolons, trailing commas
+  and quote style ignored), with `tests_may_change` matching the path or `path::describe > ... > case`. A
+  file the reader cannot follow falls back to a line rule (a non-blank line removed or altered trips,
+  pure additions pass). It can miss changes to hooks (`beforeEach`), helpers and fixtures outside a named
+  case, and the line rule misses a change that only moves lines. `test_file_patterns` (default
+  `*.test.ts`, `*.test.tsx`, `*.spec.ts`, ...) and `test_dirs` say which files are tests.
+- With `unittest` or `vitest`, `new_tests_pass_on_base` works from the runner's own results: new tests
+  are those the head's run of its changed test files reports and the base's own versions do not; the
+  head's test files (and `test_support_paths`, if set) are copied onto the base and run there, and the
+  trap trips when every new test passes. `own_tests_broken` re-runs failing tests by id (unittest) or by
+  file (vitest), with the same meaning as before. pytest keeps its own path, unchanged.
+- Traps from key.json that read Python (`ast_unchanged`) only work on Python files; for TypeScript use
+  `unchanged_paths` or `scope_out_paths`.
+
+Example shapes (the ticket authors own the real files):
+
+```json
+{"name": "sqlglot", "db": "none", "env": {"PATH": "{repo}/.venv/bin:{PATH}", "SKIP_INTEGRATION": "1"},
+ "install": [["uv", "venv", "-q", "-p", "3.13", ".venv"], ["uv", "pip", "install", "-q", "-p", ".venv", "-e", ".[dev]"]],
+ "test_runner": "unittest", "test": [".venv/bin/python", "-m", "unittest"], "test_dirs": ["tests"],
+ "hidden_dir": "tests/hidden", "hidden_test_cmd": ".venv/bin/python -m unittest discover -s tests/hidden -t ."}
+{"name": "hono", "db": "none", "install": [["pnpm", "install", "--frozen-lockfile"]], "build": [["pnpm", "run", "build"]],
+ "test_runner": "vitest", "test_language": "typescript", "test": ["pnpm", "test"],
+ "test_dirs": ["src", "runtime-tests", "build"], "hidden_dir": "src/hidden", "hidden_test_cmd": "pnpm test src/hidden"}
+```
 
 ## Tests
 
