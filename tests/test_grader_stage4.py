@@ -11,7 +11,21 @@ from tests.test_grader_verdict import grade, honesty, make_run
 TICKETS = [f"T{i}" for i in range(1, 9)]
 
 
+def test_make_plan_stage_4_needs_the_p6p_arm(tmp_path, capsys):
+    arms, out, args = tree(tmp_path)
+    (arms / "P6P").rmdir()
+    assert make_plan.main(args) == 1 and "arm P6P" in capsys.readouterr().err and not out.exists()
+    arms, out, args = tree(tmp_path / "again")
+    assert make_plan.main(args) == 0
+    assert {
+        r["ceiling"]
+        for r in __import__("json").loads((out / "plan.json").read_text())["runs"]
+        if r["run_id"].startswith("p6p-")
+    } == {1_200_000}
+
+
 def test_stage_4_run_ids_parse():
+    assert parse_arm("p6p-t2-1")["row"] == "P6P"
     assert parse_arm("p5pf-t3-2")["row"] == "P5PF" and parse_arm("p6-t8-1")["row"] == "P6"
     assert parse_arm("p5p-t1-1")["row"] == "P5P"
 
@@ -35,7 +49,7 @@ def tree(tmp, codebase="hono"):
         (ans / "replies.md").write_text(f"## {t}-q\nWhen: x\nReply: y\n")
         (ans / "key.json").write_text("{}")
         (ans / "reference.patch").write_text("diff\n")
-    for a in ("P5P", "P6"):
+    for a in ("P5P", "P6", "P6P"):
         (arms / a).mkdir(parents=True)
     out = tmp / "results" / f"stage-4-{codebase}"
     args = ["stage-4", "--codebase", codebase, "--tickets-root", str(tickets), "--answers-root", str(answers),
@@ -45,13 +59,21 @@ def tree(tmp, codebase="hono"):
 
 def test_make_plan_stage_4(tmp_path):
     arms, out, args = tree(tmp_path)
-    assert make_plan.main([*args, "--row-ceiling", "P6=1500000", "--ticket-ceiling", "T3=800000"]) == 0
+    assert (
+        make_plan.main(
+            [*args, "--row-ceiling", "P6=1500000", "--ticket-ceiling", "T3=800000", "--row-ceiling", "P6P=1300000"]
+        )
+        == 0
+    )
     plan = json.loads((out / "plan.json").read_text())
     runs = {r["run_id"]: r for r in plan["runs"]}
-    assert plan["stage"] == "stage-4-hono" and len(runs) == 48 and plan["repeats"] == [1, 2]
+    assert plan["stage"] == "stage-4-hono" and len(runs) == 64 and plan["repeats"] == [1, 2]
+    assert plan["parts"]["P6P"] == [f"p6p-t{i}-{n}" for n in (1, 2) for i in range(1, 9)]
+    assert runs["p6p-t1-1"]["arm"].endswith("arms/P6P") and runs["p6p-t1-1"]["model"] == "claude-fable-5-2"
+    assert runs["p6p-t1-1"]["ceiling"] == 1_300_000 and plan["rows"]["P6P"]["ceiling"] == 1_300_000
     assert plan["parts"]["P5PF"] == [f"p5pf-t{i}-{n}" for n in (1, 2) for i in range(1, 9)]
     assert {r["model"] for k, r in runs.items() if k.startswith("p5p-")} == {"claude-opus-5-5"}
-    assert {r["model"] for k, r in runs.items() if k.startswith(("p5pf-", "p6-"))} == {"claude-fable-5-2"}
+    assert {r["model"] for k, r in runs.items() if k.startswith(("p5pf-", "p6-", "p6p-"))} == {"claude-fable-5-2"}
     assert runs["p5pf-t1-1"]["arm"].endswith("arms/P5P") and runs["p6-t1-1"]["arm"].endswith("arms/P6")
     assert (runs["p5p-t1-1"]["ceiling"], runs["p5pf-t2-2"]["ceiling"], runs["p6-t1-1"]["ceiling"]) == (
         500_000,
@@ -102,6 +124,16 @@ OPUS = {
         "cost_usd": 0.1,
     }
 }
+OPUS_MORE = {
+    "claude-opus-5-5": {
+        "input": 10,
+        "output": 2000,
+        "cache_write": 20_000,
+        "cache_read": 0,
+        "counted": 22_010,
+        "cost_usd": 0.2,
+    }
+}
 FABLE = {
     "claude-fable-5-2": {
         "input": 10,
@@ -128,6 +160,14 @@ def build(tmp, opus_fails=(), fable_fails=(), opus_corr=1, fable_corr=1, fable_s
             put(tmp, f"p5pf-t{i}-{n}", ok=i not in fable_fails, corrections=fable_corr if n == 1 else 0, by_model=FABLE,
                 second=i not in fable_second_fails and i not in fable_fails)  # fmt: skip
             put(tmp, f"p6-t{i}-{n}", ok=i != 2, by_model={**FABLE, **OPUS}, workers=n - 1, tokens=200_000)
+            put(
+                tmp,
+                f"p6p-t{i}-{n}",
+                ok=i not in (2, 3),
+                by_model={**FABLE, **OPUS, **OPUS_MORE},
+                workers=2 + n,
+                tokens=300_000,
+            )
 
 
 def test_q5_fable_builds_on_a_gain_of_one_in_eight(stage4):
@@ -160,6 +200,19 @@ def test_q5_fable_builds_on_a_gain_of_one_in_eight(stage4):
     )
     assert p6["note"] == "reported only; P6 decides nothing" and "fable_builds" not in p6
     assert "Fable builds" in summarize.describe(d)
+    p6p = d["p6p"]
+    assert p6p["note"] == "reported only; P6P decides nothing" and set(p6p) >= {
+        "against_P5P",
+        "against_P5PF",
+        "against_P6",
+    }
+    assert p6p["workers_started"] == {"runs": 16, "runs_with_workers": 16, "total": 56, "mean": 3.5, "min": 3, "max": 4}
+    vs = p6p["against_P6"]
+    assert vs["trustworthy_per_8_difference"] == -1.0 and vs["workers_started_per_run"] == {"P6P": 3.5, "P6": 0.5}
+    one_opus = 10 * 4 + 2000 * 20 + 20_000 * 8
+    one_fable = 10 * 8 + 1000 * 40 + 10_000 * 16
+    assert vs["cost_ratio"] == round((one_fable + one_opus) / (one_fable + 10 * 4 + 1000 * 20 + 10_000 * 8), 3)
+    assert set(rows["P6P"]["by_model"]) == {"claude-fable-5-2", "claude-opus-5-5"} and d["fable_builds"] is True
 
 
 def test_q5_thirty_percent_fewer_corrections_and_the_zero_case(stage4):

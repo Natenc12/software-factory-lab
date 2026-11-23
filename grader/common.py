@@ -37,6 +37,8 @@ STAGE4_ROWS = {
     "P5P": ("P5P", "claude-opus-5-5"),
     "P5PF": ("P5P", "claude-fable-5-2"),
     "P6": ("P6", "claude-fable-5-2"),
+    # The chief of staff told to hand the building to workers (approved after gate 5).
+    "P6P": ("P6P", "claude-fable-5-2"),
 }
 
 # List prices in US dollars per million tokens. Source: the claude-api skill's model table (cached

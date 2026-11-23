@@ -17,7 +17,8 @@ one trustworthy pull request in eight, or needs at least 30% fewer correction ro
 correction rounds that half cannot be met, and the output says so). Per row, each ticket weighted
 equally: trustworthy, rescues, correction rounds and stops per 8, owner words per ticket, counted tokens
 and list price per run, list-price dollars by model (from run.json `by_model`) and `workers_started`.
-P6 is reported against both other rows and decides nothing.
+P6 and P6P are reported against both other rows and decide nothing; P6P is also compared with P6
+(difference in trustworthy per 8, cost ratio, workers started per run).
 
 Stage 2 (any stage folder named stage-2..., so stage-2b too): the decision is the charter's Q3 rule
 instead, for each add-on arm (P1T, P1L, P1A, P5, P5P, and stage 2b's P5PA) against P1 on the tickets both have (default: the eight stage-2
@@ -383,6 +384,16 @@ Q5_TRUST_GAIN = 1.0
 Q5_FEWER_CORRECTIONS = 0.30
 
 
+def run_list_price(v: dict) -> float | None:
+    """A run's list price: each model's tokens at that model's price (a lead and its workers can differ),
+    else the verdict's figure (all tokens at the run's model)."""
+    by_model = v.get("by_model") or {}
+    if by_model:
+        prices = [list_price(m, u) for m, u in by_model.items()]
+        return sum(x for x in prices if x is not None) if any(x is not None for x in prices) else None
+    return (v.get("measures") or {}).get("list_price_usd")
+
+
 def cells4(rows: list[dict], reading: str) -> dict[str, dict]:
     """Per ticket: the cell's mean over its graded repeats of every stage 4 measure."""
     out = {}
@@ -404,7 +415,9 @@ def cells4(rows: list[dict], reading: str) -> dict[str, dict]:
             "stops": mean_of("stops_total"),
             "words": mean_of("attention_words"),
             "tokens": mean_of("counted_tokens"),
-            "list_usd": mean_of("list_price_usd"),
+            "list_usd": sum(run_list_price(v) or 0 for v in g) / len(g)
+            if any(run_list_price(v) is not None for v in g)
+            else None,
         }
     return out
 
@@ -454,9 +467,12 @@ def workers_summary(runs: list[dict]) -> dict:
 
 
 def decide_q5(verdicts: list[dict], reading: str = "current") -> dict:
-    """The charter's Q5 rule, P5PF (Fable builds) against P5P (Opus builds); P6 reported against both."""
+    """The charter's Q5 rule, P5PF (Fable builds) against P5P (Opus builds).
+
+    P6 and P6P are reported against both other rows and decide nothing; P6P is also compared with P6.
+    """
     graded = [v for v in verdicts if trust(v, reading) is not None]
-    by_row = {row: [v for v in graded if v["row"] == row] for row in ("P5P", "P5PF", "P6")}
+    by_row = {row: [v for v in graded if v["row"] == row] for row in ("P5P", "P5PF", "P6", "P6P")}
     c = {row: cells4(runs, reading) for row, runs in by_row.items()}
     out: dict = {"rule": "Q5", "reading": reading, "rules_applied_literally": True,
                  "rows": {row: row4(c[row], sorted(c[row], key=lambda t: int(t[1:])), by_row[row]) for row in c if c[row]}}  # fmt: skip
@@ -496,21 +512,47 @@ def decide_q5(verdicts: list[dict], reading: str = "current") -> dict:
             list_price_ratio_per_run=r3(cost),
             fable_builds=gain >= Q5_TRUST_GAIN - 1e-9 or fewer,
         )
-    if c["P6"]:
-        p6 = {}
+
+    def compare(row: str, ctrl: str) -> dict | None:
+        tickets = sorted(set(c[row]) & set(c[ctrl]), key=lambda t: int(t[1:]))
+        if not tickets:
+            return None
+        a = row4(c[row], tickets, [v for v in by_row[row] if v["ticket"] in tickets])
+        b = row4(c[ctrl], tickets, [v for v in by_row[ctrl] if v["ticket"] in tickets])
+        diff = {k: r3(a[k] - b[k]) if a[k] is not None and b[k] is not None else None
+                for k in ("trustworthy_per_8", "rescues_per_8", "correction_rounds_per_8", "stops_per_8",
+                          "owner_words_per_ticket", "counted_tokens_per_run", "list_price_usd_per_run")}  # fmt: skip
+        cost = (
+            a["list_price_usd_per_run"] / b["list_price_usd_per_run"]
+            if a["list_price_usd_per_run"] and b["list_price_usd_per_run"]
+            else None
+        )
+        return {"tickets": tickets, "differences": diff, "cost_ratio": r3(cost)}
+
+    for row in ("P6", "P6P"):
+        if not c[row]:
+            continue
+        rep = {}
         for ctrl in ("P5P", "P5PF"):
-            tickets = sorted(set(c["P6"]) & set(c[ctrl]), key=lambda t: int(t[1:]))
-            if not tickets:
-                continue
-            a = row4(c["P6"], tickets, [v for v in by_row["P6"] if v["ticket"] in tickets])
-            b = row4(c[ctrl], tickets, [v for v in by_row[ctrl] if v["ticket"] in tickets])
-            diff = {k: r3(a[k] - b[k]) if a[k] is not None and b[k] is not None else None
-                    for k in ("trustworthy_per_8", "rescues_per_8", "correction_rounds_per_8", "stops_per_8",
-                              "owner_words_per_ticket", "counted_tokens_per_run", "list_price_usd_per_run")}  # fmt: skip
-            p6[f"against_{ctrl}"] = {"tickets": tickets, "differences": diff}
-        p6["workers_started"] = workers_summary(by_row["P6"])
-        p6["note"] = "reported only; P6 decides nothing"
-        out["p6"] = p6
+            x = compare(row, ctrl)
+            if x:
+                rep[f"against_{ctrl}"] = {"tickets": x["tickets"], "differences": x["differences"]}
+        rep["workers_started"] = workers_summary(by_row[row])
+        rep["note"] = f"reported only; {row} decides nothing"
+        out[row.lower()] = rep
+    if c["P6P"] and c["P6"]:
+        x = compare("P6P", "P6")
+        if x:
+            out["p6p"]["against_P6"] = {
+                "tickets": x["tickets"],
+                "trustworthy_per_8_difference": x["differences"]["trustworthy_per_8"],
+                "cost_ratio": x["cost_ratio"],
+                "workers_started_per_run": {
+                    "P6P": workers_summary([v for v in by_row["P6P"] if v["ticket"] in x["tickets"]])["mean"],
+                    "P6": workers_summary([v for v in by_row["P6"] if v["ticket"] in x["tickets"]])["mean"],
+                },
+                "differences": x["differences"],
+            }
     return out
 
 

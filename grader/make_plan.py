@@ -5,9 +5,10 @@
     python -m grader.make_plan stage-2 [--ticket-ceiling T9=900000 ...] [--budget N] [--out-dir ...]
 
 Stage 4 (`make_plan stage-4 --codebase hono|sqlglot`, gate 5): rows P5P (arms/P5P on Opus 5.5, run
-ids p5p-...), P5PF (arms/P5P on Fable 5.2, p5pf-...) and P6 (arms/P6, lead on Fable 5.2, p6-...), on the
-codebase's eight tickets at S1, repeats 1 and 2: 48 runs into results/stage-4-<codebase>/, stage folder
-stage-4-<codebase>, the model set per run. Ceilings: P1's for P5P and P5PF, 1.2M for P6;
+ids p5p-...), P5PF (arms/P5P on Fable 5.2, p5pf-...), P6 (arms/P6, lead on Fable 5.2, p6-...) and P6P
+(arms/P6P, lead on Fable 5.2, told to hand the building to workers, p6p-...), on the codebase's eight
+tickets at S1, repeats 1 and 2: 64 runs into results/stage-4-<codebase>/, stage folder
+stage-4-<codebase>, the model set per run. Ceilings: P1's for P5P and P5PF, 1.2M for P6 and P6P;
 `--row-ceiling P6=...` sets a row's ceiling, `--ticket-ceiling` raises every row on a ticket (never lowers).
 
 Stage 2b (`make_plan stage-2b`, same options): on the same eight tickets, repeat 3 of P5P and of P1A
@@ -79,7 +80,7 @@ ROUNDS = {
     },
 }
 TICKETS = [f"T{i}" for i in range(1, 9)]
-STAGE4_CEILINGS = {"P5P": CEILINGS["P1"], "P5PF": CEILINGS["P1"], "P6": 1_200_000}
+STAGE4_CEILINGS = {"P5P": CEILINGS["P1"], "P5PF": CEILINGS["P1"], "P6": 1_200_000, "P6P": 1_200_000}
 STAGE4_REPEATS = (1, 2)
 METER_TICKET = "T1"
 SPEC_LEVELS = ("S0", "S2", "S3")
@@ -406,7 +407,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="stage 2 and 2b: ceiling for every arm on that ticket (repeatable)")  # fmt: skip
     ap.add_argument("--budget", type=int, help="stage 2: the stage's token figure (default 24,000,000)")
     ap.add_argument("--row-ceiling", action="append", default=[], metavar="P6=1500000",
-                    help="stage 4: ceiling for one row (P5P, P5PF, P6) on every ticket (repeatable)")  # fmt: skip
+                    help="stage 4: ceiling for one row (P5P, P5PF, P6, P6P) on every ticket (repeatable)")  # fmt: skip
     a = ap.parse_args(argv)
     if a.stage == "stage-4":
         if a.best_process:
