@@ -1,0 +1,270 @@
+diff --git a/README.md b/README.md
+index fad330535..6b67148b8 100644
+--- a/README.md
++++ b/README.md
+@@ -585,19 +585,19 @@ make bench-optimize   # Run optimization benchmark
+ 
+ ## Optional Dependencies
+ 
+-SQLGlot uses [dateutil](https://github.com/dateutil/dateutil) to simplify constant date and interval arithmetic. With dateutil installed, the optimizer simplifies:
++SQLGlot has no required dependencies, and none of its features depend on an optional package being installed. In particular, the optimizer simplifies constant date and interval arithmetic with the standard library alone, so
+ 
+ ```sql
+ DATE '2021-01-01' + INTERVAL '1' MONTH
+ ```
+ 
+-to:
++always becomes:
+ 
+ ```sql
+ CAST('2021-02-01' AS DATE)
+ ```
+ 
+-Without dateutil, the optimizer leaves this arithmetic unevaluated.
++The only optional extra is `sqlglot[c]`, which compiles the mypyc C extension for speed.
+ 
+ ## Supported Dialects
+ 
+diff --git a/setup.py b/setup.py
+index 49649dfa3..c25a37ba5 100644
+--- a/setup.py
++++ b/setup.py
+@@ -14,12 +14,10 @@ setup(
+             "setuptools_scm >= 10.2",
+             "pandas",
+             "pandas-stubs",
+-            "python-dateutil",
+             "pytz",
+             "pdoc",
+             "pre-commit",
+             "ruff==0.15.6",
+-            "types-python-dateutil",
+             "types-pytz",
+             "typing_extensions",
+             "pyperf",
+diff --git a/sqlglot/optimizer/simplify.py b/sqlglot/optimizer/simplify.py
+index 23e4a4599..52771a58c 100644
+--- a/sqlglot/optimizer/simplify.py
++++ b/sqlglot/optimizer/simplify.py
+@@ -1,5 +1,6 @@
+ from __future__ import annotations
+ 
++from calendar import monthrange
+ from datetime import date, datetime, timedelta
+ import logging
+ import functools
+@@ -19,7 +20,6 @@ from sqlglot.schema import ensure_schema
+ 
+ 
+ if t.TYPE_CHECKING:
+-    from dateutil.relativedelta import relativedelta
+     from sqlglot.dialects.dialect import DialectType
+     from typing_extensions import TypeIs
+ 
+@@ -88,6 +88,71 @@ class UnsupportedUnit(Exception):
+     pass
+ 
+ 
++class CalendarDelta:
++    """
++    A calendar interval: a whole number of months plus a fixed duration.
++
++    Adding it to a date moves the months first, clamping the day to the last day of the target
++    month (Jan 31 + 1 month is Feb 28 or 29), and then adds the duration. A duration that is not
++    a whole number of days turns a plain date into a datetime. A zero interval is falsy.
++    """
++
++    __slots__ = ("months", "duration")
++
++    def __init__(self, months: int = 0, duration: timedelta = timedelta(0)) -> None:
++        self.months = months
++        self.duration = duration
++
++    def __bool__(self) -> bool:
++        return bool(self.months or self.duration)
++
++    def __neg__(self) -> CalendarDelta:
++        return CalendarDelta(-self.months, -self.duration)
++
++    def __eq__(self, other: object) -> bool:
++        return (
++            isinstance(other, CalendarDelta)
++            and self.months == other.months
++            and self.duration == other.duration
++        )
++
++    def __hash__(self) -> int:
++        return hash((self.months, self.duration))
++
++    def __repr__(self) -> str:
++        return f"CalendarDelta(months={self.months}, duration={self.duration!r})"
++
++    def add_to(self, value: date) -> date:
++        if (self.duration.seconds or self.duration.microseconds) and not isinstance(
++            value, datetime
++        ):
++            value = datetime(value.year, value.month, value.day)
++
++        if self.months:
++            year, month = divmod(value.year * 12 + value.month - 1 + self.months, 12)
++            month += 1
++            if not date.min.year <= year <= date.max.year:
++                raise ValueError(f"year {year} is out of range")
++            value = value.replace(
++                year=year, month=month, day=min(value.day, monthrange(year, month)[1])
++            )
++
++        return value + self.duration
++
++    def __add__(self, other: object) -> date:
++        if isinstance(other, date):
++            return self.add_to(other)
++        return NotImplemented
++
++    def __radd__(self, other: object) -> date:
++        return self.__add__(other)
++
++    def __rsub__(self, other: object) -> date:
++        if isinstance(other, date):
++            return (-self).add_to(other)
++        return NotImplemented
++
++
+ def catch(*exceptions):
+     """Decorator that ignores a simplification function if any of `exceptions` are raised"""
+ 
+@@ -470,12 +535,12 @@ def _comparable_datetimes(
+     return left, right
+ 
+ 
+-def extract_interval(expression: exp.Expr) -> relativedelta | None:
++def extract_interval(expression: exp.Expr) -> CalendarDelta | None:
+     try:
+         n = to_int(expression.this.to_py())
+         unit = expression.text("unit").lower()
+         return interval(unit, n) if n is not None else None
+-    except (UnsupportedUnit, ModuleNotFoundError, ValueError):
++    except (UnsupportedUnit, OverflowError, ValueError):
+         return None
+ 
+ 
+@@ -486,7 +551,7 @@ def _is_exact_interval_move(op: exp.Expr, literal: exp.Expr, interval: exp.Inter
+     if delta is None or value is None:
+         return False
+ 
+-    if not (delta.months or delta.years):
++    if not delta.months:
+         return True
+ 
+     if isinstance(op, (exp.Sub, exp.DateSub, exp.DatetimeSub)):
+@@ -516,29 +581,27 @@ def date_literal(date: object, target_type=None) -> exp.Expr:
+     return exp.cast(exp.Literal.string(date), target_type)
+ 
+ 
+-def interval(unit: str, n: int = 1) -> relativedelta:
+-    from dateutil.relativedelta import relativedelta
+-
++def interval(unit: str, n: int = 1) -> CalendarDelta:
+     if unit == "year":
+-        return relativedelta(years=1 * n)
++        return CalendarDelta(months=12 * n)
+     if unit == "quarter":
+-        return relativedelta(months=3 * n)
++        return CalendarDelta(months=3 * n)
+     if unit == "month":
+-        return relativedelta(months=1 * n)
++        return CalendarDelta(months=1 * n)
+     if unit == "week":
+-        return relativedelta(weeks=1 * n)
++        return CalendarDelta(duration=timedelta(weeks=1 * n))
+     if unit == "day":
+-        return relativedelta(days=1 * n)
++        return CalendarDelta(duration=timedelta(days=1 * n))
+     if unit == "hour":
+-        return relativedelta(hours=1 * n)
++        return CalendarDelta(duration=timedelta(hours=1 * n))
+     if unit == "minute":
+-        return relativedelta(minutes=1 * n)
++        return CalendarDelta(duration=timedelta(minutes=1 * n))
+     if unit == "second":
+-        return relativedelta(seconds=1 * n)
++        return CalendarDelta(duration=timedelta(seconds=1 * n))
+     if unit == "millisecond":
+-        return relativedelta(microseconds=1000 * n)
++        return CalendarDelta(duration=timedelta(milliseconds=1 * n))
+     if unit == "microsecond":
+-        return relativedelta(microseconds=1 * n)
++        return CalendarDelta(duration=timedelta(microseconds=1 * n))
+ 
+     raise UnsupportedUnit(f"Unsupported unit: {unit}")
+ 
+@@ -1224,7 +1287,7 @@ class Simplifier:
+         return expression
+ 
+     @annotate_types_on_change
+-    @catch(ModuleNotFoundError, UnsupportedUnit, OverflowError, ValueError)
++    @catch(UnsupportedUnit, OverflowError, ValueError)
+     def simplify_equality(self, expression: exp.Expr) -> exp.Expr:
+         """
+         Use the subtraction and addition properties of equality to simplify expressions:
+@@ -1600,7 +1663,7 @@ class Simplifier:
+         )
+ 
+     @annotate_types_on_change
+-    @catch(ModuleNotFoundError, UnsupportedUnit)
++    @catch(UnsupportedUnit)
+     def simplify_datetrunc(self, expression: exp.Expr) -> exp.Expr:
+         """Simplify expressions like `DATE_TRUNC('year', x) >= CAST('2021-01-01' AS DATE)`"""
+         comparison = expression.__class__
+diff --git a/sqlglotc/pyproject.toml b/sqlglotc/pyproject.toml
+index cfe89333a..79fe814cf 100644
+--- a/sqlglotc/pyproject.toml
++++ b/sqlglotc/pyproject.toml
+@@ -18,7 +18,6 @@ requires = [
+     "setuptools >= 61.0",
+     "setuptools_scm >= 10.2",
+     "mypy >= 2.4.0",
+-    "types-python-dateutil",
+     "sqlglot",
+ ]
+ build-backend = "setuptools.build_meta"
+diff --git a/tests/test_optimizer.py b/tests/test_optimizer.py
+index a9fc025b8..82683dfde 100644
+--- a/tests/test_optimizer.py
++++ b/tests/test_optimizer.py
+@@ -2318,6 +2318,35 @@ SELECT :with_,WITH :expressions,CTE :this,UNION :this,SELECT :expressions,1,:exp
+         partial.args["ifs"][0].args["true"].type = None
+         self.assertEqual(optimizer.simplify.simplify(partial.copy()), partial)
+ 
++    def test_simplify_dates_without_dateutil(self):
++        # Date folding must not depend on any third-party package being installed
++        blocked = {"dateutil": None, "dateutil.relativedelta": None}
++        with patch.dict(sys.modules, blocked):
++            for sql, expected in (
++                ("DATE '2021-01-31' + INTERVAL '1' MONTH", "CAST('2021-02-28' AS DATE)"),
++                ("DATE '2020-01-31' + INTERVAL '1' MONTH", "CAST('2020-02-29' AS DATE)"),
++                ("DATE '2021-03-31' - INTERVAL '1' MONTH", "CAST('2021-02-28' AS DATE)"),
++                ("DATE '2020-02-29' + INTERVAL '1' YEAR", "CAST('2021-02-28' AS DATE)"),
++                ("DATE '2021-11-30' + INTERVAL '1' QUARTER", "CAST('2022-02-28' AS DATE)"),
++                ("DATE '2021-01-01' + INTERVAL '2' WEEK", "CAST('2021-01-15' AS DATE)"),
++                ("INTERVAL '1' DAY + DATE '2021-12-31'", "CAST('2022-01-01' AS DATE)"),
++                (
++                    "CAST('2021-01-01 23:30:00' AS DATETIME) + INTERVAL '1' HOUR",
++                    "CAST('2021-01-02 00:30:00' AS DATETIME)",
++                ),
++                (
++                    "DATE_TRUNC('month', x) = DATE '2021-01-01'",
++                    "x < CAST('2021-02-01' AS DATE) AND x >= CAST('2021-01-01' AS DATE)",
++                ),
++                (
++                    "DATE_TRUNC('year', x) > DATE '2021-06-01'",
++                    "x >= CAST('2022-01-01' AS DATE)",
++                ),
++                ("x + INTERVAL '1' MONTH = DATE '2024-01-15'", "x = CAST('2023-12-15' AS DATE)"),
++            ):
++                with self.subTest(sql=sql):
++                    self.assertEqual(optimizer.simplify.simplify(parse_one(sql)).sql(), expected)
++
+     def test_sqlite_date_datetime_comparison(self):
+         sql = "SELECT DATE('2024-02-01') = CAST('2024-02-01 00:00:00' AS DATETIME)"
+         optimized = optimizer.optimize(sql, dialect="sqlite").sql("sqlite")
