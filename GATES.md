@@ -2,24 +2,33 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
-## Gate 4 · stage 2 results and the stage 3 plan · waiting for the owner · 2026-11-22
+## Gate 4 · stage 2 results · a short round approved first · 2026-11-22
 
 Page: https://claude.ai/artifact/VfgFrkDdVNx9mLcxwZkFkd (copy: `results/stage-2/page/stage-2-results.html`)
 
 Stage 2 ran in full: 88 runs graded, none discarded. By the charter's Q3 rule only `P5P` (the guide
-with the skills library, pointed) goes in. The orchestrator's stage 3 plan, none of it started:
+with the skills library, pointed) goes in. The owner then asked why pointed skills is better than the
+architecture brief. The orchestrator answered that on the evidence it is not: the two are tied, the
+brief is slightly ahead on trust (7.5 against 7.0 of 8, corrected), and the rule separated them on a
+quality difference of 0.06 of a point. The owner asked whether the two could be combined and whether
+a brief is harder to supply than skills, with a process that travels between projects in mind. The
+orchestrator proposed the round below and asked "Shall I go ahead with that round, or skip it and
+start stage 3 on pointed skills alone?" The owner's reply: "yeah". Applied:
 
-1. Carry `P5P` forward as the way of working.
-2. Three setups on the same eight tickets: `P5P` on Opus 5.5 (a third run per ticket, 8 runs), `P5P` on
-   Fable 5.2 (16 runs), and the owner's chief-of-staff setup, a Fable lead with the same guide and
-   skills that may start Opus workers at its own discretion (16 runs). 40 runs, about 12M counted
-   tokens with grading.
-3. The charter's third model arm ("Fable plans and reviews while Opus builds") is folded into the
-   chief-of-staff setup unless the owner wants it kept separate.
-4. Price ratio stated before any result, as the charter requires: at list price Fable 5.2 costs twice
-   what Opus 5.5 does per token. The Q5 rule is unchanged.
+1. **`P5P` stays the base**, as the rule says and because it carries to any project unchanged; the
+   brief needs a map written for each codebase.
+2. **A new arm, `P5PA`:** `P5P` plus the architecture brief (P5P's guide and skills, P1A's "Before you
+   plan" section and system map, nothing else).
+3. **A short round, stage folder `stage-2b`,** on the eight stage 2 tickets: a third run of `P5P`, a
+   third run of `P1A`, and two runs of `P5PA`. 32 runs, about 6M counted tokens with grading.
+4. **The round's rule, fixed here before any run:** `P5PA` replaces `P5P` as the base only if, on the
+   eight tickets with each ticket weighted equally, it is at least one trustworthy pull request in
+   eight better than `P5P` (all runs of each) and its counted tokens per run are no more than 30% above
+   `P5P`'s. Otherwise `P5P` stays. The current rules decide; the second reading is reported beside
+   them. `P1A`'s third run is reported and decides nothing.
 
-No decision recorded yet.
+**Not yet decided:** the stage 3 plan on that page (P5P or its replacement on Opus and on Fable, and
+the chief-of-staff setup; 40 runs). It is put to the owner again with this round's results.
 
 ## Gate 3 · confirm round results and the stage 2 plan · approved 2026-11-22
 
