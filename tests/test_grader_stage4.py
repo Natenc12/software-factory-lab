@@ -49,7 +49,7 @@ def tree(tmp, codebase="hono"):
         (ans / "replies.md").write_text(f"## {t}-q\nWhen: x\nReply: y\n")
         (ans / "key.json").write_text("{}")
         (ans / "reference.patch").write_text("diff\n")
-    for a in ("P5P", "P6", "P6P"):
+    for a in ("P5P", "P6P"):  # no arms/P6: stage 4 does not plan it
         (arms / a).mkdir(parents=True)
     out = tmp / "results" / f"stage-4-{codebase}"
     args = ["stage-4", "--codebase", codebase, "--tickets-root", str(tickets), "--answers-root", str(answers),
@@ -59,40 +59,35 @@ def tree(tmp, codebase="hono"):
 
 def test_make_plan_stage_4(tmp_path):
     arms, out, args = tree(tmp_path)
-    assert (
-        make_plan.main(
-            [*args, "--row-ceiling", "P6=1500000", "--ticket-ceiling", "T3=800000", "--row-ceiling", "P6P=1300000"]
-        )
-        == 0
-    )
+    assert make_plan.main([*args, "--row-ceiling", "P6P=1500000", "--ticket-ceiling", "T3=800000"]) == 0
     plan = json.loads((out / "plan.json").read_text())
     runs = {r["run_id"]: r for r in plan["runs"]}
-    assert plan["stage"] == "stage-4-hono" and len(runs) == 64 and plan["repeats"] == [1, 2]
+    assert plan["stage"] == "stage-4-hono" and len(runs) == 48 and plan["repeats"] == [1, 2]
+    assert list(plan["rows"]) == ["P5P", "P5PF", "P6P"] and not any(k.startswith("p6-") for k in runs)
     assert plan["parts"]["P6P"] == [f"p6p-t{i}-{n}" for n in (1, 2) for i in range(1, 9)]
-    assert runs["p6p-t1-1"]["arm"].endswith("arms/P6P") and runs["p6p-t1-1"]["model"] == "claude-fable-5-2"
-    assert runs["p6p-t1-1"]["ceiling"] == 1_300_000 and plan["rows"]["P6P"]["ceiling"] == 1_300_000
     assert plan["parts"]["P5PF"] == [f"p5pf-t{i}-{n}" for n in (1, 2) for i in range(1, 9)]
     assert {r["model"] for k, r in runs.items() if k.startswith("p5p-")} == {"claude-opus-5-5"}
-    assert {r["model"] for k, r in runs.items() if k.startswith(("p5pf-", "p6-", "p6p-"))} == {"claude-fable-5-2"}
-    assert runs["p5pf-t1-1"]["arm"].endswith("arms/P5P") and runs["p6-t1-1"]["arm"].endswith("arms/P6")
-    assert (runs["p5p-t1-1"]["ceiling"], runs["p5pf-t2-2"]["ceiling"], runs["p6-t1-1"]["ceiling"]) == (
+    assert {r["model"] for k, r in runs.items() if k.startswith(("p5pf-", "p6p-"))} == {"claude-fable-5-2"}
+    assert runs["p5pf-t1-1"]["arm"].endswith("arms/P5P") and runs["p6p-t1-1"]["arm"].endswith("arms/P6P")
+    assert (runs["p5p-t1-1"]["ceiling"], runs["p5pf-t2-2"]["ceiling"], runs["p6p-t1-1"]["ceiling"]) == (
         500_000,
         500_000,
         1_500_000,
     )
     # A ticket override raises every row on that ticket, never lowers one.
-    assert (runs["p5p-t3-1"]["ceiling"], runs["p6-t3-1"]["ceiling"]) == (800_000, 1_500_000)
-    assert plan["rows"]["P6"] == {"arm": "P6", "model": "claude-fable-5-2", "ceiling": 1_500_000}
+    assert (runs["p5p-t3-1"]["ceiling"], runs["p6p-t3-1"]["ceiling"]) == (800_000, 1_500_000)
+    assert plan["rows"]["P6P"] == {"arm": "P6P", "model": "claude-fable-5-2", "ceiling": 1_500_000}
     assert runs["p5pf-t1-1"]["redact"] == ["P5P", "P5PF", "p5p", "p5pf"]
     assert (out / "sheets" / "hono-T8.md").is_file() and "model" not in plan["defaults"]
 
 
 def test_make_plan_stage_4_refuses_and_checks_options(tmp_path, capsys):
     arms, out, args = tree(tmp_path, "sqlglot")
-    (arms / "P6").rmdir()
+    (arms / "P5P").rmdir()
     assert make_plan.main(args) == 1
-    assert "arm P6" in capsys.readouterr().err and not out.exists()
+    assert "arm P5P" in capsys.readouterr().err and not out.exists()
     assert make_plan.main([*args, "--row-ceiling", "P9=1"]) == 2
+    assert make_plan.main([*args, "--row-ceiling", "P6=1"]) == 2  # P6 is not a stage 4 row any more
     with pytest.raises(SystemExit):
         make_plan.main(["stage-4"])  # gct is not a stage 4 codebase
 
@@ -201,17 +196,17 @@ def test_q5_fable_builds_on_a_gain_of_one_in_eight(stage4):
     assert p6["note"] == "reported only; P6 decides nothing" and "fable_builds" not in p6
     assert "Fable builds" in summarize.describe(d)
     p6p = d["p6p"]
-    assert p6p["note"] == "reported only; P6P decides nothing" and set(p6p) >= {
+    assert p6p["note"] == "reported only; P6P decides nothing" and set(p6p) == {
         "against_P5P",
         "against_P5PF",
-        "against_P6",
+        "workers_started",
+        "note",
     }
+    assert p6p["against_P5P"]["differences"]["trustworthy_per_8"] == 0.0  # P6P fails T2 and T3, P5P T1 and T2
     assert p6p["workers_started"] == {"runs": 16, "runs_with_workers": 16, "total": 56, "mean": 3.5, "min": 3, "max": 4}
-    vs = p6p["against_P6"]
-    assert vs["trustworthy_per_8_difference"] == -1.0 and vs["workers_started_per_run"] == {"P6P": 3.5, "P6": 0.5}
     one_opus = 10 * 4 + 2000 * 20 + 20_000 * 8
     one_fable = 10 * 8 + 1000 * 40 + 10_000 * 16
-    assert vs["cost_ratio"] == round((one_fable + one_opus) / (one_fable + 10 * 4 + 1000 * 20 + 10_000 * 8), 3)
+    assert rows["P6P"]["list_price_usd_per_run"] == round((one_fable + one_opus) / 1e6, 3)
     assert set(rows["P6P"]["by_model"]) == {"claude-fable-5-2", "claude-opus-5-5"} and d["fable_builds"] is True
 
 

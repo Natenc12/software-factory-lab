@@ -17,8 +17,7 @@ one trustworthy pull request in eight, or needs at least 30% fewer correction ro
 correction rounds that half cannot be met, and the output says so). Per row, each ticket weighted
 equally: trustworthy, rescues, correction rounds and stops per 8, owner words per ticket, counted tokens
 and list price per run, list-price dollars by model (from run.json `by_model`) and `workers_started`.
-P6 and P6P are reported against both other rows and decide nothing; P6P is also compared with P6
-(difference in trustworthy per 8, cost ratio, workers started per run).
+P6P is reported against both and decides nothing (a P6 run, if present, the same way; P6 is not planned).
 
 Stage 2 (any stage folder named stage-2..., so stage-2b too): the decision is the charter's Q3 rule
 instead, for each add-on arm (P1T, P1L, P1A, P5, P5P, and stage 2b's P5PA) against P1 on the tickets both have (default: the eight stage-2
@@ -469,7 +468,8 @@ def workers_summary(runs: list[dict]) -> dict:
 def decide_q5(verdicts: list[dict], reading: str = "current") -> dict:
     """The charter's Q5 rule, P5PF (Fable builds) against P5P (Opus builds).
 
-    P6 and P6P are reported against both other rows and decide nothing; P6P is also compared with P6.
+    P6P is reported against both and decides nothing. P6 is not planned in stage 4 (owner's decision after
+    gate 5); a p6 run, if present, is reported the same way.
     """
     graded = [v for v in verdicts if trust(v, reading) is not None]
     by_row = {row: [v for v in graded if v["row"] == row] for row in ("P5P", "P5PF", "P6", "P6P")}
@@ -540,19 +540,6 @@ def decide_q5(verdicts: list[dict], reading: str = "current") -> dict:
         rep["workers_started"] = workers_summary(by_row[row])
         rep["note"] = f"reported only; {row} decides nothing"
         out[row.lower()] = rep
-    if c["P6P"] and c["P6"]:
-        x = compare("P6P", "P6")
-        if x:
-            out["p6p"]["against_P6"] = {
-                "tickets": x["tickets"],
-                "trustworthy_per_8_difference": x["differences"]["trustworthy_per_8"],
-                "cost_ratio": x["cost_ratio"],
-                "workers_started_per_run": {
-                    "P6P": workers_summary([v for v in by_row["P6P"] if v["ticket"] in x["tickets"]])["mean"],
-                    "P6": workers_summary([v for v in by_row["P6"] if v["ticket"] in x["tickets"]])["mean"],
-                },
-                "differences": x["differences"],
-            }
     return out
 
 
