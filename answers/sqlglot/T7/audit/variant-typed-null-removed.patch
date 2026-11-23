@@ -1,0 +1,98 @@
+diff --git a/sqlglot/optimizer/simplify.py b/sqlglot/optimizer/simplify.py
+index 23e4a4599..b71548c73 100644
+--- a/sqlglot/optimizer/simplify.py
++++ b/sqlglot/optimizer/simplify.py
+@@ -833,6 +833,7 @@ class Simplifier:
+             node = self.simplify_connectors(node, root)
+             node = self.remove_complements(node, root)
+ 
++            node = self.simplify_coalesce_args(node)
+             if coalesce_simplification:
+                 node = self.simplify_coalesce(node)
+             node.parent = parent
+@@ -1415,6 +1416,29 @@ class Simplifier:
+ 
+         return None
+ 
++    def simplify_coalesce_args(self, expression: exp.Expr) -> exp.Expr:
++        """COALESCE(NULL, x, NULL, 1, y) -> COALESCE(x, 1): a NULL is never picked, and nothing
++        after a non-NULL constant is ever reached."""
++        if not isinstance(expression, exp.Coalesce) or isinstance(expression.parent, exp.Hint):
++            return expression
++
++        args = [expression.this, *expression.expressions]
++        kept = []
++        for arg in args:
++            if isinstance(arg, exp.Null) or (isinstance(arg, exp.Cast) and isinstance(arg.this, exp.Null)):
++                continue
++            kept.append(arg)
++            if _is_nonnull_constant(arg):
++                break
++
++        if len(kept) == len(args):
++            return expression
++        if not kept:
++            return exp.null()
++        if len(kept) == 1:
++            return kept[0]
++        return exp.Coalesce(this=kept[0], expressions=kept[1:])
++
+     @annotate_types_on_change
+     def simplify_coalesce(self, expression: exp.Expr) -> exp.Expr:
+         # COALESCE(x) -> x
+diff --git a/tests/fixtures/optimizer/simplify.sql b/tests/fixtures/optimizer/simplify.sql
+index 20f446283..a565081ba 100644
+--- a/tests/fixtures/optimizer/simplify.sql
++++ b/tests/fixtures/optimizer/simplify.sql
+@@ -1298,36 +1298,45 @@ CAST(x AS INT) < 0 AND CAST(x AS INT) >= -500;
+ # dialect: duckdb
+ # execute: true
+ SELECT COALESCE(a, NULL, 1) = 1 AS eq FROM x;
+-SELECT COALESCE(a, NULL) = 1 OR COALESCE(a, NULL) IS NULL AS eq FROM x;
++SELECT a = 1 OR a IS NULL AS eq FROM x;
+ 
+ # dialect: duckdb
+ # execute: true
+ SELECT 1 = COALESCE(a, NULL, 1) AS eq FROM x;
+-SELECT COALESCE(a, NULL) = 1 OR COALESCE(a, NULL) IS NULL AS eq FROM x;
++SELECT a = 1 OR a IS NULL AS eq FROM x;
+ 
+ # dialect: duckdb
+ # execute: true
+ SELECT 0 < COALESCE(a, NULL, -1) AS gt FROM x;
+-SELECT COALESCE(a, NULL, -1) > 0 AS gt FROM x;
++SELECT COALESCE(a, -1) > 0 AS gt FROM x;
+ 
+ # dialect: duckdb
+ # execute: true
+ SELECT COALESCE(a, NULL, b, 3) = 3 AS eq FROM x;
+-SELECT COALESCE(a, NULL, b) = 3 OR COALESCE(a, NULL, b) IS NULL AS eq FROM x;
++SELECT COALESCE(a, b) = 3 OR COALESCE(a, b) IS NULL AS eq FROM x;
+ 
+ # dialect: duckdb
+ # execute: true
+ SELECT COALESCE(a, NULL, NULL, 1) = 1 AS eq FROM x;
+-SELECT COALESCE(a, NULL, NULL) = 1 OR COALESCE(a, NULL, NULL) IS NULL AS eq FROM x;
++SELECT a = 1 OR a IS NULL AS eq FROM x;
+ 
+ # dialect: duckdb
+ # execute: true
+ SELECT COALESCE(a, NULL) = 1 AS eq FROM x;
+-SELECT COALESCE(a, NULL) = 1 AS eq FROM x;
++SELECT a = 1 AS eq FROM x;
+ 
+ COALESCE(x);
+ x;
+ 
++COALESCE(NULL, x, NULL, y);
++COALESCE(x, y);
++
++COALESCE(x, 0, y);
++COALESCE(x, 0);
++
++COALESCE(NULL, NULL);
++NULL;
++
+ COALESCE(x, 1) = 2;
+ NOT x IS NULL AND x = 2;
+ 

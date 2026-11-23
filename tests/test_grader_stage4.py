@@ -237,3 +237,56 @@ def test_second_reading_commands_work_on_stage_4_runs(stage4):
         assert verdict.main([str(folder), "--second-only"]) == 0
         v = json.loads((folder / "harness" / "verdict.json").read_text())
         assert v["second_reading"]["outcome"] == "trustworthy" and v["row"] == rid.split("-")[0].upper()
+
+
+def put_cb(tmp, codebase, rid, ok=True, tripped=(), by_model=None, workers=None):
+    folder = make_run(tmp, rid, stage=f"stage-4-{codebase}", g=grade(hidden_ok=ok, tripped=tripped))
+    run = json.loads((folder / "harness" / "run.json").read_text())
+    run.update(by_model=by_model or {}, workers_started=workers)
+    (folder / "harness" / "run.json").write_text(json.dumps(run))
+    v = verdict.build(folder)
+    v["codebase"] = codebase
+    v["second_reading"]["trustworthy_second_reading"] = v["trustworthy"]
+    (folder / "harness" / "verdict.json").write_text(json.dumps(v))
+
+
+def test_q5_pooled_over_two_codebases_and_per_codebase(stage4):
+    fails = {"hono": {"P5P": (1, 2), "P5PF": (1,)}, "sqlglot": {"P5P": (1,), "P5PF": (1, 2, 3)}}
+    for cb, rows in fails.items():
+        for i in range(1, 9):
+            for n in (1, 2):
+                put_cb(stage4, cb, f"p5p-t{i}-{n}", ok=i not in rows["P5P"], by_model=OPUS)
+                put_cb(stage4, cb, f"p5pf-t{i}-{n}", ok=i not in rows["P5PF"], by_model=FABLE)
+                put_cb(stage4, cb, f"p6p-t{i}-{n}", ok=i != 4, by_model={**FABLE, **OPUS}, workers=n + 1)
+    put_cb(stage4, "hono", "p5p-t9-1", ok=True, tripped=["existing_tests_changed"])  # counted below
+    put_cb(stage4, "hono", "p5p-t9-2", ok=True, tripped=["existing_tests_changed", "unchanged_paths"])
+    put_cb(stage4, "sqlglot", "p5pf-t9-1", ok=False, tripped=["existing_tests_changed"])
+    s = summarize.summarize(["stage-4-hono", "stage-4-sqlglot"], out_dir=stage4 / "pooled")
+    d = s["decision"]
+    assert s["runs"] == 2 * 48 + 3 and d["pooled"] is True and d["codebases"] == ["hono", "sqlglot"]
+    assert (
+        len(d["shared_tickets"]) == 16
+        and d["shared_tickets"][0] == "hono/T1"
+        and d["shared_tickets"][-1] == "sqlglot/T8"
+    )
+    # Pooled: P5P fails 3 of the 16 shared cells, P5PF 4 (the T9 extras are not shared, so left out).
+    assert d["p5p"]["runs"] == 32 and d["p5pf"]["runs"] == 32
+    assert (d["p5p"]["trustworthy_per_8"], d["p5pf"]["trustworthy_per_8"]) == (6.5, 6.0)
+    hono, sqlglot = d["per_codebase"]["hono"], d["per_codebase"]["sqlglot"]
+    assert (hono["p5p"]["trustworthy_per_8"], hono["p5pf"]["trustworthy_per_8"]) == (6.0, 7.0) and hono[
+        "fable_builds"
+    ] is True
+    assert sqlglot["fable_builds"] is False and hono["shared_tickets"] == TICKETS
+    assert d["fable_builds"] is False and d["trustworthy_gain_per_8"] < 0
+    for x in (d, hono, sqlglot):
+        assert set(x["p6p"]) >= {"against_P5P", "against_P5PF", "workers_started"}
+        assert set(x["rows"]["P6P"]["by_model"]) == {"claude-fable-5-2", "claude-opus-5-5"}
+    assert d["p6p"]["workers_started"]["runs"] == 32 and hono["p6p"]["workers_started"]["runs"] == 16
+    assert s["decision_second_reading"]["per_codebase"]["sqlglot"]["fable_builds"] is False
+    text = summarize.describe(d)
+    assert text.startswith("pooled over hono and sqlglot: Opus builds") and "hono: Fable builds" in text
+    only = s["only_existing_tests_changed"]
+    assert only["current"] == {"P5P": {"count": 1, "runs": ["hono/p5p-t9-1"]}}
+    assert only["second"] == {}  # no second-reading inputs here, so its checks are undecided and nothing counts
+    rows = (stage4 / "pooled" / "summary.csv").read_text().splitlines()
+    assert sum(1 for r in rows if r.startswith("p5p-t1-1,")) == 2  # one per codebase, not merged

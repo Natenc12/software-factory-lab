@@ -316,6 +316,40 @@ def existing_tests_changed(repo, base, head, cfg, may_change=()) -> dict:
     }
 
 
+def ts_case_changes(before: dict[str, str], after: dict[str, str]) -> list[tuple[str, str]]:
+    """(case name, "removed" | "modified") for base cases not found unchanged at the head.
+
+    Cases sharing a full name are told apart by position (`name`, `name #2`); a new case with the same
+    name inserted above an old one shifts those keys. So within each name, a base case whose text is
+    still there (in any position) is unchanged; only the rest are modified, or removed if the head has
+    fewer cases of that name left over.
+    """
+
+    def group(cases):
+        out: dict[str, list[tuple[str, str]]] = {}
+        for key, text in cases.items():
+            out.setdefault(re.sub(r" #\d+$", "", key), []).append((key, text))
+        return out
+
+    head = group(after)
+    changes = []
+    for name, cases in group(before).items():
+        left = [text for _, text in head.get(name, [])]
+        unmatched = []
+        for key, text in cases:
+            if text in left:
+                left.remove(text)
+            else:
+                unmatched.append(key)
+        for key in unmatched:
+            if left:
+                left.pop(0)
+                changes.append((key, "modified"))
+            else:
+                changes.append((key, "removed"))
+    return changes
+
+
 def existing_ts_tests_changed(repo, base, head, cfg, may_change=()) -> dict:
     """TypeScript: a named `it`/`test` case on base removed, or its call text changed (formatting,
     comments, semicolons, trailing commas and quote style ignored; grader/ts_tests.py). A file the
@@ -343,10 +377,8 @@ def existing_ts_tests_changed(repo, base, head, cfg, may_change=()) -> dict:
                 entry = f"{path}: {len(gone)} line(s) removed or changed (line rule), e.g. {gone[0][:80]!r}"
                 (allowed if allow(path, None) else changed).append(entry)
             continue
-        for name, text in before.items():
-            what = "removed" if name not in after else "modified" if after[name] != text else None
-            if what:
-                (allowed if allow(path, name) else changed).append(f"{path}::{name} {what}")
+        for name, what in ts_case_changes(before, after):
+            (allowed if allow(path, name) else changed).append(f"{path}::{name} {what}")
         if rest_before != rest_after:
             (allowed if allow(path, None) else outside).append(f"{path}: changed outside named cases")
     return {

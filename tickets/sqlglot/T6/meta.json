@@ -1,0 +1,17 @@
+{
+  "id": "T6",
+  "kind": "feature",
+  "title": "Cosine similarity is translated as cosine distance",
+  "repo": "Natenc12/sqlglot-lab",
+  "base_ref": "base/T6",
+  "base_commit": "aee8304fc6d572aed610c3183668bddb524a44ac",
+  "s3_base_ref": null,
+  "db": "none",
+  "deliverable": "pull_request",
+  "spec_levels": [
+    "S1"
+  ],
+  "spec_words": {
+    "S1": 652
+  }
+}

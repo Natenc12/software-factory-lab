@@ -1,0 +1,38 @@
+{
+  "hidden_test_cmd": "sh -c 'PATH=\"$PWD/.venv/bin:$PATH\" exec python -m pytest -q -p no:subtests \"$@\"' sh tests/hidden",
+  "unchanged_paths": [],
+  "scope_out_paths": [],
+  "tests_may_change": [
+    "tests/dialects/test_snowflake.py",
+    "tests/dialects/test_duckdb.py::TestDuckDB::test_duckdb",
+    "tests/dialects/test_bigquery.py",
+    "tests/dialects/test_clickhouse.py",
+    "tests/dialects/test_dialect.py",
+    "tests/test_expressions.py::TestExpressions::test_functions",
+    "tests/test_transpile.py",
+    "tests/test_generator.py",
+    "tests/dialects/test_presto.py",
+    "tests/dialects/test_trino.py"
+  ],
+  "tests_may_change_note": "A feature naturally adds cases to the existing Snowflake test that already round-trips VECTOR_COSINE_SIMILARITY, to the BigQuery/ClickHouse function tests, and to list-style function tests. TestDuckDB::test_nearest_join (which round-trips ARRAY_COSINE_SIMILARITY) is deliberately not listed: the ticket keeps the ARRAY_ variants unchanged. Fixture files (tests/fixtures/...) are not test code. The Snowflake, BigQuery, ClickHouse, Presto, Trino and cross-dialect test files are allowed whole; test_duckdb.py is limited to test_duckdb so that test_nearest_join (ARRAY_COSINE_SIMILARITY) stays protected.",
+  "traps": [],
+  "feature": {
+    "modules": [
+      "sqlglot/expressions/math.py",
+      "sqlglot/parsers/snowflake.py",
+      "sqlglot/parsers/duckdb.py",
+      "sqlglot/generators/snowflake.py",
+      "sqlglot/generators/duckdb.py",
+      "sqlglot/generators/bigquery.py",
+      "sqlglot/generators/clickhouse.py",
+      "sqlglot/typing/snowflake.py"
+    ],
+    "note": "a real defect on main (Snowflake VECTOR_COSINE_SIMILARITY read as exp.CosineDistance), still present upstream on 2026-11-23, so no upstream fix exists to be remembered"
+  },
+  "naive_patches": {
+    "naive.patch": "the right mapping, but 1 - distance built without parentheses: wrong inside a larger expression (1 - COSINE_DISTANCE(a, b) * 2)",
+    "naive-distance.patch": "similarity added, but Snowflake still writes a cosine distance as VECTOR_COSINE_SIMILARITY"
+  },
+  "planted_bugs": [],
+  "not_bugs": []
+}

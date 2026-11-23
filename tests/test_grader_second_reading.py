@@ -252,7 +252,7 @@ def test_summary_repeats_two_stage_folders_and_both_readings(env):
         and "does not decide" in s["decision_second_reading"]["label"]
     )
     rows = (out / "summary.csv").read_text().splitlines()
-    assert rows[0].startswith("run_id,stage_folder,repeat,") and len(rows) == 1 + 16
+    assert rows[0].startswith("run_id,codebase,stage_folder,repeat,") and len(rows) == 1 + 16
     assert "trustworthy_second_reading" in rows[0]
 
 

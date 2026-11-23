@@ -280,3 +280,21 @@ def test_vitest_an_added_line_in_an_existing_case_counts_as_catching(ts):
     trap = ts_grade(ts, head)["traps"]["new_tests_pass_on_base"]
     assert trap["on_base"] == {"src/calc.test.ts::calc > product again": "passed"}
     assert trap["tripped"] is False and trap["run_test_changes_fail_on_base"] == ["src/calc.test.ts::calc > multiplies"]
+
+
+def test_a_same_named_case_inserted_above_does_not_make_the_old_one_changed():
+    # Hono audit B: `it.each(...)('%s', ...)` added above an existing `%s` case.
+    old = "  it('%s', () => {\n    expect(A).toBe(1)\n  })\n"
+    new = "  it('%s', () => {\n    expect(B).toBe(2)\n  })\n"
+    before = ts_tests.cases(f"describe('FC', () => {{\n{old}}})\n")
+    above = ts_tests.cases(f"describe('FC', () => {{\n{new}{old}}})\n")
+    below = ts_tests.cases(f"describe('FC', () => {{\n{old}{new}}})\n")
+    assert list(above) == ["FC > %s", "FC > %s #2"]  # keys shift: the old case is now `#2`
+    assert grade.ts_case_changes(before, above) == [] and grade.ts_case_changes(before, below) == []
+    edited = ts_tests.cases("describe('FC', () => {\n" + new + old.replace("toBe(1)", "toBe(3)") + "})\n")
+    assert grade.ts_case_changes(before, edited) == [("FC > %s", "modified")]
+    two = ts_tests.cases(f"describe('FC', () => {{\n{old}{old.replace('A', 'C')}}})\n")
+    assert grade.ts_case_changes(two, before) == [("FC > %s #2", "removed")]
+    assert grade.ts_case_changes(two, ts_tests.cases("describe('FC', () => {})\n")) == [
+        ("FC > %s", "removed"), ("FC > %s #2", "removed")
+    ]  # fmt: skip

@@ -1,0 +1,26 @@
+{
+  "hidden_test_cmd": "sh -c 'PATH=\"$PWD/.venv/bin:$PATH\" exec python -m pytest -q -p no:subtests \"$@\"' sh tests/hidden",
+  "unchanged_paths": [],
+  "scope_out_paths": [],
+  "tests_may_change": [
+    "tests/dialects/",
+    "tests/test_parser.py",
+    "tests/test_transpile.py"
+  ],
+  "tests_may_change_note": "New cases go into existing test methods in sqlglot (AGENTS.md: add tests to the dialect test file), so every dialect test file, the parser tests and the transpile tests are allowed; the real fix edited TestOracle::test_oracle and TestRedshift::test_identity, and TestDialect::test_limit is the cross-dialect TOP/LIMIT test.",
+  "traps": [],
+  "replay": {
+    "source": "tobymao/sqlglot issue 9284",
+    "fix_commits": [
+      "dc4afaf5c9a6748a004998ed13e3b438e20e431e"
+    ],
+    "reference_note": "the fix's whole diff, tests included",
+    "hidden_tests_from": "the fix's tests (TestSnowflake::test_top_identifier, the TestOracle lines, the TestRedshift TOP %s loop), rewritten as one file, plus T-SQL guards from the ticket"
+  },
+  "naive_patches": {
+    "naive.patch": "Snowflake only: Oracle is left reading top as a row limit",
+    "naive-retreat.patch": "the retreat the issue suggested, in the shared parser: a bare top becomes a name again, but TOP(...) is still a row limit and Oracle is untouched"
+  },
+  "planted_bugs": [],
+  "not_bugs": []
+}

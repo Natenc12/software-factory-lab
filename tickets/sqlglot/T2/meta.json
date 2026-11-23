@@ -1,0 +1,17 @@
+{
+  "id": "T2",
+  "kind": "replay",
+  "title": "Snowflake stage paths and `file://` paths get cut off at `--`, `//` or `/*`",
+  "repo": "Natenc12/sqlglot-lab",
+  "base_ref": "base/T2",
+  "base_commit": "08e3bd7720a0d5fc1152e8452e553925870f182f",
+  "s3_base_ref": null,
+  "db": "none",
+  "deliverable": "pull_request",
+  "spec_levels": [
+    "S1"
+  ],
+  "spec_words": {
+    "S1": 581
+  }
+}

@@ -74,9 +74,10 @@ READINGS = ("current", "second")
 
 
 def load_verdicts(stages, root: str | None = None) -> tuple[list[dict], list[str]]:
-    """Verdicts from one or more stage folders; a run id seen twice keeps the later stage's. (verdicts, repeated ids)"""
+    """Verdicts from one or more stage folders. Runs are told apart by codebase and run id (stage 4 uses the
+    same run ids on Hono and sqlglot); one seen twice keeps the later stage's. (verdicts, repeated ids)"""
     stages = [stages] if isinstance(stages, str) else list(stages)
-    by_id: dict[str, dict] = {}
+    by_id: dict[tuple, dict] = {}
     repeated = []
     for stage in stages:
         for p in sorted((runs_root(root) / stage).glob("*/harness/verdict.json")):
@@ -87,10 +88,11 @@ def load_verdicts(stages, root: str | None = None) -> tuple[list[dict], list[str
             v = {**v, "stage_folder": stage, "repeat": parse_arm(v["run_id"])["repeat"],
                  "skills_used": run.get("skills_used") or [], "by_model": run.get("by_model") or {},
                  "workers_started": run.get("workers_started"), "model": run.get("model")}  # fmt: skip
-            if v["run_id"] in by_id:
+            ident = (v.get("codebase"), v["run_id"])
+            if ident in by_id:
                 repeated.append(v["run_id"])
-            by_id[v["run_id"]] = v
-    return sorted(by_id.values(), key=lambda v: v["run_id"]), repeated
+            by_id[ident] = v
+    return sorted(by_id.values(), key=lambda v: (v["run_id"], str(v.get("codebase")))), repeated
 
 
 def per8(n: int, graded: int) -> float | None:
@@ -393,11 +395,21 @@ def run_list_price(v: dict) -> float | None:
     return (v.get("measures") or {}).get("list_price_usd")
 
 
-def cells4(rows: list[dict], reading: str) -> dict[str, dict]:
+def cell_key(v: dict, pooled: bool) -> str:
+    """A ticket's cell: `T1`, or `hono/T1` when codebases are pooled (ticket ids repeat across codebases)."""
+    return f"{v.get('codebase')}/{v['ticket']}" if pooled else v["ticket"]
+
+
+def ticket_order(t: str) -> tuple:
+    cb, _, tid = t.rpartition("/")
+    return (cb, int(tid[1:]) if tid[1:].isdigit() else 0, tid)
+
+
+def cells4(rows: list[dict], reading: str, pooled: bool = False) -> dict[str, dict]:
     """Per ticket: the cell's mean over its graded repeats of every stage 4 measure."""
     out = {}
-    for t in sorted({v["ticket"] for v in rows}):
-        g = [v for v in rows if v["ticket"] == t and trust(v, reading) is not None]
+    for t in sorted({cell_key(v, pooled) for v in rows}, key=ticket_order):
+        g = [v for v in rows if cell_key(v, pooled) == t and trust(v, reading) is not None]
         if not g:
             continue
         m = [v.get("measures") or {} for v in g]
@@ -466,6 +478,20 @@ def workers_summary(runs: list[dict]) -> dict:
 
 
 def decide_q5(verdicts: list[dict], reading: str = "current") -> dict:
+    """Q5 on every codebase given, pooled (each ticket of each codebase one cell, stated per 8), and, when
+    there is more than one codebase, each codebase on its own under `per_codebase`."""
+    codebases = sorted({str(v.get("codebase")) for v in verdicts})
+    pooled = len(codebases) > 1
+    out = decide_q5_on(verdicts, reading, pooled)
+    out["codebases"] = codebases
+    if pooled:
+        out["pooled"] = True
+        out["per_codebase"] = {cb: decide_q5_on([v for v in verdicts if str(v.get("codebase")) == cb], reading, False)
+                               for cb in codebases}  # fmt: skip
+    return out
+
+
+def decide_q5_on(verdicts: list[dict], reading: str, pooled: bool) -> dict:
     """The charter's Q5 rule, P5PF (Fable builds) against P5P (Opus builds).
 
     P6P is reported against both and decides nothing. P6 is not planned in stage 4 (owner's decision after
@@ -473,18 +499,22 @@ def decide_q5(verdicts: list[dict], reading: str = "current") -> dict:
     """
     graded = [v for v in verdicts if trust(v, reading) is not None]
     by_row = {row: [v for v in graded if v["row"] == row] for row in ("P5P", "P5PF", "P6", "P6P")}
-    c = {row: cells4(runs, reading) for row, runs in by_row.items()}
+    c = {row: cells4(runs, reading, pooled) for row, runs in by_row.items()}
+
+    def in_cells(runs, tickets):
+        return [v for v in runs if cell_key(v, pooled) in tickets]
+
     out: dict = {"rule": "Q5", "reading": reading, "rules_applied_literally": True,
-                 "rows": {row: row4(c[row], sorted(c[row], key=lambda t: int(t[1:])), by_row[row]) for row in c if c[row]}}  # fmt: skip
+                 "rows": {row: row4(c[row], sorted(c[row], key=ticket_order), by_row[row]) for row in c if c[row]}}  # fmt: skip
     for row in out["rows"]:
         out["rows"][row]["workers_started"] = workers_summary(by_row[row])
-    shared = sorted(set(c["P5P"]) & set(c["P5PF"]), key=lambda t: int(t[1:]))
+    shared = sorted(set(c["P5P"]) & set(c["P5PF"]), key=ticket_order)
     if not shared:
         out["fable_builds"] = None
         out["why"] = "no ticket has graded runs of both P5P and P5PF"
     else:
-        opus = row4(c["P5P"], shared, [v for v in by_row["P5P"] if v["ticket"] in shared])
-        fable = row4(c["P5PF"], shared, [v for v in by_row["P5PF"] if v["ticket"] in shared])
+        opus = row4(c["P5P"], shared, in_cells(by_row["P5P"], shared))
+        fable = row4(c["P5PF"], shared, in_cells(by_row["P5PF"], shared))
         gain = fable["trustworthy_per_8"] - opus["trustworthy_per_8"]
         oc, fc = opus["correction_rounds_per_8"], fable["correction_rounds_per_8"]
         if oc is None or fc is None:
@@ -514,11 +544,11 @@ def decide_q5(verdicts: list[dict], reading: str = "current") -> dict:
         )
 
     def compare(row: str, ctrl: str) -> dict | None:
-        tickets = sorted(set(c[row]) & set(c[ctrl]), key=lambda t: int(t[1:]))
+        tickets = sorted(set(c[row]) & set(c[ctrl]), key=ticket_order)
         if not tickets:
             return None
-        a = row4(c[row], tickets, [v for v in by_row[row] if v["ticket"] in tickets])
-        b = row4(c[ctrl], tickets, [v for v in by_row[ctrl] if v["ticket"] in tickets])
+        a = row4(c[row], tickets, in_cells(by_row[row], tickets))
+        b = row4(c[ctrl], tickets, in_cells(by_row[ctrl], tickets))
         diff = {k: r3(a[k] - b[k]) if a[k] is not None and b[k] is not None else None
                 for k in ("trustworthy_per_8", "rescues_per_8", "correction_rounds_per_8", "stops_per_8",
                           "owner_words_per_ticket", "counted_tokens_per_run", "list_price_usd_per_run")}  # fmt: skip
@@ -543,6 +573,32 @@ def decide_q5(verdicts: list[dict], reading: str = "current") -> dict:
     return out
 
 
+def only_existing_tests_changed(verdicts: list[dict], reading: str = "current") -> dict:
+    """Per row, the runs that fail to be trustworthy only because of `existing_tests_changed`: hidden tests
+    pass, it is the one trap tripped, no false claim (the reading's version) and no rescue (likewise),
+    and the run did not hit its ceiling. Reported only; the trap's rule is unchanged."""
+    out: dict[str, list[str]] = {}
+    for v in verdicts:
+        if v.get("discarded") or v.get("status") == "ceiling_hit" or v.get("deliverable") == "review_report":
+            continue
+        checks = v.get("checks") or {}
+        second = v.get("second_reading") or {}
+        claim = (second.get("no_material_false_claim") if reading == "second" else checks.get("no_false_claim")) or {}
+        rescue = (second.get("no_agreed_rescue") if reading == "second" else checks.get("no_rescue")) or {}
+        trap = checks.get("no_trap_tripped") or {}
+        tripped = (trap.get("detail") or {}).get("tripped") or []
+        if (
+            (checks.get("hidden_tests_pass") or {}).get("pass") is True
+            and trap.get("pass") is False
+            and tripped == ["existing_tests_changed"]
+            and claim.get("pass") is True
+            and rescue.get("pass") is True
+        ):
+            name = v["run_id"] if not v.get("codebase") else f"{v['codebase']}/{v['run_id']}"
+            out.setdefault(v["row"], []).append(name)
+    return {row: {"count": len(ids), "runs": sorted(ids)} for row, ids in sorted(out.items())}
+
+
 def skills_by_row(verdicts: list[dict]) -> dict:
     out = {}
     for row in sorted({v["row"] for v in verdicts}):
@@ -557,7 +613,7 @@ def skills_by_row(verdicts: list[dict]) -> dict:
 
 
 CSV_FIELDS = [
-    "run_id", "stage_folder", "repeat", "row", "arm", "spec", "ticket", "status", "outcome", "trustworthy",
+    "run_id", "codebase", "stage_folder", "repeat", "row", "arm", "spec", "ticket", "status", "outcome", "trustworthy",
     "trustworthy_second_reading", "no_material_false_claim", "no_agreed_rescue", "discarded", "discard_reason",
     "hidden_tests_pass", "no_trap_tripped", "no_false_claim", "no_rescue",
     "all_planted_bugs_caught", "no_false_blocking_alarm",
@@ -570,7 +626,7 @@ CSV_FIELDS = [
 def csv_row(v: dict) -> dict:
     m = v.get("measures") or {}
     q = m.get("quality") or {}
-    row = {k: v.get(k) for k in ("run_id", "stage_folder", "repeat", "row", "arm", "spec", "ticket", "status",
+    row = {k: v.get(k) for k in ("run_id", "codebase", "stage_folder", "repeat", "row", "arm", "spec", "ticket", "status",
                                   "outcome", "trustworthy", "discarded", "discard_reason", "provisional")}  # fmt: skip
     sr = v.get("second_reading") or {}
     row["trustworthy_second_reading"] = sr.get("trustworthy_second_reading")
@@ -636,6 +692,11 @@ def summarize(
         "per_row_second_reading": by_row["second"],
         "decision_second_reading": second,
         "skills_used": skills_by_row(verdicts),
+        "only_existing_tests_changed": {
+            "note": "runs not trustworthy only because of existing_tests_changed; reported, decides nothing",
+            "current": only_existing_tests_changed(verdicts, "current"),
+            "second": only_existing_tests_changed(verdicts, "second"),
+        },
         "control": control,
         "run_rows": [csv_row(v) for v in verdicts],
     }
@@ -656,6 +717,16 @@ def summarize(
 
 
 def describe(d: dict) -> str:
+    if d.get("rule") == "Q5" and d.get("per_codebase"):
+        parts = [f"pooled over {' and '.join(d['codebases'])}: {describe_q5(d)}"]
+        parts += [f"{cb}: {describe_q5(x)}" for cb, x in d["per_codebase"].items()]
+        return "; ".join(parts)
+    if d.get("rule") == "Q5":
+        return describe_q5(d)
+    return describe_other(d)
+
+
+def describe_q5(d: dict) -> str:
     if d.get("rule") == "Q5":
         if d.get("fable_builds") is None:
             return d.get("why", "undecided")
@@ -665,6 +736,10 @@ def describe(d: dict) -> str:
             + (f", {d['corrections_note']}" if d.get("corrections_note") else "")
             + ")"
         )
+    return describe_other(d)
+
+
+def describe_other(d: dict) -> str:
     if d.get("rule") == "Q3":
         parts = [
             f"{arm}: {'goes in' if x.get('answer') else 'stays out' if x.get('answer') is False else 'undecided'}"
@@ -706,6 +781,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"    {row}: {t['trustworthy_per_8']} per 8 (mean over repeats: {reps or 'none'}), "
                   f"{len(t['discarded'])} discarded, {len(t['incomplete'])} incomplete")  # fmt: skip
         print(f"    {describe(s[dkey])}")
+        only = s["only_existing_tests_changed"]["current" if dkey == "decision" else "second"]
+        if only:
+            print("    not trustworthy only because of existing_tests_changed: "
+                  + "; ".join(f"{r} {x['count']} ({', '.join(x['runs'])})" for r, x in only.items()))  # fmt: skip
     if "against_control" in s:
         for name, key in (("current", "against_control"), ("second, reported", "against_control_second_reading")):
             facts = s[key].get("plain_facts", {})

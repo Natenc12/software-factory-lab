@@ -1,0 +1,98 @@
+diff --git a/sqlglot/optimizer/unnest_subqueries.py b/sqlglot/optimizer/unnest_subqueries.py
+index 15e785e4e..1c7858d18 100644
+--- a/sqlglot/optimizer/unnest_subqueries.py
++++ b/sqlglot/optimizer/unnest_subqueries.py
+@@ -236,6 +236,16 @@ def decorrelate(select, parent_select, external_columns, next_alias_name):
+     ):
+         return
+ 
++    # A missing join match makes IN / ANY NULL instead of FALSE, which is only safe in AND/OR filters
++    if isinstance(parent_predicate, (exp.In, exp.Any)):
++        ancestor = parent_predicate.parent
++        if isinstance(parent_predicate, exp.Any):
++            ancestor = ancestor.parent
++        while isinstance(ancestor, (exp.And, exp.Or, exp.Paren)):
++            ancestor = ancestor.parent
++        if not isinstance(ancestor, (exp.Where, exp.Having, exp.Qualify, exp.Join)):
++            return
++
+     # determine location of join that owns the ON clause whose subquery we will decorrelate
+     on_clause_join_index = None
+     on_clause_ancestor = (
+@@ -393,9 +403,6 @@ def decorrelate(select, parent_select, external_columns, next_alias_name):
+     if parent_predicate is None and not is_subquery_projection:
+         return
+ 
+-    if isinstance(parent_predicate, exp.In) and _is_negated(parent_predicate):
+-        return
+-
+     # if the value of the subquery is not an agg or a key, we need to collect it into an array
+     # so that it can be grouped. For subquery projections, we use a MAX aggregation instead.
+     agg_func = exp.Max if is_subquery_projection else exp.ArrayAgg
+@@ -540,13 +547,6 @@ def decorrelate(select, parent_select, external_columns, next_alias_name):
+         parent_select.set("joins", joins.pop(), index=on_clause_join_index, overwrite=False)
+ 
+ 
+-def _is_negated(expression: exp.Expression) -> bool:
+-    parent = expression.parent
+-    while isinstance(parent, exp.Paren):
+-        parent = parent.parent
+-    return isinstance(parent, exp.Not)
+-
+-
+ def _replace(expression: exp.Expr, condition: exp.ExpOrStr) -> exp.Expr:
+     return expression.replace(exp.condition(condition))
+ 
+diff --git a/tests/fixtures/optimizer/unnest_subqueries.sql b/tests/fixtures/optimizer/unnest_subqueries.sql
+index 5c213a03f..b55a5d55e 100644
+--- a/tests/fixtures/optimizer/unnest_subqueries.sql
++++ b/tests/fixtures/optimizer/unnest_subqueries.sql
+@@ -64,6 +64,16 @@ SELECT * FROM x WHERE NOT (x.a IN (SELECT y.a AS a FROM y WHERE y.a = x.a));
+ SELECT * FROM x WHERE x.a IN (SELECT y.a AS a FROM y WHERE y.b = x.a);
+ SELECT * FROM x LEFT JOIN (SELECT ARRAY_AGG(y.a) AS a, y.b AS _u_1 FROM y WHERE TRUE GROUP BY y.b) AS _u_0 ON _u_0._u_1 = x.a WHERE ARRAY_ANY(_u_0.a, _x -> _x = x.a);
+ 
++# title: correlated IN in an inner JOIN ON is unnested
++# execute: true
++SELECT x.a FROM x JOIN x AS x2 ON x.b = x2.b AND x.a IN (SELECT y.b AS b FROM y WHERE y.c = x.a) ORDER BY x.a;
++SELECT x.a FROM x LEFT JOIN (SELECT ARRAY_AGG(y.b) AS b, y.c AS _u_1 FROM y WHERE TRUE GROUP BY y.c) AS _u_0 ON _u_0._u_1 = x.a JOIN x AS x2 ON x.b = x2.b AND ARRAY_ANY(_u_0.b, _x -> _x = x.a) ORDER BY x.a;
++
++# title: correlated IN in QUALIFY is unnested
++# execute: true
++SELECT x.a FROM x QUALIFY ROW_NUMBER() OVER (ORDER BY x.a) > 0 AND x.a IN (SELECT y.b AS b FROM y WHERE y.c = x.a) ORDER BY x.a;
++SELECT x.a FROM x LEFT JOIN (SELECT ARRAY_AGG(y.b) AS b, y.c AS _u_1 FROM y WHERE TRUE GROUP BY y.c) AS _u_0 ON _u_0._u_1 = x.a QUALIFY ROW_NUMBER() OVER (ORDER BY x.a) > 0 AND ARRAY_ANY(_u_0.b, _x -> _x = x.a) ORDER BY x.a;
++
+ SELECT * FROM x WHERE x.a < (SELECT SUM(y.a) AS a FROM y WHERE y.a = x.a and y.a = x.b and y.b <> x.d);
+ SELECT * FROM x WHERE x.a < (SELECT SUM(y.a) AS a FROM y WHERE y.a = x.a AND y.a = x.b AND y.b <> x.d);
+ 
+diff --git a/tests/test_optimizer.py b/tests/test_optimizer.py
+index d249709d2..f3fd18d9e 100644
+--- a/tests/test_optimizer.py
++++ b/tests/test_optimizer.py
+@@ -2302,8 +2302,15 @@ SELECT :with_,WITH :expressions,CTE :this,UNION :this,SELECT :expressions,1,:exp
+                 optimizer.unnest_subqueries.unnest_subqueries(expression).find(exp.In)
+             )
+ 
+-    def test_optimize_uncorrelated_in_nulls(self):
+-        for where in ("", " WHERE y.b IS NOT NULL", " WHERE y.b IS NULL", " WHERE FALSE"):
++    def test_optimize_in_nulls(self):
++        for where in (
++            "",
++            " WHERE y.b IS NOT NULL",
++            " WHERE y.b IS NULL",
++            " WHERE FALSE",
++            " WHERE y.c = x.a",
++            " WHERE y.b = x.a",
++        ):
+             for predicate in (
+                 f"x.a IN (SELECT y.b FROM y{where})",
+                 f"x.a = ANY (SELECT y.b FROM y{where})",
+@@ -2320,6 +2327,9 @@ SELECT :with_,WITH :expressions,CTE :this,UNION :this,SELECT :expressions,1,:exp
+                     f"SELECT x.a FROM x WHERE ({predicate}) = FALSE",
+                     f"SELECT x.a FROM x WHERE ({predicate}) AND x.a > 1",
+                     f"SELECT x.a FROM x WHERE ({predicate}) OR x.a > 1",
++                    f"SELECT x.a FROM x JOIN x AS x2 ON x.b = x2.b AND ({predicate}) = FALSE",
++                    "SELECT x.a FROM x QUALIFY ROW_NUMBER() OVER (ORDER BY x.a) > 0 "
++                    f"AND ({predicate}) = FALSE",
+                     f"SELECT x.a FROM x GROUP BY x.a HAVING ({predicate}) IS NULL",
+                     f"SELECT x.a FROM x ORDER BY ({predicate}), x.a",
+                 ):

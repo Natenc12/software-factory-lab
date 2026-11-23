@@ -1,0 +1,160 @@
+{
+  "ticket": "T4",
+  "codebase": "sqlglot",
+  "repo": "Natenc12/sqlglot-lab",
+  "base_ref": "base/T4",
+  "base_sha": "240ad4f49d49008989ba5f0f251be7eb32602553",
+  "s3_base_ref": null,
+  "s3_sha": null,
+  "started": "2026-11-23T19:25:30+00:00",
+  "finished": "2026-11-23T19:30:11+00:00",
+  "databases_dropped": [],
+  "ok": true,
+  "steps": [
+    {
+      "name": "base: existing tests pass",
+      "ok": true,
+      "note": "26028 passed, 60 skipped in 66.20s (0:01:06)",
+      "counts": {
+        "passed": 1525,
+        "skipped": 60
+      },
+      "seconds": 67.2,
+      "log_tail": ""
+    },
+    {
+      "name": "hidden tests exist",
+      "ok": true,
+      "files": [
+        "tests/hidden/test_hidden_t4.py"
+      ]
+    },
+    {
+      "name": "base: every hidden test fails",
+      "ok": true,
+      "note": "9 failed, 13 passed in 0.55s",
+      "outcomes": {
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_dialects_without_array_filtering_report_it": "failed",
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_duckdb_translation_gives_the_same_answer": "failed",
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_postgres_and_bigquery_keep_the_predicate": "failed",
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_spark_family_and_presto_trino": "failed"
+      },
+      "not_failing": [],
+      "seconds": 1.0
+    },
+    {
+      "name": "reference: leaves unchanged_paths alone",
+      "ok": true,
+      "touched": [],
+      "changed": [
+        "sqlglot/generator.py",
+        "sqlglot/generators/presto.py",
+        "tests/dialects/test_hive.py"
+      ]
+    },
+    {
+      "name": "reference: every hidden test passes",
+      "ok": true,
+      "note": "4 hidden, 4 collected",
+      "outcomes": {
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_dialects_without_array_filtering_report_it": "passed",
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_duckdb_translation_gives_the_same_answer": "passed",
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_postgres_and_bigquery_keep_the_predicate": "passed",
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_spark_family_and_presto_trino": "passed"
+      },
+      "not_passing": []
+    },
+    {
+      "name": "reference: existing tests pass",
+      "ok": true,
+      "note": "26059 passed, 60 skipped in 52.86s",
+      "counts": {
+        "passed": 1529,
+        "skipped": 60
+      },
+      "failing": [],
+      "seconds": 53.7,
+      "log_tail": ""
+    },
+    {
+      "name": "base and reference ran the same hidden tests",
+      "ok": true,
+      "missing_on_base": [],
+      "base_collection_errors": []
+    },
+    {
+      "name": "reference: lint and format clean (tree and hidden tests)",
+      "ok": true,
+      "runs": [
+        {
+          "cmd": ".venv/bin/ruff check",
+          "exit": 0,
+          "tail": "All checks passed!\n"
+        },
+        {
+          "cmd": ".venv/bin/ruff format --check",
+          "exit": 0,
+          "tail": "255 files already formatted\n"
+        },
+        {
+          "cmd": ".venv/bin/ruff check tests/hidden/test_hidden_t4.py",
+          "exit": 0,
+          "tail": "All checks passed!\n"
+        },
+        {
+          "cmd": ".venv/bin/ruff format --check tests/hidden/test_hidden_t4.py",
+          "exit": 0,
+          "tail": "1 file already formatted\n"
+        }
+      ]
+    },
+    {
+      "name": "hidden tests run in under about 2 minutes",
+      "ok": true,
+      "note": "0.9s"
+    },
+    {
+      "name": "naive-mysql-only.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_dialects_without_array_filtering_report_it"
+      ],
+      "note": "1/4 hidden fail"
+    },
+    {
+      "name": "naive-mysql-only.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive-pgbq.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_dialects_without_array_filtering_report_it",
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_postgres_and_bigquery_keep_the_predicate"
+      ],
+      "note": "2/4 hidden fail"
+    },
+    {
+      "name": "naive-pgbq.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    },
+    {
+      "name": "naive.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_dialects_without_array_filtering_report_it",
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_duckdb_translation_gives_the_same_answer",
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_postgres_and_bigquery_keep_the_predicate",
+        "tests.hidden.test_hidden_t4.TestHiddenT4::test_spark_family_and_presto_trino"
+      ],
+      "note": "4/4 hidden fail"
+    },
+    {
+      "name": "naive.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    }
+  ]
+}

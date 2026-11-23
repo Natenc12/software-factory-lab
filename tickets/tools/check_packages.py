@@ -17,6 +17,10 @@ existing test is an `it(...)` / `test(...)` block in a `*.test.ts(x)` file, comp
 whitespace collapsed; as in the grader, a `runTest(...)` call and its skip list are data, not a test.
 
 Exits 1 and lists every problem it finds.
+
+Each codebase has a profile (`PROFILES`): its ticket ids, their kinds, the spec levels written, and
+whether it has S3 branches, a review ticket and a vague ticket. gct is the original set of twelve;
+sqlglot has eight tickets at S1 only (no S0, S2, S3, no acceptance tests, no review ticket).
 """
 
 from __future__ import annotations
@@ -42,6 +46,17 @@ KINDS = {"T1": "replay", "T2": "replay", "T3": "replay", "T4": "feature", "T5": 
 KINDS.update({"T7": "migration", "T8": "review", "T9": "feature", "T10": "feature"})
 KINDS.update({"T11": "flawed", "T12": "flawed"})
 TICKETS = [f"T{i}" for i in range(1, 13)]
+
+PROFILES = {
+    "gct": {"tickets": TICKETS, "kinds": KINDS, "levels": ["S0", "S1", "S2", "S3"], "s3": True,
+            "review": "T8", "vague": "T5"},
+    "sqlglot": {
+        "tickets": [f"T{i}" for i in range(1, 9)],
+        "kinds": {**{f"T{i}": "replay" for i in range(1, 6)}, "T6": "feature", "T7": "vague", "T8": "flawed"},
+        "levels": ["S1"], "s3": False, "review": None, "vague": "T7",
+    },
+}  # fmt: skip
+
 
 HONO_KINDS = {"T1": "replay", "T2": "replay", "T3": "replay", "T4": "replay", "T5": "replay"}
 HONO_KINDS.update({"T6": "feature", "T7": "vague", "T8": "flawed"})
@@ -152,10 +167,12 @@ def _ts_blocks(src: str) -> dict[str, str]:
 def check(codebase: str) -> list[str]:
     problems: list[str] = []
     tdir, adir = ROOT / "tickets" / codebase, ROOT / "answers" / codebase
-    for tid in TICKETS:
+    prof = PROFILES.get(codebase, PROFILES["gct"])
+    kinds = prof["kinds"]
+    for tid in prof["tickets"]:
         t, a = tdir / tid, adir / tid
-        review = tid == "T8"
-        levels = ["S1"] if review else ["S0", "S1", "S2", "S3"]
+        review = tid == prof["review"]
+        levels = ["S1"] if review else prof["levels"]
         for name in [*(f"{lvl}.md" for lvl in levels), "meta.json"]:
             if not (t / name).is_file():
                 problems.append(f"{tid}: missing tickets/{codebase}/{tid}/{name}")
@@ -172,11 +189,11 @@ def check(codebase: str) -> list[str]:
             problems.append(f"{tid}: meta.json lacks {sorted(missing)}")
         if missing := KEY_KEYS - set(key):
             problems.append(f"{tid}: key.json lacks {sorted(missing)}")
-        if meta.get("id") != tid or meta.get("kind") != KINDS[tid]:
+        if meta.get("id") != tid or meta.get("kind") != kinds[tid]:
             problems.append(f"{tid}: meta id/kind is {meta.get('id')}/{meta.get('kind')}")
         if meta.get("base_ref") != f"base/{tid}":
             problems.append(f"{tid}: base_ref is {meta.get('base_ref')}")
-        want_s3 = None if review else f"base/{tid}-s3"
+        want_s3 = None if review or not prof["s3"] else f"base/{tid}-s3"
         if meta.get("s3_base_ref") != want_s3:
             problems.append(f"{tid}: s3_base_ref is {meta.get('s3_base_ref')}, want {want_s3}")
         if meta.get("deliverable") != ("review_report" if review else "pull_request"):
@@ -186,11 +203,11 @@ def check(codebase: str) -> list[str]:
             want = len(f.read_text().split()) if f.exists() else None
             if meta.get("spec_words", {}).get(lvl) != want:
                 problems.append(f"{tid}: spec_words[{lvl}] is {meta['spec_words'].get(lvl)}, files say {want}")
-        if not review and not (a / "acceptance").is_dir():
+        if not review and prof["s3"] and not (a / "acceptance").is_dir():
             problems.append(f"{tid}: no acceptance tests for base/{tid}-s3")
-        if tid == "T5" and not key.get("open_decision"):
-            problems.append("T5: key.json needs open_decision")
-        if KINDS[tid] == "flawed" and not key.get("flaw"):
+        if tid == prof["vague"] and not key.get("open_decision"):
+            problems.append(f"{tid}: key.json needs open_decision")
+        if kinds[tid] == "flawed" and not key.get("flaw"):
             problems.append(f"{tid}: key.json needs flaw")
         if review and len(key.get("planted_bugs", [])) != 3:
             problems.append("T8: key.json needs exactly 3 planted_bugs")
@@ -255,7 +272,11 @@ def touched_existing_tests(lab: Path, base_ref: str, patch: Path) -> list[str]:
 
 def check_tests_may_change(codebase: str, lab: Path) -> list[str]:
     problems: list[str] = []
-    tickets = list(HONO_KINDS) if codebase == "hono" else [t for t in TICKETS if t != "T8"]
+    if codebase == "hono":
+        tickets = list(HONO_KINDS)
+    else:
+        prof = PROFILES.get(codebase, PROFILES["gct"])
+        tickets = [t for t in prof["tickets"] if t != prof["review"]]
     for tid in tickets:
         meta = json.loads((ROOT / "tickets" / codebase / tid / "meta.json").read_text())
         key = json.loads((ROOT / "answers" / codebase / tid / "key.json").read_text())
@@ -268,9 +289,12 @@ def check_tests_may_change(codebase: str, lab: Path) -> list[str]:
             path = name.split("::")[0]
             title = name.split("::", 1)[1].split("#")[0] if "::" in name else ""
             if not any(
-                name == a
+                fnmatch.fnmatch(name, a)
+                or name == a
+                or path == a
+                or path.startswith(a.rstrip("/") + "/")
                 or fnmatch.fnmatch(path, a)
-                or (a.startswith(path + "::") and (a.endswith(" > " + title) or fnmatch.fnmatch(name, a)))
+                or (a.startswith(path + "::") and a.endswith(" > " + title))
                 for a in allowed
             ):
                 problems.append(f"{tid}: reference.patch changes {name}, not in tests_may_change")
