@@ -245,13 +245,14 @@ requests were on the fake `gh`; nothing reached GitHub.
 | --- | --- | --- | --- | --- |
 | `p5p-hono-1` | Opus 5.5 | **none** | 0 | Opus 25,621 |
 | `p5pf-hono-1` | Fable 5.2 | **none** | 0 | Fable 22,957 |
-| `p6p-hono-1` | Fable 5.2 lead | **none** | 1 | Fable 26,935 ($0.54), Opus worker 17,723 ($0.19) |
+| `p6p-hono-1` | Fable 5.2 lead | **none** | 1 | Fable 26,935 ($0.65), Opus worker 17,723 ($0.14) |
 | `p5p-sqlglot-1` | Opus 5.5 | #2 | 0 | Opus 29,782 |
 | `p5pf-sqlglot-1` | Fable 5.2 | #1 | 0 | Fable 26,286 |
-| `p6p-sqlglot-1` | Fable 5.2 lead | #3 | 1 | Fable 30,532 ($0.55), Opus worker 10,246 ($0.10) |
+| `p6p-sqlglot-1` | Fable 5.2 lead | #3 | 1 | Fable 30,532 ($0.64), Opus worker 10,246 ($0.10) |
 
 All six scans were clean. These were the first runs where a Fable lead started an Opus worker; `by_model`
-split the counts and costs by model, and the run totals counted both. **Every Hono run failed at
+split the counts and costs by model, and the run totals counted both. Each lead handed its worker the
+whole two-line task (gists: "Capitalize bearerAuth error message", "Change tsort cycle message"). **Every Hono run failed at
 `lab pr open`:** Hono's `run_env` sets `XDG_CONFIG_HOME` inside the run, `lab` ran with the session's
 environment, and gh looks for its login under `XDG_CONFIG_HOME`, so it reported no login. Trials 12–18
 used a fake `gh` and could not show this.
