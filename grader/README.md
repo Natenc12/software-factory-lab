@@ -191,20 +191,24 @@ control). `decision` itself stays against P1. The second-reading commands work o
 
 **Stage 4 (gate 5).** `python3 -m grader.make_plan stage-4 --codebase hono` (or `sqlglot`) writes
 `results/stage-4-<codebase>/plan.json` and its reply sheets: rows `P5P` (arms/P5P on `claude-opus-5-5`,
-run ids `p5p-...`), `P5PF` (arms/P5P on `claude-fable-5-2`, `p5pf-...`) and `P6` (arms/P6, lead on
-`claude-fable-5-2`, `p6-...`), on the codebase's T1 to T8 at S1, repeats 1 and 2: 48 runs, each with its
-`model`. The stage folder is `stage-4-<codebase>`, so the two codebases' run ids never share a folder.
-Ceilings: 500,000 for `P5P` and `P5PF`, 1,200,000 for `P6`; `--row-ceiling P6=...` sets a row's, and
-`--ticket-ceiling T3=...` raises every row on that ticket (it never lowers a row's own ceiling). It
-refuses, writing nothing, if a ticket, its answers or arms/P5P or arms/P6 is missing.
+run ids `p5p-...`), `P5PF` (arms/P5P on `claude-fable-5-2`, `p5pf-...`) and `P6P` (arms/P6P, the chief
+of staff told to hand the building to workers, lead on `claude-fable-5-2`, `p6p-...`), on the codebase's
+T1 to T8 at S1, repeats 1 and 2: 48 runs, each with its `model`. `P6` (arms/P6) is not planned, by the
+owner's decision after gate 5; the grader still reads a `p6-...` run. The stage folder is
+`stage-4-<codebase>`, so the two codebases' run ids never share a folder. Ceilings: 500,000 for `P5P`
+and `P5PF`, 1,200,000 for `P6P`; `--row-ceiling P6P=...` sets a row's, and `--ticket-ceiling T3=...`
+raises every row on that ticket (it never lowers a row's own ceiling). It refuses, writing nothing, if a
+ticket, its answers or arms/P5P or arms/P6P is missing.
 
 `python3 -m grader.summarize stage-4-hono` decides by the charter's Q5 rule: `P5PF` against `P5P` on the
 tickets both have, Fable builds only if it gains at least one trustworthy pull request in eight or needs
 at least 30% fewer correction rounds (if `P5P` has none, that half cannot be met and
 `corrections_note` says so). Per row, each ticket weighted equally: trustworthy, rescues, correction
-rounds and stops per 8, owner words per ticket, counted tokens and list price per run, list-price and
-CLI dollars by model from run.json `by_model`, and `workers_started` (runs with workers, total, mean,
-min, max). `P6` is reported against both rows (`p6.against_P5P`, `p6.against_P5PF`) and decides nothing.
+rounds and stops per 8, owner words per ticket, counted tokens and list price per run (each model's
+tokens at its own price, from run.json `by_model`, so a Fable lead with Opus workers is priced right),
+list-price and CLI dollars by model, and `workers_started` (runs with workers, total, mean, min, max).
+`P6P` is reported against `P5P` and `P5PF` (`p6p.against_P5P`, `p6p.against_P5PF`) and decides
+nothing; a `P6` run, if one is present, is reported the same way under `p6`.
 Both readings, as before. The second-reading commands work on stage 4 run folders.
 
 **Summary.** Takes one or more stage folders; a cell may hold several repeats (run ids ending `-1`,

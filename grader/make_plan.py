@@ -5,9 +5,10 @@
     python -m grader.make_plan stage-2 [--ticket-ceiling T9=900000 ...] [--budget N] [--out-dir ...]
 
 Stage 4 (`make_plan stage-4 --codebase hono|sqlglot`, gate 5): rows P5P (arms/P5P on Opus 5.5, run
-ids p5p-...), P5PF (arms/P5P on Fable 5.2, p5pf-...) and P6 (arms/P6, lead on Fable 5.2, p6-...), on the
-codebase's eight tickets at S1, repeats 1 and 2: 48 runs into results/stage-4-<codebase>/, stage folder
-stage-4-<codebase>, the model set per run. Ceilings: P1's for P5P and P5PF, 1.2M for P6;
+ids p5p-...), P5PF (arms/P5P on Fable 5.2, p5pf-...) and P6P (arms/P6P, lead on Fable 5.2, told to hand
+the building to workers, p6p-...), on the codebase's eight tickets at S1, repeats 1 and 2: 48 runs into
+results/stage-4-<codebase>/, stage folder stage-4-<codebase>, the model set per run. P6 (arms/P6) is not
+planned (owner's decision after gate 5). Ceilings: P1's for P5P and P5PF, 1.2M for P6P;
 `--row-ceiling P6=...` sets a row's ceiling, `--ticket-ceiling` raises every row on a ticket (never lowers).
 
 Stage 2b (`make_plan stage-2b`, same options): on the same eight tickets, repeat 3 of P5P and of P1A
@@ -50,6 +51,7 @@ from grader.common import (
     LAB_ROOT,
     STAGE2_TICKETS,
     STAGE2B_ARMS,
+    STAGE4_PLAN_ROWS,
     STAGE4_ROWS,
     TICKETS_ROOT,
     load_config,
@@ -79,7 +81,7 @@ ROUNDS = {
     },
 }
 TICKETS = [f"T{i}" for i in range(1, 9)]
-STAGE4_CEILINGS = {"P5P": CEILINGS["P1"], "P5PF": CEILINGS["P1"], "P6": 1_200_000}
+STAGE4_CEILINGS = {"P5P": CEILINGS["P1"], "P5PF": CEILINGS["P1"], "P6": 1_200_000, "P6P": 1_200_000}
 STAGE4_REPEATS = (1, 2)
 METER_TICKET = "T1"
 SPEC_LEVELS = ("S0", "S2", "S3")
@@ -310,8 +312,10 @@ def plan_stage4(a) -> int:
     rows = dict(STAGE4_CEILINGS)
     for item in a.row_ceiling or []:
         row, _, n = item.partition("=")
-        if row.strip().upper() not in STAGE4_ROWS or not n.strip().isdigit():
-            raise SystemExit(f"--row-ceiling wants <row>=<tokens> with a row of {', '.join(STAGE4_ROWS)}, got {item!r}")
+        if row.strip().upper() not in STAGE4_PLAN_ROWS or not n.strip().isdigit():
+            raise SystemExit(
+                f"--row-ceiling wants <row>=<tokens> with a row of {', '.join(STAGE4_PLAN_ROWS)}, got {item!r}"
+            )
         rows[row.strip().upper()] = int(n)
     texts, sheets, problems = write_sheets(a.codebase, TICKETS, answers_root, out_dir)
     metas = {}
@@ -325,7 +329,7 @@ def plan_stage4(a) -> int:
             if not (answers_root / a.codebase / t / need).is_file():
                 problems.append(f"{t}: answers: {answers_root / a.codebase / t / need} missing")
         metas[t] = meta or {}
-    for folder in sorted({arm for arm, _ in STAGE4_ROWS.values()}):
+    for folder in sorted({STAGE4_ROWS[row][0] for row in STAGE4_PLAN_ROWS}):
         if arm_dir(folder, arms_root) is None:
             problems.append(f"arm {folder}: folder {arms_root / folder} missing")
     unknown = sorted(set(overrides) - set(TICKETS))
@@ -358,7 +362,7 @@ def plan_stage4(a) -> int:
             r["arm"] = arm_dir(folder, arms_root)
         return r
 
-    runs = [one(row, t, n) for n in STAGE4_REPEATS for t in TICKETS for row in STAGE4_ROWS]
+    runs = [one(row, t, n) for n in STAGE4_REPEATS for t in TICKETS for row in STAGE4_PLAN_ROWS]
     if problems and not a.force:
         for p in problems:
             print(f"problem: {p}", file=sys.stderr)
@@ -376,12 +380,15 @@ def plan_stage4(a) -> int:
         "codebase": a.codebase,
         "defaults": {"judge_model": REPLY_JUDGE, "effort": EFFORT},
         "rows": {
-            row: {"arm": folder, "model": model, "ceiling": rows[row]} for row, (folder, model) in STAGE4_ROWS.items()
+            row: {"arm": STAGE4_ROWS[row][0], "model": STAGE4_ROWS[row][1], "ceiling": rows[row]}
+            for row in STAGE4_PLAN_ROWS
         },
         "ticket_ceilings": overrides,
         "tickets": TICKETS,
         "repeats": list(STAGE4_REPEATS),
-        "parts": {row: [r["run_id"] for r in runs if r["run_id"].startswith(row.lower() + "-")] for row in STAGE4_ROWS},
+        "parts": {
+            row: [r["run_id"] for r in runs if r["run_id"].startswith(row.lower() + "-")] for row in STAGE4_PLAN_ROWS
+        },
         "runs": runs,
         "problems": problems,
     }
@@ -405,8 +412,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--ticket-ceiling", action="append", default=[], metavar="T9=900000",
                     help="stage 2 and 2b: ceiling for every arm on that ticket (repeatable)")  # fmt: skip
     ap.add_argument("--budget", type=int, help="stage 2: the stage's token figure (default 24,000,000)")
-    ap.add_argument("--row-ceiling", action="append", default=[], metavar="P6=1500000",
-                    help="stage 4: ceiling for one row (P5P, P5PF, P6) on every ticket (repeatable)")  # fmt: skip
+    ap.add_argument("--row-ceiling", action="append", default=[], metavar="P6P=1500000",
+                    help="stage 4: ceiling for one row (P5P, P5PF, P6P) on every ticket (repeatable)")  # fmt: skip
     a = ap.parse_args(argv)
     if a.stage == "stage-4":
         if a.best_process:

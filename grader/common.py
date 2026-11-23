@@ -37,7 +37,12 @@ STAGE4_ROWS = {
     "P5P": ("P5P", "claude-opus-5-5"),
     "P5PF": ("P5P", "claude-fable-5-2"),
     "P6": ("P6", "claude-fable-5-2"),
+    # The chief of staff told to hand the building to workers (approved after gate 5).
+    "P6P": ("P6P", "claude-fable-5-2"),
 }
+# The rows stage 4 plans and runs (the owner's decision after gate 5: the pointed chief of staff only).
+# P6 stays readable by the grader but is not planned.
+STAGE4_PLAN_ROWS = ["P5P", "P5PF", "P6P"]
 
 # List prices in US dollars per million tokens. Source: the claude-api skill's model table (cached
 # 2026-11-03): Opus 5.5 $4 / $20, cache reads $0.20; Fable 5.2 $8 / $40, cache reads $0.20; Sonnet 5.5
