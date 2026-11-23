@@ -6,127 +6,15 @@
   "base_sha": "240ad4f49d49008989ba5f0f251be7eb32602553",
   "s3_base_ref": null,
   "s3_sha": null,
-  "started": "2026-11-23T15:07:20+00:00",
-  "finished": "2026-11-23T15:09:46+00:00",
+  "started": "2026-11-23T16:58:34+00:00",
+  "finished": "2026-11-23T16:58:36+00:00",
   "databases_dropped": [],
   "ok": false,
   "steps": [
     {
-      "name": "base: existing tests pass",
-      "ok": true,
-      "note": "26028 passed, 60 skipped in 54.33s",
-      "counts": {
-        "passed": 1525,
-        "skipped": 60
-      },
-      "seconds": 55.1,
-      "log_tail": ""
-    },
-    {
-      "name": "hidden tests exist",
-      "ok": true,
-      "files": [
-        "tests/hidden/test_hidden_t4.py"
-      ]
-    },
-    {
-      "name": "base: every hidden test fails",
-      "ok": true,
-      "note": "7 failed, 6 passed in 0.46s",
-      "outcomes": {
-        "tests.hidden.test_hidden_t4.TestHiddenT4::test_dialects_without_array_filtering_report_it": "failed",
-        "tests.hidden.test_hidden_t4.TestHiddenT4::test_duckdb_translation_gives_the_same_answer": "failed",
-        "tests.hidden.test_hidden_t4.TestHiddenT4::test_postgres_and_bigquery_keep_the_predicate": "failed",
-        "tests.hidden.test_hidden_t4.TestHiddenT4::test_spark_family_and_presto_trino": "failed"
-      },
-      "not_failing": [],
-      "seconds": 0.8
-    },
-    {
-      "name": "reference: leaves unchanged_paths alone",
-      "ok": true,
-      "touched": [],
-      "changed": [
-        "sqlglot/generator.py",
-        "sqlglot/generators/presto.py",
-        "tests/dialects/test_hive.py"
-      ]
-    },
-    {
-      "name": "reference: every hidden test passes",
-      "ok": true,
-      "note": "4 hidden, 4 collected",
-      "outcomes": {
-        "tests.hidden.test_hidden_t4.TestHiddenT4::test_dialects_without_array_filtering_report_it": "passed",
-        "tests.hidden.test_hidden_t4.TestHiddenT4::test_duckdb_translation_gives_the_same_answer": "passed",
-        "tests.hidden.test_hidden_t4.TestHiddenT4::test_postgres_and_bigquery_keep_the_predicate": "passed",
-        "tests.hidden.test_hidden_t4.TestHiddenT4::test_spark_family_and_presto_trino": "passed"
-      },
-      "not_passing": []
-    },
-    {
-      "name": "reference: existing tests pass",
-      "ok": true,
-      "note": "26056 passed, 60 skipped in 40.24s",
-      "counts": {
-        "passed": 1529,
-        "skipped": 60
-      },
-      "failing": [],
-      "seconds": 41.0,
-      "log_tail": ""
-    },
-    {
-      "name": "base and reference ran the same hidden tests",
-      "ok": true,
-      "missing_on_base": [],
-      "base_collection_errors": []
-    },
-    {
-      "name": "reference: lint and format clean (tree and hidden tests)",
+      "name": "crash",
       "ok": false,
-      "runs": [
-        {
-          "cmd": ".venv/bin/ruff check",
-          "exit": 0,
-          "tail": "All checks passed!\n"
-        },
-        {
-          "cmd": ".venv/bin/ruff format --check",
-          "exit": 0,
-          "tail": "255 files already formatted\n"
-        },
-        {
-          "cmd": ".venv/bin/ruff check tests/hidden/test_hidden_t4.py",
-          "exit": 0,
-          "tail": "All checks passed!\n"
-        },
-        {
-          "cmd": ".venv/bin/ruff format --check tests/hidden/test_hidden_t4.py",
-          "exit": 1,
-          "tail": "Would reformat: tests/hidden/test_hidden_t4.py\n1 file would be reformatted\n"
-        }
-      ]
-    },
-    {
-      "name": "hidden tests run in under about 2 minutes",
-      "ok": true,
-      "note": "0.7s"
-    },
-    {
-      "name": "naive.patch: at least one hidden test fails",
-      "ok": true,
-      "failing": [
-        "tests.hidden.test_hidden_t4.TestHiddenT4::test_dialects_without_array_filtering_report_it",
-        "tests.hidden.test_hidden_t4.TestHiddenT4::test_duckdb_translation_gives_the_same_answer",
-        "tests.hidden.test_hidden_t4.TestHiddenT4::test_spark_family_and_presto_trino"
-      ],
-      "note": "3/4 hidden fail"
-    },
-    {
-      "name": "naive.patch: existing tests still pass (a competent fix)",
-      "ok": true,
-      "failing": []
+      "note": "sh -c uv venv -q --allow-existing -p 3.13 .venv && uv pip install -q -p .venv -e '.[dev]' pytest failed (1):\n\nan/.cache/uv/builds-v0/.tmpZXxUHQ/lib/python3.13/site-packages/setuptools/build_meta.py\",\n      line 317, in run_setup\n          exec(code, locals())  # noqa: S102 # exec is intentional here\n          ~~~~^^^^^^^^^^^^^^^^\n        File \"<string>\", line 4, in <module>\n          sys.path.pop(0)\n                ~~~~~~^^^\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmpZXxUHQ/lib/python3.13/site-packages/setuptools_scm/_get_version.py\",\n      line 59, in get_version\n          return _get_version_public(\n              root=root,\n          ...<18 lines>...\n              _env=env,\n          )\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmpZXxUHQ/lib/python3.13/site-packages/vcs_versioning/_get_version_impl.py\",\n      line 379, in get_version\n          maybe_version = _get_version(config, force_write_version_files=True)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmpZXxUHQ/lib/python3.13/site-packages/vcs_versioning/_get_version_impl.py\",\n      line 182, in _get_version\n          scm_version = _resolve_version(config)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmpZXxUHQ/lib/python3.13/site-packages/vcs_versioning/_get_version_impl.py\",\n      line 80, in _resolve_version\n          scm_version = workdir.get_scm_version()\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmpZXxUHQ/lib/python3.13/site-packages/vcs_versioning/_backends/_git.py\",\n      line 327, in get_scm_version\n          return _git_parse_inner(config, self, pre_parse=effective_pre_parse)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmpZXxUHQ/lib/python3.13/site-packages/vcs_versioning/_backends/_git.py\",\n      line 711, in _git_parse_inner\n          version = version_from_describe(wd, config, describe_command)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmpZXxUHQ/lib/python3.13/site-packages/vcs_versioning/_backends/_git.py\",\n      line 695, in version_from_describe\n          return describe_res.parse_success(parse=parse_describe)\n                 ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmpZXxUHQ/lib/python3.13/site-packages/vcs_versioning/_run_cmd.py\",\n      line 82, in parse_success\n          return parse(self.stdout)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmpZXxUHQ/lib/python3.13/site-packages/vcs_versioning/_backends/_git.py\",\n      line 693, in parse_describe\n          return meta(tag=tag, distance=distance, dirty=dirty, node=node,\n      config=config)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmpZXxUHQ/lib/python3.13/site-packages/vcs_versioning/_scm_version.py\",\n      line 393, in meta\n          raise ValueError(\n          ...<3 lines>...\n          )\n      ValueError: Can't parse version from tag 'stage-4-candidate/base/T4'\n      (tag_regex='^(?:[\\\\w-]+-)?(?P<version>[vV]?\\\\d+(?:\\\\.\\\\d+){0,2}[^\\\\+]*)(?:\\\\+.*)?$',\n      tag_prefix='')\n\n\nhint: Build failures usually indicate a problem with the package or the build environment"
     }
   ]
 }

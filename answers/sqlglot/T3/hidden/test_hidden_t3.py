@@ -1,7 +1,6 @@
 import unittest
 
 import duckdb
-
 from sqlglot import exp, optimizer
 
 SCHEMA = {"x": {"a": "INT", "b": "INT"}, "y": {"b": "INT", "c": "INT"}}

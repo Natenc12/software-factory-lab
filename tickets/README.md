@@ -124,3 +124,44 @@ failure. Their starting branches are tagged `stage-2-candidate/base/<T>` until t
 
 T9 is not for use at S0: its rough capture names none of the keys, routes or reply shapes the hidden
 tests assert, so no S0 run can pass (`meta.json`: `not_for_spec_levels`).
+
+## sqlglot tickets (stage 4, T1 to T8)
+
+The second codebase for the model comparison: [tobymao/sqlglot](https://github.com/tobymao/sqlglot), a
+pure-Python SQL parser and translator, in the private practice repo `Natenc12/sqlglot-lab`. Standard
+level (S1) only: no S0, S2 or S3, so no `base/<T>-s3` branches and no acceptance tests
+(`meta.json`: `"spec_levels": ["S1"]`).
+
+| Id | Kind | What it is |
+|---|---|---|
+| T1 | Replay | Parser: a column named `top` read as a row limit (Snowflake, Oracle) |
+| T2 | Replay | Tokenizer: Snowflake stage paths cut off at `--`, `//`, `/*` |
+| T3 | Replay | Optimizer: unnesting a correlated `IN` changes results outside plain filters |
+| T4 | Replay | Generator: Spark `EXISTS(array, lambda)` loses its lambda in other dialects |
+| T5 | Replay | Parser and generator: SQLite `UPDATE OR REPLACE` |
+| T6 | Feature | Cosine similarity as its own function across expressions, parsers, generators and typing |
+| T7 | Vague | The optimizer tidies up `COALESCE`; what to do after a non-NULL constant is left open |
+| T8 | Flawed | Asks to make `python-dateutil` a required dependency; sqlglot's written rules say no dependencies |
+
+- **Practice copy.** `main` is upstream `089891f` (2026-11-20) plus one setup commit. Every starting
+  branch is its source commit plus the same kind of setup commit, made by `make_base_branches.py`
+  (`PREP`): `CLAUDE.md` and upstream `.github/workflows` removed, the integration-test submodule
+  dropped, the lines asking agents to tag commits with their model removed from `AGENTS.md` and
+  `CONTRIBUTING.md` (`AGENTS.md` stays as an ordinary project document), and a small workflow of our
+  own (`tickets/tools/practice/sqlglot/tests.yml`) that installs and runs the tests on pull requests.
+  T6 to T8 start from `main`; replays from the parent of the real fix. Starting branches are tagged
+  `stage-4-candidate/base/<T>` until the freeze.
+- **Replays** come from fixes merged in November 2026 whose commits carry no `[CODEX]` or `[CLAUDE]`
+  tag. `reference.patch` is the fix's whole diff, tests included. Hidden tests are the fix's own
+  tests, rewritten where they named the fix's internals (private argument names, token types) or
+  pinned one spelling of an answer the ticket leaves open (DuckDB output is run on DuckDB instead).
+- **Commands.** The grader config is `grader/codebases/sqlglot.json`. The virtual environment lives
+  in the repo folder (`.venv`, Python 3.13); tests run with pytest (added at install, not in the
+  project's dev extras) and `-p no:subtests`, with `.venv/bin` first on `PATH` and
+  `SKIP_INTEGRATION=1`. Hidden tests go to `tests/hidden/`. `SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0` is set
+  because sqlglot reads its version from git tags, and the `stage-4-candidate/...` tags are not
+  versions: without it, installing at a tagged checkout fails. `verify_ticket.py`, `make_base_branches.py`
+  and `check_packages.py` take `sqlglot` as the codebase; the practice clone defaults to
+  `~/repos/sqlglot-lab`.
+- **Lint.** `answers/sqlglot/ruff.toml` sets 100-character lines so hidden tests pass both this repo's
+  lint and the practice repo's own.

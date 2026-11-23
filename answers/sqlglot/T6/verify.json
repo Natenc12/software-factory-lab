@@ -1,0 +1,20 @@
+{
+  "ticket": "T6",
+  "codebase": "sqlglot",
+  "repo": "Natenc12/sqlglot-lab",
+  "base_ref": "base/T6",
+  "base_sha": "aee8304fc6d572aed610c3183668bddb524a44ac",
+  "s3_base_ref": null,
+  "s3_sha": null,
+  "started": "2026-11-23T16:58:32+00:00",
+  "finished": "2026-11-23T16:58:34+00:00",
+  "databases_dropped": [],
+  "ok": false,
+  "steps": [
+    {
+      "name": "crash",
+      "ok": false,
+      "note": "sh -c uv venv -q --allow-existing -p 3.13 .venv && uv pip install -q -p .venv -e '.[dev]' pytest failed (1):\n\nan/.cache/uv/builds-v0/.tmp62h4lB/lib/python3.13/site-packages/setuptools/build_meta.py\",\n      line 317, in run_setup\n          exec(code, locals())  # noqa: S102 # exec is intentional here\n          ~~~~^^^^^^^^^^^^^^^^\n        File \"<string>\", line 4, in <module>\n          sys.path.pop(0)\n                ~~~~~~^^^\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmp62h4lB/lib/python3.13/site-packages/setuptools_scm/_get_version.py\",\n      line 59, in get_version\n          return _get_version_public(\n              root=root,\n          ...<18 lines>...\n              _env=env,\n          )\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmp62h4lB/lib/python3.13/site-packages/vcs_versioning/_get_version_impl.py\",\n      line 379, in get_version\n          maybe_version = _get_version(config, force_write_version_files=True)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmp62h4lB/lib/python3.13/site-packages/vcs_versioning/_get_version_impl.py\",\n      line 182, in _get_version\n          scm_version = _resolve_version(config)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmp62h4lB/lib/python3.13/site-packages/vcs_versioning/_get_version_impl.py\",\n      line 80, in _resolve_version\n          scm_version = workdir.get_scm_version()\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmp62h4lB/lib/python3.13/site-packages/vcs_versioning/_backends/_git.py\",\n      line 327, in get_scm_version\n          return _git_parse_inner(config, self, pre_parse=effective_pre_parse)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmp62h4lB/lib/python3.13/site-packages/vcs_versioning/_backends/_git.py\",\n      line 711, in _git_parse_inner\n          version = version_from_describe(wd, config, describe_command)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmp62h4lB/lib/python3.13/site-packages/vcs_versioning/_backends/_git.py\",\n      line 695, in version_from_describe\n          return describe_res.parse_success(parse=parse_describe)\n                 ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmp62h4lB/lib/python3.13/site-packages/vcs_versioning/_run_cmd.py\",\n      line 82, in parse_success\n          return parse(self.stdout)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmp62h4lB/lib/python3.13/site-packages/vcs_versioning/_backends/_git.py\",\n      line 693, in parse_describe\n          return meta(tag=tag, distance=distance, dirty=dirty, node=node,\n      config=config)\n        File\n      \"/Users/nathan/.cache/uv/builds-v0/.tmp62h4lB/lib/python3.13/site-packages/vcs_versioning/_scm_version.py\",\n      line 393, in meta\n          raise ValueError(\n          ...<3 lines>...\n          )\n      ValueError: Can't parse version from tag 'stage-4-candidate/base/T6'\n      (tag_regex='^(?:[\\\\w-]+-)?(?P<version>[vV]?\\\\d+(?:\\\\.\\\\d+){0,2}[^\\\\+]*)(?:\\\\+.*)?$',\n      tag_prefix='')\n\n\nhint: Build failures usually indicate a problem with the package or the build environment"
+    }
+  ]
+}

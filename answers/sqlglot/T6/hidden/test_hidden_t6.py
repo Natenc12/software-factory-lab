@@ -1,7 +1,6 @@
 import unittest
 
 import duckdb
-
 from sqlglot import parse_one, transpile
 from sqlglot.optimizer.annotate_types import annotate_types
 

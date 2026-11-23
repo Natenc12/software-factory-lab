@@ -1,7 +1,6 @@
 import unittest
 
 import duckdb
-
 from sqlglot import ErrorLevel, UnsupportedError, transpile
 
 SQL = "SELECT EXISTS(arr, x -> x > 2) FROM t"

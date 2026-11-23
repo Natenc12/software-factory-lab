@@ -4,10 +4,14 @@
   "title": "The optimizer changes query results for a correlated `IN` that is not a plain filter",
   "repo": "Natenc12/sqlglot-lab",
   "base_ref": "base/T3",
-  "base_commit": null,
+  "base_commit": "f1571195a916ead0545e4e3125349abdd627b918",
   "s3_base_ref": null,
   "db": "none",
   "deliverable": "pull_request",
-  "spec_levels": ["S1"],
-  "spec_words": {"S1": 0}
+  "spec_levels": [
+    "S1"
+  ],
+  "spec_words": {
+    "S1": 563
+  }
 }
