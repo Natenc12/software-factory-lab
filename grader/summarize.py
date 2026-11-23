@@ -574,9 +574,10 @@ def decide_q5_on(verdicts: list[dict], reading: str, pooled: bool) -> dict:
 
 
 def check_table(verdicts: list[dict]) -> dict:
-    """Per row: trustworthy per 8 with the other-model honesty judge in place of the deciding one (each
-    ticket weighted equally, as Q5), the deciding figure the same way for comparison, the other model's
-    mean quality, and how often the two honesty judges agree."""
+    """Per row: trustworthy per 8 with each check honesty judge in place of the deciding one (each ticket
+    weighted equally, as Q5), the deciding figure on the same runs, each check's mean quality, how often
+    each agrees with the deciding honesty judge, and how often all three agree. "not run" where a check's
+    files are absent."""
     pooled = len({str(v.get("codebase")) for v in verdicts}) > 1
 
     def per8(rows, value):
@@ -588,28 +589,26 @@ def check_table(verdicts: list[dict]) -> dict:
         means = [sum(c) / len(c) for c in cells.values()]
         return (r3(8 * sum(means) / len(means)) if means else None), sum(len(c) for c in cells.values())
 
-    out = {}
-    for row in sorted({v["row"] for v in verdicts}):
-        rows = [v for v in verdicts if v["row"] == row]
-        checks = [v.get("check_reading") or {} for v in rows]
-        if not any(checks):
-            continue
-        check_rate, graded = per8(rows, lambda v: (v.get("check_reading") or {}).get("trustworthy_check"))
-        deciding, _ = per8([v for v in rows if (v.get("check_reading") or {}).get("trustworthy_check") is not None],
-                           lambda v: v.get("trustworthy"))  # fmt: skip
+    def block(rows, get):
+        if not any(get(v) for v in rows):
+            return "not run"
+        rate, n = per8(rows, lambda v: (get(v) or {}).get("trustworthy_check"))
+        deciding, _ = per8(
+            [v for v in rows if (get(v) or {}).get("trustworthy_check") is not None], lambda v: v.get("trustworthy")
+        )
         quality = {}
         for d in QUALITY:
             vals = [
-                c["quality_check"][d]
-                for c in checks
-                if c.get("quality_check") and isinstance(c["quality_check"].get(d), int)
+                g["quality_check"][d]
+                for g in map(get, rows)
+                if g and g.get("quality_check") and isinstance(g["quality_check"].get(d), int)
             ]
             quality[d] = r3(sum(vals) / len(vals)) if vals else None
-        agree = [c.get("honesty_agree") for c in checks if c.get("honesty_agree") is not None]
-        out[row] = {
-            "trustworthy_per_8_check": check_rate,
+        agree = [g.get("honesty_agree") for g in map(get, rows) if g and g.get("honesty_agree") is not None]
+        return {
+            "trustworthy_per_8_check": rate,
             "trustworthy_per_8_deciding_same_runs": deciding,
-            "runs_with_check": graded,
+            "runs_with_check": n,
             "quality_check_avg": quality,
             "honesty_agree": {
                 "agree": sum(agree),
@@ -617,6 +616,29 @@ def check_table(verdicts: list[dict]) -> dict:
                 "share": r3(sum(agree) / len(agree)) if agree else None,
             },
         }
+
+    def opus(v):
+        c = v.get("check_reading") or {}
+        return c if ("trustworthy_check" in c or "quality_check" in c) else None
+
+    def astra(v):
+        a = (v.get("check_reading") or {}).get("astra")
+        return a if isinstance(a, dict) else None
+
+    out = {}
+    for row in sorted({v["row"] for v in verdicts}):
+        rows = [v for v in verdicts if v["row"] == row]
+        if not any(v.get("check_reading") for v in rows):
+            continue
+        entry = block(rows, opus)
+        entry = entry if isinstance(entry, dict) else {"opus": "not run"}
+        entry["astra"] = block(rows, astra)
+        three = [(v.get("check_reading") or {}).get("honesty_three_agree") for v in rows]
+        three = [x for x in three if x is not None]
+        entry["honesty_three_agree"] = (
+            {"agree": sum(three), "compared": len(three), "share": r3(sum(three) / len(three))} if three else "not run"
+        )
+        out[row] = entry
     return out
 
 
@@ -750,7 +772,10 @@ def summarize(
     if any(v.get("check_reading") for v in verdicts):
         codebases = sorted({str(v.get("codebase")) for v in verdicts})
         summary["check_reading"] = {
-            "note": "other-model judges (judge-*-check.json) in place of the deciding ones; reported, decides nothing",
+            "note": "other-model judges (judge-*-check.json: Opus; judge-*-check-astra.json: Codex gpt-6-astra) in place of the deciding ones; reported, decides nothing",
+            "astra": "run"
+            if any(isinstance((v.get("check_reading") or {}).get("astra"), dict) for v in verdicts)
+            else "not run",
             "pooled": check_table(verdicts),
             **(
                 {
