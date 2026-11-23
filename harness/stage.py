@@ -44,6 +44,7 @@ FLAGS = {
     "forbid": "--forbid",
     "allow_domain": "--allow-domain",
     "allow_write": "--allow-write",
+    "setup": "--setup",
     "env": "--env",
     "max_wall_min": "--max-wall-min",
     "claude_bin": "--claude-bin",

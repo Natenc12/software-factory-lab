@@ -100,7 +100,9 @@ def codebase_run_extras(codebase: str) -> dict:
 
     `run_env` -> `env` (KEY=VALUE), `run_allow_domains` -> `allow_domain` (hosts the run's sandbox may
     reach beyond PyPI), `run_allow_write` -> `allow_write` (folders outside the run, such as a
-    toolchain's cache, the sandbox may write). A codebase without them adds nothing.
+    toolchain's cache, the sandbox may write), `run_setup` -> `setup` (shell commands the harness runs in
+    the checkout before the session, with network, such as installing dependencies). A codebase without
+    them adds nothing.
     """
     try:
         cfg = load_config(codebase)
@@ -113,6 +115,8 @@ def codebase_run_extras(codebase: str) -> dict:
         out["allow_domain"] = list(cfg["run_allow_domains"])
     if cfg.get("run_allow_write"):
         out["allow_write"] = list(cfg["run_allow_write"])
+    if cfg.get("run_setup"):
+        out["setup"] = list(cfg["run_setup"])
     return out
 
 

@@ -247,6 +247,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--forbid", action="append", default=[], help="extra path the run may not touch (repeatable)")
     ap.add_argument("--allow-domain", action="append", default=[], help="extra host the sandbox may reach")
     ap.add_argument(
+        "--setup",
+        action="append",
+        default=[],
+        help="shell command run once in the checkout before the session, with network (repeatable)",
+    )
+    ap.add_argument(
         "--allow-write", action="append", default=[], help="folder outside the run the sandbox may write (repeatable)"
     )
     ap.add_argument("--env", action="append", default=[], help="KEY=VALUE set in the run's environment (repeatable)")
@@ -353,8 +359,50 @@ def main(argv: list[str] | None = None) -> int:
 
     manifest = read_json(hdir / "sandbox.json")
     env = clean_env(root, manifest.get("env") or {})
+    if a.setup and "setup" not in rec:
+        rec["setup"] = []
+        fault = run_setup(a.setup, root, env, rec)
+        write_json(hdir / "run.json", rec)
+        if fault:
+            rec["status"], rec["reason"] = "harness_fault", fault
+            finish_record(root, rec)
+            write_json(hdir / "run.json", rec)
+            print(f"{a.run_id}: harness_fault ({fault})")
+            return EXIT["harness_fault"]
     rec["status"], rec["reason"] = "running", None
     return loop(a, root, rec, env)
+
+
+def run_setup(commands: list[str], root: Path, env: dict, rec: dict) -> str | None:
+    """Run a codebase's setup commands (e.g. installing dependencies) in the checkout before the session.
+
+    They run once, with the run's environment but outside the OS sandbox and with network, so the session
+    itself needs no package registry. `{run}` in a command is the run's folder. Output goes to
+    harness/setup.log. Returns why setup failed, or None.
+    """
+    log = root / "harness" / "setup.log"
+    for raw in commands:
+        cmd = raw.replace("{run}", str(root))
+        t0 = time.monotonic()
+        with open(log, "a", encoding="utf-8") as out:
+            out.write(f"$ {cmd}\n")
+            out.flush()
+            try:
+                done = subprocess.run(
+                    ["/bin/sh", "-c", cmd],
+                    cwd=root / "repo",
+                    env=env,
+                    stdout=out,
+                    stderr=subprocess.STDOUT,
+                    timeout=1800,
+                )
+                code = done.returncode
+            except subprocess.TimeoutExpired:
+                code = "timeout"
+        rec["setup"].append({"cmd": cmd, "exit": code, "seconds": round(time.monotonic() - t0, 1)})
+        if code != 0:
+            return f"setup command failed ({code}): {cmd}"
+    return None
 
 
 def loop(a, root: Path, rec: dict, env: dict) -> int:
