@@ -235,3 +235,36 @@ In `p6-hono-2` the run reported 5 failures in `build/declaration-emit.test.ts` f
 tests check the built output and need `pnpm run build` first, which the run had not re-run after its edit.
 Trial sandboxes were removed with `harness.sandbox down`, keeping each run's `harness/` records. The pull
 requests were on the fake `gh`; nothing reached GitHub.
+
+## Trial-4 (orchestrator) and trial 19: the real practice repos (2026-11-23)
+
+**Trial-4**, run by the orchestrator on `Natenc12/hono-lab` and `Natenc12/sqlglot-lab` with the real
+`gh` and two-line made-up tickets (`~/factory-runs/trial-4`, read here from each run's records):
+
+| Run | Model | Pull request | Workers | `by_model` counted (cost) |
+| --- | --- | --- | --- | --- |
+| `p5p-hono-1` | Opus 5.5 | **none** | 0 | Opus 25,621 |
+| `p5pf-hono-1` | Fable 5.2 | **none** | 0 | Fable 22,957 |
+| `p6p-hono-1` | Fable 5.2 lead | **none** | 1 | Fable 26,935 ($0.54), Opus worker 17,723 ($0.19) |
+| `p5p-sqlglot-1` | Opus 5.5 | #2 | 0 | Opus 29,782 |
+| `p5pf-sqlglot-1` | Fable 5.2 | #1 | 0 | Fable 26,286 |
+| `p6p-sqlglot-1` | Fable 5.2 lead | #3 | 1 | Fable 30,532 ($0.55), Opus worker 10,246 ($0.10) |
+
+All six scans were clean. These were the first runs where a Fable lead started an Opus worker; `by_model`
+split the counts and costs by model, and the run totals counted both. **Every Hono run failed at
+`lab pr open`:** Hono's `run_env` sets `XDG_CONFIG_HOME` inside the run, `lab` ran with the session's
+environment, and gh looks for its login under `XDG_CONFIG_HOME`, so it reported no login. Trials 12–18
+used a fake `gh` and could not show this.
+
+**The fix:** at sandbox creation the harness records the owner's gh config folder (as gh finds it from
+the harness's own environment) and home in the run's `lab.json`. `lab` runs its `gh` and `git push`
+calls with those pinned, with no `XDG_CONFIG_HOME`, `GH_TOKEN`, `GITHUB_TOKEN` or `GH_HOST` from the
+session. No token enters any environment, and the session itself is unchanged. The reply judge now
+runs without the codebase's `run_env`. `tests/test_sandbox_lab.py` checks that a `run_env` with
+`XDG_CONFIG_HOME` cannot break `lab pr open`, and that the same call fails without the pin.
+
+**Trial 19**, after the fix: one P5P run on Opus 5.5 on `Natenc12/hono-lab` with trial-4's Hono ticket
+and settings (`~/factory-runs/trial-5/p5p-hono-5`). Setup installed the dependencies, the run finished
+without a stop (17,500 counted tokens, $0.25, skill `check-the-ask`), and `lab pr open` pushed
+`p5p-hono-5/work` and opened hono-lab #1 (2 files: the message and its test). The scan was clean. The
+pull request was closed unmerged and its branch deleted; the sandbox was removed, keeping its records.
