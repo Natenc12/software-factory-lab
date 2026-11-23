@@ -446,7 +446,7 @@ def test_p6_has_one_general_worker_on_opus():
     assert [p.name for p in agents] == ["worker.md"]
     name, spec = sandbox.parse_agent(agents[0])
     assert name == "worker" and spec["model"] == "claude-opus-5-5" and "hooks" not in spec
-    assert sorted(spec["tools"]) == ["Bash", "Edit", "Glob", "Grep", "Read", "Write"]
+    assert sorted(spec["tools"]) == ["Bash", "Edit", "Glob", "Grep", "Read", "Skill", "Write"]
     assert 2 <= spec["description"].count(". ") + 1 <= 3
 
 

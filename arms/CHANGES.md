@@ -241,12 +241,14 @@ The only difference from P5P is the lead and its workers.
   Departure: the sketch builds on P1's guide; this arm builds on P5P's (P1 plus the pointed skills),
   as the brief asked, because P5P is the base after stage 2b.
 - **`agents/worker.md`**: one general worker, `model: claude-opus-5-5`, no role, the builder's tools
-  (Read, Glob, Grep, Edit, Write, Bash), no hooks. Its prompt repeats the two limits that concern it
+  (Read, Glob, Grep, Edit, Write, Bash) plus `Skill`, no hooks. Its prompt repeats the two limits that concern it
   (stay inside the brief; never open or update the pull request or address the owner). These limits
   are instructions, not enforced: a worker has Bash and could call `lab`. A breach would show in the
   transcript as a subagent's `lab` call.
-- **`skills/`** is byte for byte P5P's. Workers get no `Skill` tool, so only the lead can call the
-  skills.
+- **`skills/`** is byte for byte P5P's. The worker's tools include `Skill`, so lead and workers can
+  use the same skills and work the same way. (First published without it, which left the skills to
+  the lead alone; the harness trials caught that, and `Skill` was added on 2026-11-23, with nothing
+  else changed.)
 - **The lead's model is not in the arm.** Fable 5.2 comes from the run plan's `--model`; P6 run on
   Opus 5.5 would be the same arm. The sketch's two controls (P1 on Opus 5.5, P1 on Fable 5.2) are a
   run-plan matter.
