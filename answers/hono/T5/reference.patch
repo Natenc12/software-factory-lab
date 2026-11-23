@@ -1,0 +1,70 @@
+diff --git a/src/client/client.test.ts b/src/client/client.test.ts
+index abc261d9..ee499c64 100644
+--- a/src/client/client.test.ts
++++ b/src/client/client.test.ts
+@@ -1554,6 +1554,23 @@ describe('RequestInit work as expected', () => {
+     expect(data).toEqual({ 'x-hono': 'awesome' })
+   })
+ 
++  it('Should keep a valid AbortSignal when both the client and the request set one', async () => {
++    const requestController = new AbortController()
++    let received: RequestInit | undefined
++    const signalClient = hc<AppType>('http://localhost', {
++      init: { signal: new AbortController().signal },
++      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
++        received = init
++        new Request(input, init)
++        return new Response('ok')
++      },
++    })
++
++    await signalClient.headers.$get(undefined, { init: { signal: requestController.signal } })
++
++    expect(received?.signal).toBe(requestController.signal)
++  })
++
+   it('credentials is include', async () => {
+     const res = await client.credentials.$get()
+ 
+diff --git a/src/client/utils.test.ts b/src/client/utils.test.ts
+index 3ebc32e0..f971251a 100644
+--- a/src/client/utils.test.ts
++++ b/src/client/utils.test.ts
+@@ -208,6 +208,20 @@ describe('deepMerge', () => {
+       timeout: 2,
+     })
+   })
++
++  it('should replace a class instance instead of merging it', () => {
++    const target = { signal: new AbortController().signal }
++    const source = { signal: new AbortController().signal }
++    const result = deepMerge(target, source)
++    expect(result.signal).toBe(source.signal)
++    expect(result.signal).toBeInstanceOf(AbortSignal)
++  })
++
++  it('should merge a null-prototype object', () => {
++    const target = { headers: Object.assign(Object.create(null), { a: '1' }) }
++    const source = { headers: { b: '2' } }
++    expect(deepMerge(target, source).headers).toEqual({ a: '1', b: '2' })
++  })
+ })
+ 
+ describe('parseResponse', async () => {
+diff --git a/src/client/utils.ts b/src/client/utils.ts
+index d4104e46..3b0c62be 100644
+--- a/src/client/utils.ts
++++ b/src/client/utils.ts
+@@ -63,7 +63,11 @@ export const removeIndexString = (urlString: string) => {
+ }
+ 
+ function isObject(item: unknown): item is ObjectType {
+-  return typeof item === 'object' && item !== null && !Array.isArray(item)
++  if (typeof item !== 'object' || item === null) {
++    return false
++  }
++  const proto = Object.getPrototypeOf(item)
++  return proto === null || Object.getPrototypeOf(proto) === null
+ }
+ 
+ export function deepMerge<T>(target: T, source: Record<string, unknown>): T {

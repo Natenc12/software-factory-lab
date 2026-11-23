@@ -457,6 +457,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--keep", action="store_true", help="keep the temporary folder (junit files) for debugging")
     ap.add_argument("--out", help="where to write verify.json (default answers/<codebase>/<T>/verify.json)")
     args = ap.parse_args(argv)
+    cfg_path = ROOT / "grader" / "codebases" / f"{args.codebase}.json"
+    if cfg_path.is_file() and json.loads(cfg_path.read_text()).get("test_runner") == "vitest":
+        # TypeScript codebases (hono) build, type-check and read vitest's report: their own verifier.
+        from verify_ticket_hono import main as verify_typescript
+
+        rest = [args.ticket, *(["--lab", args.lab] if args.lab else []), *(["--keep"] if args.keep else [])]
+        return verify_typescript([*rest, *(["--out", args.out] if args.out else [])])
     lab = Path(args.lab or Path.home() / "repos" / f"{args.codebase}-lab").expanduser()
     v = Verifier(args.codebase, args.ticket, lab, args.keep)
     result = v.run()

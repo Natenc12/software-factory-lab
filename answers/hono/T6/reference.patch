@@ -1,0 +1,153 @@
+diff --git a/src/middleware/logger/index.test.ts b/src/middleware/logger/index.test.ts
+index bc2a1985..ae99b8b3 100644
+--- a/src/middleware/logger/index.test.ts
++++ b/src/middleware/logger/index.test.ts
+@@ -1,5 +1,6 @@
+ import { logger } from '.'
+ import { Hono } from '../../hono'
++import { requestId } from '../request-id'
+ 
+ describe('Logger by Middleware', () => {
+   let app: Hono
+@@ -202,3 +203,17 @@ describe('Logger by Middleware in NO_COLOR', () => {
+     expect(log).toMatch(/m?s$/)
+   })
+ })
++
++describe('Logger with a request id', () => {
++  it('Should print the id after the arrow once the request has one', async () => {
++    const lines: string[] = []
++    const app = new Hono()
++    app.use(logger((str) => lines.push(str)))
++    app.use(requestId({ generator: () => 'abc' }))
++    app.get('/', (c) => c.text('ok'))
++
++    await app.request('http://localhost/')
++    expect(lines[0]).toBe('<-- GET /')
++    expect(lines[1].startsWith('--> [abc] GET / ')).toBe(true)
++  })
++})
+diff --git a/src/middleware/logger/index.ts b/src/middleware/logger/index.ts
+index 2abc9f50..619d399e 100644
+--- a/src/middleware/logger/index.ts
++++ b/src/middleware/logger/index.ts
+@@ -3,6 +3,7 @@
+  * Logger Middleware for Hono.
+  */
+ 
++import type { Context } from '../../context'
+ import type { MiddlewareHandler } from '../../types'
+ import { getColorEnabledAsync } from '../../utils/color'
+ 
+@@ -50,23 +51,34 @@ type PrintFunc = (str: string, ...rest: string[]) => void
+ async function log(
+   fn: PrintFunc,
+   prefix: string,
++  requestId: string | undefined,
+   method: string,
+   path: string,
+   status: number = 0,
+   elapsed?: string
+ ) {
++  // the request id, when the request has one by the time the line is printed
++  const lead = requestId ? `${prefix} [${requestId}]` : prefix
+   const out =
+     prefix === LogPrefix.Incoming
+-      ? `${prefix} ${method} ${path}`
+-      : `${prefix} ${method} ${path} ${await colorStatus(status)} ${elapsed}`
++      ? `${lead} ${method} ${path}`
++      : `${lead} ${method} ${path} ${await colorStatus(status)} ${elapsed}`
+   fn(out)
+ }
+ 
++const getRequestId = (c: Context): string | undefined => {
++  const id: unknown = c.get('requestId')
++  return typeof id === 'string' && id !== '' ? id : undefined
++}
++
+ /**
+  * Logger Middleware for Hono.
+  *
+  * @see {@link https://hono.dev/docs/middleware/builtin/logger}
+  *
++ * When the request has an id from the Request ID middleware by the time a line is printed, the line
++ * carries it after the arrow: `<-- [id] GET /path`.
++ *
+  * @param {PrintFunc} [fn=console.log] - Optional function for customized logging behavior.
+  * @returns {MiddlewareHandler} The middleware handler function.
+  *
+@@ -84,12 +96,12 @@ export const logger = (fn: PrintFunc = console.log): MiddlewareHandler => {
+ 
+     const path = url.slice(url.indexOf('/', 8))
+ 
+-    await log(fn, LogPrefix.Incoming, method, path)
++    await log(fn, LogPrefix.Incoming, getRequestId(c), method, path)
+ 
+     const start = Date.now()
+ 
+     await next()
+ 
+-    await log(fn, LogPrefix.Outgoing, method, path, c.res.status, time(start))
++    await log(fn, LogPrefix.Outgoing, getRequestId(c), method, path, c.res.status, time(start))
+   }
+ }
+diff --git a/src/middleware/request-id/request-id.ts b/src/middleware/request-id/request-id.ts
+index 46e2c5fd..ea8efc52 100644
+--- a/src/middleware/request-id/request-id.ts
++++ b/src/middleware/request-id/request-id.ts
+@@ -26,6 +26,9 @@ export type RequestIdOptions = {
+  *
+  * @returns {MiddlewareHandler} The middleware handler function.
+  *
++ * The Logger middleware prints the id on its lines, and the Timing middleware adds it to the
++ * `Server-Timing` header as `reqid;desc="<id>"`.
++ *
+  * @example
+  * ```ts
+  * type Variables = RequestIdVariables
+diff --git a/src/middleware/timing/index.test.ts b/src/middleware/timing/index.test.ts
+index 60b2af9b..770935a8 100644
+--- a/src/middleware/timing/index.test.ts
++++ b/src/middleware/timing/index.test.ts
+@@ -1,5 +1,6 @@
+ import { endTime, setMetric, startTime, timing, wrapTime } from '.'
+ import { Hono } from '../../hono'
++import { requestId } from '../request-id'
+ 
+ describe('Server-Timing API', () => {
+   const app = new Hono()
+@@ -444,3 +445,18 @@ describe('Server-Timing API', () => {
+     })
+   })
+ })
++
++describe('Server-Timing with a request id', () => {
++  it('Should add the request id as the last entry', async () => {
++    const app = new Hono()
++    app.use(requestId({ generator: () => 'abc' }))
++    app.use(timing({ total: false }))
++    app.get('/', (c) => {
++      setMetric(c, 'db', 2, 'Database')
++      return c.text('ok')
++    })
++
++    const res = await app.request('http://localhost/')
++    expect(res.headers.get('Server-Timing')).toBe('db;dur=2.0;desc="Database",reqid;desc="abc"')
++  })
++})
+diff --git a/src/middleware/timing/timing.ts b/src/middleware/timing/timing.ts
+index 22f5963c..a245875c 100644
+--- a/src/middleware/timing/timing.ts
++++ b/src/middleware/timing/timing.ts
+@@ -110,6 +110,11 @@ export const timing = (config?: TimingOptions): MiddlewareHandler => {
+     const enabled = typeof options.enabled === 'function' ? options.enabled(c) : options.enabled
+ 
+     if (enabled) {
++      // the request id from the Request ID middleware, if any, as the last entry
++      const id: unknown = c.get('requestId')
++      if (typeof id === 'string' && id !== '') {
++        headers.push(`reqid;desc=${quote(id)}`)
++      }
+       c.res.headers.append('Server-Timing', headers.join(','))
+ 
+       const crossOrigin =

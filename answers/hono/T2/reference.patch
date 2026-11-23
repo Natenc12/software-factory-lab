@@ -1,0 +1,124 @@
+diff --git a/src/middleware/basic-auth/index.test.ts b/src/middleware/basic-auth/index.test.ts
+index 53dbc2d9..60b1e69e 100644
+--- a/src/middleware/basic-auth/index.test.ts
++++ b/src/middleware/basic-auth/index.test.ts
+@@ -432,3 +432,16 @@ describe('Basic Auth with onAuthSuccess', () => {
+     expect(await res.text()).toBe('yes')
+   })
+ })
++
++describe('Basic Auth realm', () => {
++  it('Should escape double quotes and backslashes in the realm', async () => {
++    const app = new Hono()
++    app.use('/auth/*', basicAuth({ username: 'user', password: 'pass', realm: 'my "api"\\' }))
++    app.get('/auth/*', (c) => c.text('ok'))
++
++    const res = await app.request('http://localhost/auth/page')
++
++    expect(res.status).toBe(401)
++    expect(res.headers.get('WWW-Authenticate')).toBe('Basic realm="my \\"api\\"\\\\"')
++  })
++})
+diff --git a/src/middleware/basic-auth/index.ts b/src/middleware/basic-auth/index.ts
+index 5b2011ea..b09bfd73 100644
+--- a/src/middleware/basic-auth/index.ts
++++ b/src/middleware/basic-auth/index.ts
+@@ -132,7 +132,7 @@ export const basicAuth = (
+     // Invalid user.
+     const status = 401
+     const headers = {
+-      'WWW-Authenticate': 'Basic realm="' + options.realm?.replace(/"/g, '\\"') + '"',
++      'WWW-Authenticate': 'Basic realm="' + options.realm?.replace(/[\\"]/g, '\\$&') + '"',
+     }
+     const responseMessage =
+       typeof options.invalidUserMessage === 'function'
+diff --git a/src/middleware/bearer-auth/index.test.ts b/src/middleware/bearer-auth/index.test.ts
+index 80e314cf..9c40a5cc 100644
+--- a/src/middleware/bearer-auth/index.test.ts
++++ b/src/middleware/bearer-auth/index.test.ts
+@@ -1071,6 +1071,19 @@ describe('Bearer Auth types', () => {
+   })
+ })
+ 
++describe('Bearer Auth realm', () => {
++  it('Should escape double quotes and backslashes in the realm', async () => {
++    const app = new Hono()
++    app.use('/auth/*', bearerAuth({ token: 'secret', realm: 'my "api"\\' }))
++    app.get('/auth/*', (c) => c.text('ok'))
++
++    const res = await app.request('http://localhost/auth/page')
++
++    expect(res.status).toBe(401)
++    expect(res.headers.get('WWW-Authenticate')).toBe('Bearer realm="my \\"api\\"\\\\"')
++  })
++})
++
+ describe('Bearer Auth options validation', () => {
+   it('Should throw an error mentioning both "token" and "verifyToken" when neither is provided', () => {
+     expect(() => {
+diff --git a/src/middleware/bearer-auth/index.ts b/src/middleware/bearer-auth/index.ts
+index 6122e3b3..282656aa 100644
+--- a/src/middleware/bearer-auth/index.ts
++++ b/src/middleware/bearer-auth/index.ts
+@@ -115,7 +115,7 @@ export const bearerAuth = <E extends Env = Env>(
+     options.prefix = PREFIX
+   }
+ 
+-  const realm = options.realm?.replace(/"/g, '\\"')
++  const realm = options.realm?.replace(/[\\"]/g, '\\$&')
+   const prefix = options.prefix
+   const tokenRegexp = new RegExp(`^${TOKEN_STRINGS}$`)
+   const wwwAuthenticatePrefix = prefix === '' ? '' : `${prefix} `
+diff --git a/src/middleware/jwk/jwk.ts b/src/middleware/jwk/jwk.ts
+index 7525da67..8760bf6a 100644
+--- a/src/middleware/jwk/jwk.ts
++++ b/src/middleware/jwk/jwk.ts
+@@ -183,8 +183,8 @@ function unauthorizedResponse(opts: {
+   // `realm` and `error_description` end up inside a quoted-string, so any `"`
+   // they contain has to be escaped or the header is cut short. Same handling as
+   // the bearer-auth middleware.
+-  const realm = (opts.realm ?? opts.ctx.req.url).replace(/"/g, '\\"')
+-  const errDescription = opts.errDescription.replace(/"/g, '\\"')
++  const realm = (opts.realm ?? opts.ctx.req.url).replace(/[\\"]/g, '\\$&')
++  const errDescription = opts.errDescription.replace(/[\\"]/g, '\\$&')
+ 
+   return new Response('Unauthorized', {
+     status: 401,
+diff --git a/src/middleware/jwt/index.test.ts b/src/middleware/jwt/index.test.ts
+index 6090fb7c..a9bc87d1 100644
+--- a/src/middleware/jwt/index.test.ts
++++ b/src/middleware/jwt/index.test.ts
+@@ -798,5 +798,18 @@ describe('JWT', () => {
+         'Bearer realm="my \\"quoted\\" api",error="invalid_request",error_description="no authorization included in request"'
+       )
+     })
++
++    it('Should escape backslashes in the realm', async () => {
++      const app = new Hono()
++      app.use('/auth/*', jwt({ secret: 'a-secret', alg: 'HS256', realm: 'my\\api\\' }))
++      app.get('/auth/*', (c) => c.text('ok'))
++
++      const res = await app.request('http://localhost/auth/page')
++
++      expect(res.status).toBe(401)
++      expect(res.headers.get('WWW-Authenticate')).toBe(
++        'Bearer realm="my\\\\api\\\\",error="invalid_request",error_description="no authorization included in request"'
++      )
++    })
+   })
+ })
+diff --git a/src/middleware/jwt/jwt.ts b/src/middleware/jwt/jwt.ts
+index 9e16c108..eb3c8c77 100644
+--- a/src/middleware/jwt/jwt.ts
++++ b/src/middleware/jwt/jwt.ts
+@@ -172,8 +172,8 @@ function unauthorizedResponse(opts: {
+   // `realm` and `error_description` end up inside a quoted-string, so any `"`
+   // they contain has to be escaped or the header is cut short. Same handling as
+   // the bearer-auth middleware.
+-  const realm = (opts.realm ?? opts.ctx.req.url).replace(/"/g, '\\"')
+-  const errDescription = opts.errDescription.replace(/"/g, '\\"')
++  const realm = (opts.realm ?? opts.ctx.req.url).replace(/[\\"]/g, '\\$&')
++  const errDescription = opts.errDescription.replace(/[\\"]/g, '\\$&')
+ 
+   return new Response('Unauthorized', {
+     status: 401,

@@ -1,0 +1,29 @@
+{
+  "hidden_test_cmd": "pnpm exec vp test --run src/hidden",
+  "source": {
+    "fix": "6e8fbe18",
+    "pull_request": "honojs/hono#5594",
+    "issue": "honojs/hono#5575",
+    "author": "a person (not the hono-kun bot)"
+  },
+  "unchanged_paths": [],
+  "scope_out_paths": [
+    "src/jsx/dom/",
+    "adapters/"
+  ],
+  "tests_may_change": [
+    "src/helper/html/index.test.ts",
+    "src/jsx/index.test.tsx::render to string > Booleans, Null, and Undefined Are Ignored > *",
+    "src/jsx/index.test.tsx::render to string > FC > Booleans, Null, and Undefined Are Ignored > *"
+  ],
+  "tests_may_change_note": "The html helper's small test file, and the two 'Booleans, Null, and Undefined Are Ignored' blocks of the JSX tests, are where a careful engineer adds the async rows (audit B: a correct fix extending the component block was failed before). Checked against the reference and the blind fix.",
+  "traps": [],
+  "naive_patches": {
+    "naive.patch": "Skips null, undefined and booleans when the string is built but does not handle numbers, so an async component or html`` promise resolving to 0 or 1 still throws."
+  },
+  "hidden_tests_note": "The upstream fix's own tests, with the rows that already pass on the base removed (the 'text' row of the component test passes on the base) and the streaming test's Suspense id read from the first chunk instead of a counter shared across the upstream file. t4-types.test.tsx (audit B) type-checks an async component returning null against the built declarations with tsc, so the type change the ticket asks for is checked; vitest alone strips types.",
+  "issue_hints_removed": [
+    "the issue's naming of resolveFunctionComponentResult and stringBufferToString as the failing functions",
+    "the issue's note that the sync path already skips these values and that an earlier fix handled arrays"
+  ]
+}

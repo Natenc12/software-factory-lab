@@ -1,0 +1,23 @@
+{
+  "hidden_test_cmd": "pnpm exec vp test --run src/hidden",
+  "source": {
+    "fix": "ed1d5f72",
+    "pull_request": "honojs/hono#5590",
+    "issue": null,
+    "author": "a person (not the hono-kun bot)"
+  },
+  "unchanged_paths": [],
+  "scope_out_paths": [
+    "adapters/"
+  ],
+  "tests_may_change": [
+    "src/middleware/jwk/index.test.ts::JWK > WWW-Authenticate realm > Should escape double quotes in the realm",
+    "src/middleware/jwt/index.test.ts::JWT > WWW-Authenticate realm > Should escape double quotes in the realm"
+  ],
+  "tests_may_change_note": "The existing jwt and jwk tests that check quote escaping in the realm are where a careful engineer adds the backslash case; new tests elsewhere are new cases. Checked against the reference and the blind fix, neither of which edits them.",
+  "traps": [],
+  "naive_patches": {
+    "naive.patch": "Fixes basicAuth and bearerAuth, which build the header inline, and misses jwt and jwk, which build it in a helper."
+  },
+  "hidden_tests_note": "Three of the four tests are the upstream fix's own; the jwk test is the author's, because the upstream fix changed jwk.ts without a test. The PR text is short (no issue), so the ticket is written from the PR's description of the bug and the code at the base."
+}

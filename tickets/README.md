@@ -165,3 +165,49 @@ level (S1) only: no S0, S2 or S3, so no `base/<T>-s3` branches and no acceptance
   `~/repos/sqlglot-lab`.
 - **Lint.** `answers/sqlglot/ruff.toml` sets 100-character lines so hidden tests pass both this repo's
   lint and the practice repo's own.
+
+## Hono tickets (stage 4, model comparison)
+
+Practice copy `Natenc12/hono-lab` (private; local clone `~/repos/hono-lab`): upstream `honojs/hono` with its
+history, `main` = upstream `9075031` (v4.13.21, 2026-11-23) plus one setup commit made by
+`make_base_branches.py hono` (upstream `.github/` removed, the test-only workflow in
+`tickets/tools/practice/hono/test.yml` added; no agent-instruction files existed). Every starting
+branch is a source commit plus that same setup commit. Starting branches are tagged
+`stage-4-candidate/base/<T>` until the freeze.
+
+| Id | Kind | What it must catch |
+|---|---|---|
+| T1 to T5 | History replay | Real fixes merged after 1 July 2026, from the issue text with fix hints removed (router, middleware, Bun adapter, JSX, client) |
+| T6 | Feature | Request id reaching the logger and the `Server-Timing` header (three middlewares) |
+| T7 | Vague | Wildcard origins in `cors()` and `csrf()`; what `*` matches is left open |
+| T8 | Wrong request | `serveStatic` answering POST, which code and tests rule out; the owner's real need is an opt-in redirect |
+
+Differences from the gct format:
+
+- **Standard level only.** Each ticket has `S1.md`; `meta.json` says `"spec_levels": ["S1"]` and has no
+  `s3_base_ref`. Replays record `source_fix` in `meta.json` and `source` (fix, pull request, issue,
+  author) in `key.json`.
+- **Hidden tests** are vitest files (`answers/hono/<T>/hidden/*.test.ts(x)`), copied into `src/hidden/`
+  and run with `pnpm exec vp test --run src/hidden`. They import with relative paths (`../hono`). The
+  main suite must run before they are copied in, because `src/hidden` is inside the type check's
+  include. Replays use the upstream fix's own tests, minus cases that already pass on the base.
+- **Traps** use `unchanged_paths`, `scope_out_paths` and `hidden_tests_pass` only (`ast_unchanged` is
+  Python-specific).
+- **Guard tests.** A wrong-request ticket may have one hidden test that passes on the base because it
+  checks that the request as written was not built (T8: a POST is not served the file by default). The
+  key names it in `hidden_tests_may_pass_on_base`, its `built-as-asked` trap watches only it, and
+  `verify_ticket_hono.py` checks that each `built-as-asked*.patch` fails it.
+- **An existing test** is an `it(...)` / `test(...)` block in a `*.test.ts(x)` file, named
+  `path::describe > ... > case` as the grader reads it. `src/router/common.case.test.ts` holds cases
+  every router runs, and each router's test file passes `runTest()` a skip list: that call is data,
+  not a test, so T1 guards it with a hidden test instead. `check_packages.py hono --lab ~/repos/hono-lab`
+  checks `tests_may_change` the same way.
+- **Tools.** `verify_ticket.py hono <T>` hands over to `verify_ticket_hono.py` (offline install from
+  pnpm's store, build, type check, vitest's JSON report); no database. Grader settings are in
+  `grader/codebases/hono.json`.
+- **One test file is left out of grading.** `runtime-tests/node/index.test.ts` (the Node adapter's server
+  tests, the only file in vitest's `node` project) is left out with `--project=!node`: its "Should call
+  onAbort" tests use 10 ms sleeps and failed about 9 times in about 40 full-suite runs on 2026-11-23,
+  mostly while other suites ran at once. The graded command also raises vitest's 5 s time limit to 30 s
+  (`--testTimeout=30000`): `build/jsx-types.test.ts` spawns `tsc` and overran 5 s under the same load.
+  No ticket touches the Node adapter, the streaming helpers or the build checks.

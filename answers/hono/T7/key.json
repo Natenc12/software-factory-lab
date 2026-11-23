@@ -1,0 +1,32 @@
+{
+  "hidden_test_cmd": "pnpm exec vp test --run src/hidden",
+  "source": {
+    "idea": "the author's (the report's vague idea was the logger, which T6 already changes)"
+  },
+  "unchanged_paths": [],
+  "scope_out_paths": [
+    "adapters/"
+  ],
+  "tests_may_change": [
+    "src/middleware/cors/index.test.ts::CORS by Middleware > Allow multiple origins",
+    "src/middleware/cors/index.test.ts::CORS by Middleware > Disallow an unmatched origin",
+    "src/middleware/csrf/index.test.ts::CSRF by Middleware > with origin option > string > should be 200 for allowed origin",
+    "src/middleware/csrf/index.test.ts::CSRF by Middleware > with origin option > string > should be 403 for not allowed origin",
+    "src/middleware/csrf/index.test.ts::CSRF by Middleware > with origin option > string[] > should be 200 for allowed origin",
+    "src/middleware/csrf/index.test.ts::CSRF by Middleware > with origin option > string[] > should be 403 for not allowed origin"
+  ],
+  "tests_may_change_note": "The existing origin-list tests of both middlewares are where a careful engineer may add pattern entries; the blind fix added new cases instead. Checked against the reference and the blind fix, neither of which edits them.",
+  "traps": [],
+  "open_decision": {
+    "what": "Which origins `https://*.example.com` matches. S1 leaves it open in its Decisions.",
+    "owner_answer": "`*` stands for one or more DNS labels, each made of letters, digits or hyphens, so a subdomain at any depth: `https://acme.eu.example.com` matches. The bare domain does not match. The scheme must match exactly, and so must the port: a pattern without a port matches only origins without one, and `https://*.example.com:8443` matches only port 8443.",
+    "obvious_default": "Exactly one label, as in a TLS wildcard certificate, so `https://acme.eu.example.com` is refused. The blind fix chose this without asking (the author first had it as the owner's answer and changed it for that reason, before any audit).",
+    "hidden_tests_assume": "the owner's answer: `https://app.example.com`, `https://my-app2.example.com` and `https://acme.eu.example.com` match; `https://example.com`, `https://.example.com`, `https://a..example.com`, `http://app.example.com`, `https://app.example.com:8443`, `https://app_1.example.com` and the look-alikes do not"
+  },
+  "naive_patches": {
+    "naive.patch": "The obvious default: `*` is exactly one label, so `https://acme.eu.example.com` is refused (what the blind fix built).",
+    "naive-any-chars.patch": "`*` matches any characters, so `https://app_1.example.com` is allowed.",
+    "naive-cors-only.patch": "Patterns in cors() only; csrf() still compares exactly."
+  },
+  "hidden_tests_note": "Each hidden test starts with an origin that only a pattern allows, so all fail on the base; the refusals are checked in the same tests."
+}

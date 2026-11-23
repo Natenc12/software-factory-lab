@@ -1,0 +1,27 @@
+{
+  "hidden_test_cmd": "pnpm exec vp test --run src/hidden",
+  "source": {
+    "fix": "a46d6025",
+    "pull_request": "honojs/hono#5650",
+    "issue": "honojs/hono#5646",
+    "author": "hono-kun[bot] wrote the fix; the issue was written by a person. No client fix by a person after the move to pnpm (2026-09-24) was larger than 14 lines."
+  },
+  "unchanged_paths": [],
+  "scope_out_paths": [
+    "adapters/",
+    "src/hono-base.ts"
+  ],
+  "tests_may_change": [
+    "src/client/utils.test.ts::deepMerge > should merge two objects with object properties",
+    "src/client/utils.test.ts::deepMerge > should return the source object if the target object is not an object"
+  ],
+  "tests_may_change_note": "The existing deepMerge tests are where a fix in the merge helper naturally adds a class-instance case. Checked against the reference and the blind fix, neither of which edits them.",
+  "traps": [],
+  "naive_patches": {
+    "naive.patch": "Special-cases the key `signal` in the merge, so other class instances (a dispatcher) are still flattened into plain objects."
+  },
+  "hidden_tests_note": "The first test is the upstream client test with plain-key checks folded in; the second is the author's, for the issue's general case (any class instance), through the public client only. The upstream unit tests of the internal deepMerge helper are not used, so a correct fix outside that helper passes. A third test (audit B) puts an instance under a key the ticket does not name (`agent`) and a plain object (`cf`) at both levels: special-casing `signal` and `dispatcher`, or merging init only one level deep, fails it.",
+  "issue_hints_removed": [
+    "none needed beyond the reproduction; the issue left override versus compose open, and the ticket decides override, as the upstream fix did"
+  ]
+}

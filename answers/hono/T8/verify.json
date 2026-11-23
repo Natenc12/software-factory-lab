@@ -1,0 +1,169 @@
+{
+  "ticket": "T8",
+  "codebase": "hono",
+  "repo": "Natenc12/hono-lab",
+  "base_ref": "base/T8",
+  "base_sha": "e4a792524930039d99162e3b3f46ce623410b444",
+  "started": "2026-11-23T20:39:57+00:00",
+  "finished": "2026-11-23T20:41:47+00:00",
+  "ok": true,
+  "steps": [
+    {
+      "name": "base: type check and existing tests pass",
+      "ok": true,
+      "note": "{'passed': 5018, 'skipped': 102} in 14.7s",
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "log_tail": ""
+    },
+    {
+      "name": "hidden tests exist",
+      "ok": true,
+      "files": [
+        "src/hidden/t8.test.ts"
+      ]
+    },
+    {
+      "name": "base: every hidden test fails (guards in hidden_tests_may_pass_on_base excepted)",
+      "ok": true,
+      "note": "{'passed': 1, 'failed': 2}",
+      "outcomes": {
+        "src/hidden/t8.test.ts::serveStatic by default does not serve a file for a POST by default": "passed",
+        "src/hidden/t8.test.ts::serveStatic redirectPost redirects to the same path and query without touching files, and the page then loads": "failed",
+        "src/hidden/t8.test.ts::serveStatic redirectPost redirects POST only, whether or not the file exists, and passes other methods on": "failed"
+      },
+      "not_failing": []
+    },
+    {
+      "name": "reference: leaves unchanged_paths alone",
+      "ok": true,
+      "touched": [],
+      "changed": [
+        "src/middleware/serve-static/index.test.ts",
+        "src/middleware/serve-static/index.ts"
+      ]
+    },
+    {
+      "name": "reference: lint and format clean",
+      "ok": true,
+      "runs": [
+        {
+          "cmd": "run lint",
+          "exit": 0,
+          "tail": "no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/react.ts:5:93: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2101:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+        },
+        {
+          "cmd": "run format",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 244ms on 432 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+        }
+      ]
+    },
+    {
+      "name": "reference: type check and existing tests pass",
+      "ok": true,
+      "note": "{'passed': 5020, 'skipped': 102} in 13.5s",
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": [],
+      "log_tail": ""
+    },
+    {
+      "name": "reference: every hidden test passes",
+      "ok": true,
+      "note": "3 hidden",
+      "outcomes": {
+        "src/hidden/t8.test.ts::serveStatic by default does not serve a file for a POST by default": "passed",
+        "src/hidden/t8.test.ts::serveStatic redirectPost redirects to the same path and query without touching files, and the page then loads": "passed",
+        "src/hidden/t8.test.ts::serveStatic redirectPost redirects POST only, whether or not the file exists, and passes other methods on": "passed"
+      },
+      "not_passing": []
+    },
+    {
+      "name": "base and reference ran the same hidden tests",
+      "ok": true,
+      "missing_on_base": [],
+      "base_load_errors": []
+    },
+    {
+      "name": "reference: type check, lint and format clean with the hidden tests in place",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "runs": [
+        {
+          "cmd": "run lint",
+          "exit": 0,
+          "tail": "no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/react.ts:5:93: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2101:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+        },
+        {
+          "cmd": "run format",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 250ms on 433 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+        },
+        {
+          "cmd": "exec vp lint src/hidden/t8.test.ts",
+          "exit": 0,
+          "tail": "note: You are running `vp lint` as a Vite+ built-in command. If you meant to run the lint npm script, use `vpr lint` instead.\n"
+        },
+        {
+          "cmd": "exec vp fmt --check src/hidden/t8.test.ts",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 117ms on 1 files using 8 threads.\n"
+        }
+      ]
+    },
+    {
+      "name": "hidden tests run in under about 2 minutes",
+      "ok": true,
+      "note": "1.1s"
+    },
+    {
+      "name": "naive-all-methods.patch: type check and existing tests still pass (a competent fix)",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": []
+    },
+    {
+      "name": "naive-all-methods.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "src/hidden/t8.test.ts::serveStatic redirectPost redirects POST only, whether or not the file exists, and passes other methods on"
+      ],
+      "note": "1/3 hidden fail"
+    },
+    {
+      "name": "naive.patch: type check and existing tests still pass (a competent fix)",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": []
+    },
+    {
+      "name": "naive.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "src/hidden/t8.test.ts::serveStatic redirectPost redirects to the same path and query without touching files, and the page then loads"
+      ],
+      "note": "1/3 hidden fail"
+    },
+    {
+      "name": "built-as-asked-default.patch: the trap's hidden tests fail",
+      "ok": true,
+      "watched": {
+        "src/hidden/t8.test.ts::serveStatic by default does not serve a file for a POST by default": "failed"
+      }
+    }
+  ]
+}

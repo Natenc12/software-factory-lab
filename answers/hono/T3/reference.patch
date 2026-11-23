@@ -1,0 +1,294 @@
+diff --git a/adapters/bun/src/websocket.test.ts b/adapters/bun/src/websocket.test.ts
+index e9ad1cc5..78ff860b 100644
+--- a/adapters/bun/src/websocket.test.ts
++++ b/adapters/bun/src/websocket.test.ts
+@@ -156,6 +156,69 @@ describe('upgradeWebSocket()', () => {
+     websocket.close(ws)
+     expect(close).toBeCalled()
+   })
++
++  describe('onError', () => {
++    const createSocket = (events: BunWebSocketData['events']) =>
++      ({
++        data: { events, url: new URL('http://localhost'), protocol: '' },
++        readyState: 1,
++      }) as BunServerWebSocket<BunWebSocketData>
++
++    it('Should pass an error thrown by a handler to onError', () => {
++      const onError = mock()
++      const error = new Error('boom')
++      const ws = createSocket({
++        onOpen: () => {
++          throw error
++        },
++        onMessage: () => {
++          throw error
++        },
++        onClose: () => {
++          throw error
++        },
++        onError,
++      })
++
++      websocket.open(ws)
++      websocket.message(ws, 'message')
++      websocket.close(ws)
++
++      expect(onError).toHaveBeenCalledTimes(3)
++      const [evt, context] = onError.mock.calls[0]
++      expect(evt.type).toBe('error')
++      expect(evt.error).toBe(error)
++      expect(context.raw).toBe(ws)
++    })
++
++    it('Should pass a rejection of an async handler to onError', async () => {
++      const onError = mock()
++      const error = new Error('boom')
++      const ws = createSocket({
++        onMessage: async () => {
++          throw error
++        },
++        onError,
++      })
++
++      websocket.message(ws, 'message')
++      await Promise.resolve()
++
++      expect(onError).toHaveBeenCalledTimes(1)
++      expect(onError.mock.calls[0][0].error).toBe(error)
++    })
++
++    it('Should rethrow an error when onError is not set', () => {
++      const error = new Error('boom')
++      const ws = createSocket({
++        onMessage: () => {
++          throw error
++        },
++      })
++
++      expect(() => websocket.message(ws, 'message')).toThrow(error)
++    })
++  })
+ })
+ 
+ describe('createBunWebSocket()', () => {
+diff --git a/adapters/bun/src/websocket.ts b/adapters/bun/src/websocket.ts
+index 0901eac5..af9cf4cd 100644
+--- a/adapters/bun/src/websocket.ts
++++ b/adapters/bun/src/websocket.ts
+@@ -27,6 +27,26 @@ export interface BunWebSocketData {
+   protocol: string
+ }
+ 
++const runHandler = (ws: BunServerWebSocket<BunWebSocketData>, handler: () => unknown): void => {
++  const handleError = (error: unknown) => {
++    const onError = ws.data.events.onError
++    if (!onError) {
++      throw error
++    }
++    const event = new Event('error') as Event & { error: unknown }
++    event.error = error
++    onError(event, createWSContext(ws))
++  }
++  try {
++    const result = handler()
++    if (result instanceof Promise) {
++      result.catch(handleError)
++    }
++  } catch (error) {
++    handleError(error)
++  }
++}
++
+ /**
+  * @internal
+  */
+@@ -77,18 +97,20 @@ export const websocket: BunWebSocketHandler<BunWebSocketData> = {
+   open(ws) {
+     const websocketListeners = ws.data.events
+     if (websocketListeners.onOpen) {
+-      websocketListeners.onOpen(new Event('open'), createWSContext(ws))
++      runHandler(ws, () => websocketListeners.onOpen!(new Event('open'), createWSContext(ws)))
+     }
+   },
+   close(ws, code, reason) {
+     const websocketListeners = ws.data.events
+     if (websocketListeners.onClose) {
+-      websocketListeners.onClose(
+-        new CloseEvent('close', {
+-          code,
+-          reason,
+-        }),
+-        createWSContext(ws)
++      runHandler(ws, () =>
++        websocketListeners.onClose!(
++          new CloseEvent('close', {
++            code,
++            reason,
++          }),
++          createWSContext(ws)
++        )
+       )
+     }
+   },
+@@ -98,7 +120,12 @@ export const websocket: BunWebSocketHandler<BunWebSocketData> = {
+       const normalizedReceiveData: WSMessageReceive =
+         typeof message === 'string' ? message : message.buffer
+ 
+-      websocketListeners.onMessage(createWSMessageEvent(normalizedReceiveData), createWSContext(ws))
++      runHandler(ws, () =>
++        websocketListeners.onMessage!(
++          createWSMessageEvent(normalizedReceiveData),
++          createWSContext(ws)
++        )
++      )
+     }
+   },
+ }
+diff --git a/src/adapter/bun/websocket.test.ts b/src/adapter/bun/websocket.test.ts
+index 8463d92d..7ddad1c9 100644
+--- a/src/adapter/bun/websocket.test.ts
++++ b/src/adapter/bun/websocket.test.ts
+@@ -155,6 +155,69 @@ describe('upgradeWebSocket()', () => {
+     websocket.close(ws)
+     expect(close).toBeCalled()
+   })
++
++  describe('onError', () => {
++    const createSocket = (events: BunWebSocketData['events']) =>
++      ({
++        data: { events, url: new URL('http://localhost'), protocol: '' },
++        readyState: 1,
++      }) as BunServerWebSocket<BunWebSocketData>
++
++    it('Should pass an error thrown by a handler to onError', () => {
++      const onError = vi.fn()
++      const error = new Error('boom')
++      const ws = createSocket({
++        onOpen: () => {
++          throw error
++        },
++        onMessage: () => {
++          throw error
++        },
++        onClose: () => {
++          throw error
++        },
++        onError,
++      })
++
++      websocket.open(ws)
++      websocket.message(ws, 'message')
++      websocket.close(ws)
++
++      expect(onError).toHaveBeenCalledTimes(3)
++      const [evt, context] = onError.mock.calls[0]
++      expect(evt.type).toBe('error')
++      expect(evt.error).toBe(error)
++      expect(context.raw).toBe(ws)
++    })
++
++    it('Should pass a rejection of an async handler to onError', async () => {
++      const onError = vi.fn()
++      const error = new Error('boom')
++      const ws = createSocket({
++        onMessage: async () => {
++          throw error
++        },
++        onError,
++      })
++
++      websocket.message(ws, 'message')
++      await Promise.resolve()
++
++      expect(onError).toHaveBeenCalledTimes(1)
++      expect(onError.mock.calls[0][0].error).toBe(error)
++    })
++
++    it('Should rethrow an error when onError is not set', () => {
++      const error = new Error('boom')
++      const ws = createSocket({
++        onMessage: () => {
++          throw error
++        },
++      })
++
++      expect(() => websocket.message(ws, 'message')).toThrow(error)
++    })
++  })
+ })
+ 
+ describe('createBunWebSocket()', () => {
+diff --git a/src/adapter/bun/websocket.ts b/src/adapter/bun/websocket.ts
+index c8301346..bbe991f2 100644
+--- a/src/adapter/bun/websocket.ts
++++ b/src/adapter/bun/websocket.ts
+@@ -84,6 +84,26 @@ export const upgradeWebSocket: UpgradeWebSocket<any> = defineWebSocketHelper((c,
+   return // failed
+ })
+ 
++const runHandler = (ws: BunServerWebSocket<BunWebSocketData>, handler: () => unknown): void => {
++  const handleError = (error: unknown) => {
++    const onError = ws.data.events.onError
++    if (!onError) {
++      throw error
++    }
++    const event = new Event('error') as Event & { error: unknown }
++    event.error = error
++    onError(event, createWSContext(ws))
++  }
++  try {
++    const result = handler()
++    if (result instanceof Promise) {
++      result.catch(handleError)
++    }
++  } catch (error) {
++    handleError(error)
++  }
++}
++
+ /**
+  * @deprecated `hono/bun` will be removed in v5. Install `@hono/bun` and import from there instead.
+  */
+@@ -91,18 +111,20 @@ export const websocket: BunWebSocketHandler<BunWebSocketData> = {
+   open(ws) {
+     const websocketListeners = ws.data.events
+     if (websocketListeners.onOpen) {
+-      websocketListeners.onOpen(new Event('open'), createWSContext(ws))
++      runHandler(ws, () => websocketListeners.onOpen!(new Event('open'), createWSContext(ws)))
+     }
+   },
+   close(ws, code, reason) {
+     const websocketListeners = ws.data.events
+     if (websocketListeners.onClose) {
+-      websocketListeners.onClose(
+-        new CloseEvent('close', {
+-          code,
+-          reason,
+-        }),
+-        createWSContext(ws)
++      runHandler(ws, () =>
++        websocketListeners.onClose!(
++          new CloseEvent('close', {
++            code,
++            reason,
++          }),
++          createWSContext(ws)
++        )
+       )
+     }
+   },
+@@ -112,7 +134,12 @@ export const websocket: BunWebSocketHandler<BunWebSocketData> = {
+       const normalizedReceiveData: WSMessageReceive =
+         typeof message === 'string' ? message : message.buffer
+ 
+-      websocketListeners.onMessage(createWSMessageEvent(normalizedReceiveData), createWSContext(ws))
++      runHandler(ws, () =>
++        websocketListeners.onMessage!(
++          createWSMessageEvent(normalizedReceiveData),
++          createWSContext(ws)
++        )
++      )
+     }
+   },
+ }

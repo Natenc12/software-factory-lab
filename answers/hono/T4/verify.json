@@ -1,0 +1,179 @@
+{
+  "ticket": "T4",
+  "codebase": "hono",
+  "repo": "Natenc12/hono-lab",
+  "base_ref": "base/T4",
+  "base_sha": "e589c04d86851873f721e50f37bd2dfdbbe9913c",
+  "started": "2026-11-23T20:35:42+00:00",
+  "finished": "2026-11-23T20:36:57+00:00",
+  "ok": true,
+  "steps": [
+    {
+      "name": "base: type check and existing tests pass",
+      "ok": true,
+      "note": "{'passed': 4915, 'skipped': 102} in 12.8s",
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "log_tail": ""
+    },
+    {
+      "name": "hidden tests exist",
+      "ok": true,
+      "files": [
+        "src/hidden/t4-types.test.tsx",
+        "src/hidden/t4.test.tsx"
+      ]
+    },
+    {
+      "name": "base: every hidden test fails",
+      "ok": true,
+      "note": "{'failed': 16}",
+      "outcomes": {
+        "src/hidden/t4-types.test.tsx::component type accepts an async component that returns null, as it accepts a sync one": "failed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<null> like the same sync value": "failed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<undefined> like the same sync value": "failed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<false> like the same sync value": "failed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<true> like the same sync value": "failed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<0> like the same sync value": "failed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<1> like the same sync value": "failed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning null renders like the sync one": "failed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning undefined renders like the sync one": "failed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning false renders like the sync one": "failed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning true renders like the sync one": "failed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning 0 renders like the sync one": "failed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning 1 renders like the sync one": "failed",
+        "src/hidden/t4.test.tsx::streaming: async component returning a non-element value async component returning null": "failed",
+        "src/hidden/t4.test.tsx::streaming: async component returning a non-element value async component returning false": "failed",
+        "src/hidden/t4.test.tsx::streaming: async component returning a non-element value async component returning 1": "failed"
+      },
+      "not_failing": []
+    },
+    {
+      "name": "reference: leaves unchanged_paths alone",
+      "ok": true,
+      "touched": [],
+      "changed": [
+        "src/helper/html/index.test.ts",
+        "src/jsx/base.ts",
+        "src/jsx/index.test.tsx",
+        "src/jsx/streaming.test.tsx",
+        "src/utils/html.ts"
+      ]
+    },
+    {
+      "name": "reference: lint and format clean",
+      "ok": true,
+      "runs": [
+        {
+          "cmd": "run lint",
+          "exit": 0,
+          "tail": "no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/react.ts:5:93: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2084:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+        },
+        {
+          "cmd": "run format",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 215ms on 430 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+        }
+      ]
+    },
+    {
+      "name": "reference: type check and existing tests pass",
+      "ok": true,
+      "note": "{'passed': 4931, 'skipped': 102} in 10.6s",
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": [],
+      "log_tail": ""
+    },
+    {
+      "name": "reference: every hidden test passes",
+      "ok": true,
+      "note": "16 hidden",
+      "outcomes": {
+        "src/hidden/t4-types.test.tsx::component type accepts an async component that returns null, as it accepts a sync one": "passed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<null> like the same sync value": "passed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<undefined> like the same sync value": "passed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<false> like the same sync value": "passed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<true> like the same sync value": "passed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<0> like the same sync value": "passed",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<1> like the same sync value": "passed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning null renders like the sync one": "passed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning undefined renders like the sync one": "passed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning false renders like the sync one": "passed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning true renders like the sync one": "passed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning 0 renders like the sync one": "passed",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning 1 renders like the sync one": "passed",
+        "src/hidden/t4.test.tsx::streaming: async component returning a non-element value async component returning null": "passed",
+        "src/hidden/t4.test.tsx::streaming: async component returning a non-element value async component returning false": "passed",
+        "src/hidden/t4.test.tsx::streaming: async component returning a non-element value async component returning 1": "passed"
+      },
+      "not_passing": []
+    },
+    {
+      "name": "base and reference ran the same hidden tests",
+      "ok": true,
+      "missing_on_base": [],
+      "base_load_errors": []
+    },
+    {
+      "name": "reference: type check, lint and format clean with the hidden tests in place",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "runs": [
+        {
+          "cmd": "run lint",
+          "exit": 0,
+          "tail": "ify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/preact.ts:5:81: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/react.ts:5:93: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2084:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/hidden/t4.test.tsx:75:41: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+        },
+        {
+          "cmd": "run format",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 226ms on 432 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+        },
+        {
+          "cmd": "exec vp lint src/hidden/t4-types.test.tsx src/hidden/t4.test.tsx",
+          "exit": 0,
+          "tail": "src/hidden/t4.test.tsx:75:41: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nnote: You are running `vp lint` as a Vite+ built-in command. If you meant to run the lint npm script, use `vpr lint` instead.\n"
+        },
+        {
+          "cmd": "exec vp fmt --check src/hidden/t4-types.test.tsx src/hidden/t4.test.tsx",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 182ms on 2 files using 8 threads.\n"
+        }
+      ]
+    },
+    {
+      "name": "hidden tests run in under about 2 minutes",
+      "ok": true,
+      "note": "1.2s"
+    },
+    {
+      "name": "naive.patch: type check and existing tests still pass (a competent fix)",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": []
+    },
+    {
+      "name": "naive.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning 0 renders like the sync one",
+        "src/hidden/t4.test.tsx::async component returning a non-element value Component returning 1 renders like the sync one",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<0> like the same sync value",
+        "src/hidden/t4.test.tsx::html`` with a promise of a non-string value Should render Promise<1> like the same sync value",
+        "src/hidden/t4.test.tsx::streaming: async component returning a non-element value async component returning 1"
+      ],
+      "note": "5/16 hidden fail"
+    }
+  ]
+}

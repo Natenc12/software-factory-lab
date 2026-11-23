@@ -1,0 +1,28 @@
+{
+  "hidden_test_cmd": "pnpm exec vp test --run src/hidden",
+  "source": {
+    "fix": "08807ce12aa3aa27c8c5adf63e677bbab6bceda9",
+    "pull_request": "honojs/hono#5423",
+    "issue": "honojs/hono#5422",
+    "author": "a person (not the hono-kun bot)"
+  },
+  "unchanged_paths": [],
+  "scope_out_paths": [
+    "adapters/",
+    "src/router/smart-router/router.ts",
+    "src/router/pattern-router/router.ts"
+  ],
+  "tests_may_change": [
+    "src/router/common.case.test.ts::Common > Duplicate param name > self",
+    "src/router/trie-router/node.test.ts::Duplicate param name > self"
+  ],
+  "tests_may_change_note": "The two existing 'self' cases a careful fix may fold into a table (audit A). Skip-list edits in runTest() calls are outside named cases and never trip the trap, so no file-wide entry is needed; a run that silences a broken shared case through a skip list fails the hidden guard t1-routers.test.ts instead.",
+  "traps": [],
+  "naive_patches": {
+    "naive.patch": "Keeps the first value only on the plain-segment path of TrieRouter's search, not on the path for a parameter with a pattern: `/:id/:id{[0-9]+}` still returns the second value."
+  },
+  "hidden_tests_note": "The upstream fix's own tests that fail on the base (TrieRouter node and router cases, the app-level SmartRouter fallback), plus 'self after another parameter' (audit A: /:a/:id/:id), in t1.test.ts. t1-routers.test.ts is a guard that passes on the base: every router runs a frozen copy of the starting shared cases (t1-common-cases.ts) with the starting skip lists, so silencing a broken case through a skip list fails it.",
+  "hidden_tests_may_pass_on_base": [
+    "src/hidden/t1-routers.test.ts"
+  ]
+}

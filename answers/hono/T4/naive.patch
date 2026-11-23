@@ -1,0 +1,46 @@
+diff --git a/src/jsx/base.ts b/src/jsx/base.ts
+index 71fb23c9..7e6f0fd8 100644
+--- a/src/jsx/base.ts
++++ b/src/jsx/base.ts
+@@ -27,12 +27,9 @@ import {
+ 
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ export type Props = Record<string, any>
+-type FunctionComponentResult =
+-  | HtmlEscapedString
+-  | JSXNode
+-  | Child[]
+-  | Promise<HtmlEscapedString | JSXNode | Child[]>
+-  | null
++// what a component may return, sync or async: anything a child can be
++type FunctionComponentValue = HtmlEscapedString | Child
++type FunctionComponentResult = FunctionComponentValue | Promise<FunctionComponentValue>
+ export type FC<P = Props> = {
+   (props: P): FunctionComponentResult
+   defaultProps?: Partial<P> | undefined
+diff --git a/src/utils/html.ts b/src/utils/html.ts
+index 855fa160..3f8b501e 100644
+--- a/src/utils/html.ts
++++ b/src/utils/html.ts
+@@ -64,7 +64,11 @@ export const stringBufferToString = async (
+       break
+     }
+ 
+-    let r = resolvedBuffer[i]
++    let r: unknown = resolvedBuffer[i]
++    // a promise may resolve to what a component or html`` value can be, not only a string
++    if (r == null || typeof r === 'boolean') {
++      continue
++    }
+     if (typeof r === 'object') {
+       callbacks.push(...((r as HtmlEscapedString).callbacks || []))
+     }
+@@ -79,7 +83,7 @@ export const stringBufferToString = async (
+       str += r
+     } else {
+       const buf = [str]
+-      escapeToBuffer(r, buf)
++      escapeToBuffer(r as string, buf)
+       str = buf[0]
+     }
+   }

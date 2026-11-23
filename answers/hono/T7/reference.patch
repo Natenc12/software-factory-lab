@@ -1,0 +1,144 @@
+diff --git a/src/middleware/cors/index.ts b/src/middleware/cors/index.ts
+index d02ae92e..4c421287 100644
+--- a/src/middleware/cors/index.ts
++++ b/src/middleware/cors/index.ts
+@@ -5,6 +5,7 @@
+ 
+ import type { Context } from '../../context'
+ import type { MiddlewareHandler } from '../../types'
++import { originListMatcher, originMatcher } from '../../utils/origin'
+ 
+ type CORSOptions = {
+   origin?:
+@@ -27,7 +28,7 @@ type CORSOptions = {
+  * @see {@link https://hono.dev/docs/middleware/builtin/cors}
+  *
+  * @param {CORSOptions} [options] - The options for the CORS middleware.
+- * @param {string | string[] | ((origin: string, c: Context) => Promise<string | undefined | null> | string | undefined | null)} [options.origin='*'] - The value of "Access-Control-Allow-Origin" CORS header.
++ * @param {string | string[] | ((origin: string, c: Context) => Promise<string | undefined | null> | string | undefined | null)} [options.origin='*'] - The value of "Access-Control-Allow-Origin" CORS header. An allowed origin may start its host with `*.` (`https://*.example.com`) to allow its subdomains at any depth, with the same scheme and port.
+  * @param {string[] | ((origin: string, c: Context) => Promise<string[]> | string[])} [options.allowMethods=['GET', 'HEAD', 'PUT', 'POST', 'DELETE', 'PATCH', 'QUERY']] - The value of "Access-Control-Allow-Methods" CORS header.
+  * @param {string[]} [options.allowHeaders=[]] - The value of "Access-Control-Allow-Headers" CORS header.
+  * @param {number} [options.maxAge] - The value of "Access-Control-Max-Age" CORS header.
+@@ -77,12 +78,14 @@ export const cors = (options?: CORSOptions): MiddlewareHandler => {
+       if (optsOrigin === '*') {
+         return () => optsOrigin
+       } else {
+-        return (origin: string) => (optsOrigin === origin ? origin : null)
++        const matches = originMatcher(optsOrigin)
++        return (origin: string) => (matches(origin) ? origin : null)
+       }
+     } else if (typeof optsOrigin === 'function') {
+       return optsOrigin
+     } else {
+-      return (origin: string) => (optsOrigin.includes(origin) ? origin : null)
++      const matches = originListMatcher(optsOrigin)
++      return (origin: string) => (matches(origin) ? origin : null)
+     }
+   })(opts.origin)
+ 
+diff --git a/src/middleware/csrf/index.ts b/src/middleware/csrf/index.ts
+index afcaa339..12d718f9 100644
+--- a/src/middleware/csrf/index.ts
++++ b/src/middleware/csrf/index.ts
+@@ -6,6 +6,7 @@
+ import type { Context } from '../../context'
+ import { HTTPException } from '../../http-exception'
+ import type { MiddlewareHandler } from '../../types'
++import { originListMatcher, originMatcher } from '../../utils/origin'
+ 
+ type IsAllowedOriginHandler = (origin: string, context: Context) => boolean | Promise<boolean>
+ 
+@@ -40,7 +41,8 @@ const isCsrfContentTypeRe =
+  * @param {CSRFOptions} [options] - The options for the CSRF protection middleware.
+  * @param {string|string[]|(origin: string, context: Context) => boolean} [options.origin] -
+  *   Allowed origins for requests.
+- *   - string: Single allowed origin (e.g., 'https://example.com')
++ *   - string: Single allowed origin (e.g., 'https://example.com'), or a pattern whose host starts
++ *     with `*.` (e.g., 'https://*.example.com') for its subdomains at any depth
+  *   - string[]: Multiple allowed origins
+  *   - function: Custom validation logic
+  *   - Default: Only same origin as the request URL
+@@ -96,11 +98,11 @@ export const csrf = (options?: CSRFOptions): MiddlewareHandler => {
+     if (!optsOrigin) {
+       return (origin, c) => origin === new URL(c.req.url).origin
+     } else if (typeof optsOrigin === 'string') {
+-      return (origin) => origin === optsOrigin
++      return originMatcher(optsOrigin)
+     } else if (typeof optsOrigin === 'function') {
+       return optsOrigin
+     } else {
+-      return (origin) => optsOrigin.includes(origin)
++      return originListMatcher(optsOrigin)
+     }
+   })(options?.origin)
+   const isAllowedOrigin = async (origin: string | undefined, c: Context) => {
+diff --git a/src/utils/origin.test.ts b/src/utils/origin.test.ts
+new file mode 100644
+index 00000000..153ccf93
+--- /dev/null
++++ b/src/utils/origin.test.ts
+@@ -0,0 +1,26 @@
++import { originListMatcher, originMatcher } from './origin'
++
++describe('originMatcher', () => {
++  it('matches an exact origin only', () => {
++    const test = originMatcher('https://example.com')
++    expect(test('https://example.com')).toBe(true)
++    expect(test('https://app.example.com')).toBe(false)
++  })
++
++  it('matches a subdomain at any depth for a wildcard', () => {
++    const test = originMatcher('https://*.example.com')
++    expect(test('https://app.example.com')).toBe(true)
++    expect(test('https://a.b.example.com')).toBe(true)
++    expect(test('https://a..example.com')).toBe(false)
++    expect(test('https://example.com')).toBe(false)
++    expect(test('http://app.example.com')).toBe(false)
++    expect(test('https://app.example.com:8443')).toBe(false)
++  })
++
++  it('matches any entry of a list', () => {
++    const test = originListMatcher(['https://a.org', 'https://*.b.org'])
++    expect(test('https://a.org')).toBe(true)
++    expect(test('https://x.b.org')).toBe(true)
++    expect(test('https://x.a.org')).toBe(false)
++  })
++})
+diff --git a/src/utils/origin.ts b/src/utils/origin.ts
+new file mode 100644
+index 00000000..97ef104a
+--- /dev/null
++++ b/src/utils/origin.ts
+@@ -0,0 +1,32 @@
++/**
++ * @module
++ * Origin matching shared by the CORS and CSRF middlewares.
++ */
++
++// `scheme://*.rest`: a pattern whose host starts with a `*` label
++const wildcardRe = /^([a-z][a-z0-9+.-]*:\/\/)\*\.(.+)$/i
++
++const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
++
++/**
++ * Turns one allowed origin into a test. `https://*.example.com` matches one or more DNS labels in
++ * place of `*` (each letters, digits and hyphens), so a subdomain at any depth, never the bare
++ * `https://example.com`, with the same scheme and port as the pattern. Any other string matches only
++ * itself.
++ */
++export const originMatcher = (allowed: string): ((origin: string) => boolean) => {
++  const m = wildcardRe.exec(allowed)
++  if (!m) {
++    return (origin) => origin === allowed
++  }
++  const re = new RegExp(`^${escapeRe(m[1])}(?:[A-Za-z0-9-]+\\.)+${escapeRe(m[2])}$`)
++  return (origin) => re.test(origin)
++}
++
++/**
++ * The test for a list of allowed origins: an origin is allowed if any entry matches it.
++ */
++export const originListMatcher = (allowed: string[]): ((origin: string) => boolean) => {
++  const tests = allowed.map(originMatcher)
++  return (origin) => tests.some((test) => test(origin))
++}

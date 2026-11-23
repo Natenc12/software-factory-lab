@@ -2,6 +2,7 @@
 
     python3 tickets/tools/make_base_branches.py gct [T1 T2 ...] [--lab ~/repos/gct-lab] [--push]
     python3 tickets/tools/make_base_branches.py sqlglot [main T1 ...] [--push] [--tag stage-4-candidate]
+    python3 tickets/tools/make_base_branches.py hono [main T1 ...] [--push] [--tag stage-4-candidate]
 
 For each ticket:
 
@@ -65,9 +66,22 @@ BASES = {
         "T7": "089891f2521780e2c5b243005017af9db62f25a6",
         "T8": "089891f2521780e2c5b243005017af9db62f25a6",
     },
+    # hono: upstream honojs/hono. main is upstream 9075031 (v4.13.21, 2026-11-23); replays start at
+    # the parent of the real fix.
+    "hono": {
+        "main": "9075031ea46533ae3b6e5b6c11f8333d67a7d6c2",
+        "T1": "08807ce12aa3aa27c8c5adf63e677bbab6bceda9^",  # trie router, honojs/hono#5422
+        "T2": "ed1d5f72^",  # auth realm, honojs/hono#5590
+        "T3": "fb48e2b2^",  # Bun WebSocket onError, honojs/hono#5598
+        "T4": "6e8fbe18^",  # async JSX component results, honojs/hono#5575
+        "T5": "a46d6025^",  # client init merge, honojs/hono#5646
+        "T6": "9075031ea46533ae3b6e5b6c11f8333d67a7d6c2",
+        "T7": "9075031ea46533ae3b6e5b6c11f8333d67a7d6c2",
+        "T8": "9075031ea46533ae3b6e5b6c11f8333d67a7d6c2",
+    },
 }
 
-LAB_NAMES = {"gct": "gct-lab", "sqlglot": "sqlglot-lab"}
+LAB_NAMES = {"gct": "gct-lab", "sqlglot": "sqlglot-lab", "hono": "hono-lab"}
 
 IDENTITY = {
     "GIT_AUTHOR_NAME": "gct-lab",
@@ -84,6 +98,14 @@ IDENTITIES = {
         "GIT_AUTHOR_EMAIL": "sqlglot-lab@users.noreply.github.com",
         "GIT_COMMITTER_NAME": "sqlglot-lab",
         "GIT_COMMITTER_EMAIL": "sqlglot-lab@users.noreply.github.com",
+        "GIT_AUTHOR_DATE": "2026-11-23T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-11-23T12:00:00+00:00",
+    },
+    "hono": {
+        "GIT_AUTHOR_NAME": "hono-lab",
+        "GIT_AUTHOR_EMAIL": "hono-lab@users.noreply.github.com",
+        "GIT_COMMITTER_NAME": "hono-lab",
+        "GIT_COMMITTER_EMAIL": "hono-lab@users.noreply.github.com",
         "GIT_AUTHOR_DATE": "2026-11-23T12:00:00+00:00",
         "GIT_COMMITTER_DATE": "2026-11-23T12:00:00+00:00",
     },
@@ -118,7 +140,22 @@ def prep_sqlglot(wt: Path) -> None:
     git("add", ".github/workflows/tests.yml", cwd=wt)
 
 
-PREP = {"sqlglot": (prep_sqlglot, "Set up the practice copy: no agent files, our own CI, no submodule")}
+def prep_hono(wt: Path) -> None:
+    """The practice-copy setup commit for hono: upstream's whole `.github/` (workflows, templates, bots)
+    and any agent-instruction files go, and the practice copy's test-only workflow comes in."""
+    git("rm", "-r", "-q", "--ignore-unmatch", "--", ".github", *HONO_AGENT_FILES, cwd=wt)
+    dest = wt / ".github" / "workflows" / "test.yml"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(PRACTICE / "hono" / "test.yml", dest)
+    git("add", ".github/workflows/test.yml", cwd=wt)
+
+
+HONO_AGENT_FILES = ["CLAUDE.md", "AGENTS.md", ".claude", ".cursor", ".cursorrules", ".windsurfrules", "GEMINI.md"]
+
+PREP = {
+    "sqlglot": (prep_sqlglot, "Set up the practice copy: no agent files, our own CI, no submodule"),
+    "hono": (prep_hono, "Practice copy: remove upstream workflows and templates, add a test-only workflow"),
+}
 
 MESSAGES = {
     "agents": "Remove agent instruction files",

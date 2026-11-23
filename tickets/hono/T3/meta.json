@@ -1,0 +1,16 @@
+{
+  "id": "T3",
+  "kind": "replay",
+  "title": "Bun WebSocket handler errors never reach onError",
+  "repo": "Natenc12/hono-lab",
+  "base_ref": "base/T3",
+  "deliverable": "pull_request",
+  "spec_levels": [
+    "S1"
+  ],
+  "spec_words": {
+    "S1": 560
+  },
+  "base_commit": "ae300f52d9588ffe6dfd5ebfec0b725c4ff3961d",
+  "source_fix": "fb48e2b2"
+}

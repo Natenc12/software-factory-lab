@@ -1,0 +1,16 @@
+{
+  "id": "T2",
+  "kind": "replay",
+  "title": "WWW-Authenticate header breaks when the realm ends in a backslash",
+  "repo": "Natenc12/hono-lab",
+  "base_ref": "base/T2",
+  "deliverable": "pull_request",
+  "spec_levels": [
+    "S1"
+  ],
+  "spec_words": {
+    "S1": 484
+  },
+  "base_commit": "22247310f3d457462b2ddc9adf69e7b7a4f4aa70",
+  "source_fix": "ed1d5f72"
+}

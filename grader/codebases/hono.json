@@ -1,0 +1,74 @@
+{
+  "name": "hono",
+  "repo": "Natenc12/hono-lab",
+  "local_clone": "~/repos/hono-lab",
+  "db": "none",
+  "env": {
+    "CI": "1"
+  },
+  "install": [
+    [
+      "pnpm",
+      "install",
+      "--frozen-lockfile",
+      "--prefer-offline"
+    ]
+  ],
+  "build": [
+    [
+      "pnpm",
+      "run",
+      "build"
+    ]
+  ],
+  "lint": [
+    [
+      "pnpm",
+      "run",
+      "lint"
+    ],
+    [
+      "pnpm",
+      "run",
+      "format"
+    ]
+  ],
+  "test_runner": "vitest",
+  "test_language": "typescript",
+  "test": [
+    "pnpm",
+    "test",
+    "--project=!node",
+    "--testTimeout=30000"
+  ],
+  "test_note": "--project=!node leaves out runtime-tests/node/index.test.ts (the Node adapter's server tests, the only file in that vitest project): its onAbort tests depend on 10 ms sleeps and fail on a busy machine. --testTimeout=30000 replaces vitest's 5 s default, which tests that spawn tsc (build/jsx-types.test.ts) overrun when other suites run at once. No ticket touches the Node adapter, the streaming helpers or the build checks.",
+  "test_dirs": [
+    "src",
+    "runtime-tests",
+    "build"
+  ],
+  "test_file_patterns": [
+    "*.test.ts",
+    "*.test.tsx"
+  ],
+  "test_support_paths": [
+    "build/fixtures/**",
+    "src/**/*.test.json"
+  ],
+  "hidden_dir": "src/hidden",
+  "hidden_test_cmd": "pnpm exec vp test --run src/hidden",
+  "run_setup": [
+    "pnpm install --frozen-lockfile"
+  ],
+  "run_env": {
+    "CI": "1",
+    "PNPM_HOME": "{run}/scratch/pnpm-home",
+    "XDG_CACHE_HOME": "{run}/scratch/xdg-cache",
+    "XDG_CONFIG_HOME": "{run}/scratch/xdg-config",
+    "XDG_DATA_HOME": "{run}/scratch/xdg-data",
+    "XDG_STATE_HOME": "{run}/scratch/xdg-state"
+  },
+  "run_sealed": true,
+  "run_own_package": "hono",
+  "timeout_seconds": 900
+}

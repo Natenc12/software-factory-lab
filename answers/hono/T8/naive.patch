@@ -1,0 +1,28 @@
+diff --git a/src/middleware/serve-static/index.ts b/src/middleware/serve-static/index.ts
+index 3e37feda..9ebbef02 100644
+--- a/src/middleware/serve-static/index.ts
++++ b/src/middleware/serve-static/index.ts
+@@ -21,6 +21,12 @@ export type ServeStaticOptions<E extends Env = Env> = {
+   rewriteRequestPath?: (path: string) => string
+   onFound?: (path: string, c: Context<E>) => void | Promise<void>
+   onNotFound?: (path: string, c: Context<E>) => void | Promise<void>
++  /**
++   * Answer a POST with `303 See Other` to the same path and query, so a form posted to a static page
++   * lands on that page (post/redirect/get). The file system is not touched. Defaults to false: every
++   * method but GET and HEAD is passed to the next handler.
++   */
++  redirectPost?: boolean
+ }
+ 
+ const ENCODINGS = {
+@@ -61,6 +67,10 @@ export const serveStatic = <E extends Env = Env>(
+     }
+ 
+     if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
++      if (options.redirectPost && c.req.method === 'POST') {
++        const url = new URL(c.req.url)
++        return c.redirect(url.pathname, 303)
++      }
+       return next()
+     }
+ 

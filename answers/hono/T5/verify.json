@@ -1,0 +1,147 @@
+{
+  "ticket": "T5",
+  "codebase": "hono",
+  "repo": "Natenc12/hono-lab",
+  "base_ref": "base/T5",
+  "base_sha": "615362c3d5535151a5ffc741006936e865715961",
+  "started": "2026-11-23T20:36:57+00:00",
+  "finished": "2026-11-23T20:38:13+00:00",
+  "ok": true,
+  "steps": [
+    {
+      "name": "base: type check and existing tests pass",
+      "ok": true,
+      "note": "{'passed': 4988, 'skipped': 102} in 12.8s",
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "log_tail": ""
+    },
+    {
+      "name": "hidden tests exist",
+      "ok": true,
+      "files": [
+        "src/hidden/t5.test.ts"
+      ]
+    },
+    {
+      "name": "base: every hidden test fails",
+      "ok": true,
+      "note": "{'failed': 3}",
+      "outcomes": {
+        "src/hidden/t5.test.ts::hc: init options set on the client and on the request keeps a valid AbortSignal when both the client and the request set one": "failed",
+        "src/hidden/t5.test.ts::hc: init options set on the client and on the request passes any class instance in init through as it is, the request one winning": "failed",
+        "src/hidden/t5.test.ts::hc: init options set on the client and on the request passes an instance under any key through, and still merges plain objects key by key": "failed"
+      },
+      "not_failing": []
+    },
+    {
+      "name": "reference: leaves unchanged_paths alone",
+      "ok": true,
+      "touched": [],
+      "changed": [
+        "src/client/client.test.ts",
+        "src/client/utils.test.ts",
+        "src/client/utils.ts"
+      ]
+    },
+    {
+      "name": "reference: lint and format clean",
+      "ok": true,
+      "runs": [
+        {
+          "cmd": "run lint",
+          "exit": 0,
+          "tail": "ipt(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:29: warning eslint(no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2101:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+        },
+        {
+          "cmd": "run format",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 212ms on 430 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+        }
+      ]
+    },
+    {
+      "name": "reference: type check and existing tests pass",
+      "ok": true,
+      "note": "{'passed': 4991, 'skipped': 102} in 10.8s",
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": [],
+      "log_tail": ""
+    },
+    {
+      "name": "reference: every hidden test passes",
+      "ok": true,
+      "note": "3 hidden",
+      "outcomes": {
+        "src/hidden/t5.test.ts::hc: init options set on the client and on the request keeps a valid AbortSignal when both the client and the request set one": "passed",
+        "src/hidden/t5.test.ts::hc: init options set on the client and on the request passes any class instance in init through as it is, the request one winning": "passed",
+        "src/hidden/t5.test.ts::hc: init options set on the client and on the request passes an instance under any key through, and still merges plain objects key by key": "passed"
+      },
+      "not_passing": []
+    },
+    {
+      "name": "base and reference ran the same hidden tests",
+      "ok": true,
+      "missing_on_base": [],
+      "base_load_errors": []
+    },
+    {
+      "name": "reference: type check, lint and format clean with the hidden tests in place",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "runs": [
+        {
+          "cmd": "run lint",
+          "exit": 0,
+          "tail": " `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2101:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/hidden/t5.test.ts:13:23: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/hidden/t5.test.ts:39:23: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/hidden/t5.test.ts:61:23: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+        },
+        {
+          "cmd": "run format",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 225ms on 431 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+        },
+        {
+          "cmd": "exec vp lint src/hidden/t5.test.ts",
+          "exit": 0,
+          "tail": "src/hidden/t5.test.ts:13:23: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/hidden/t5.test.ts:39:23: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/hidden/t5.test.ts:61:23: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nnote: You are running `vp lint` as a Vite+ built-in command. If you meant to run the lint npm script, use `vpr lint` instead.\n"
+        },
+        {
+          "cmd": "exec vp fmt --check src/hidden/t5.test.ts",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 107ms on 1 files using 8 threads.\n"
+        }
+      ]
+    },
+    {
+      "name": "hidden tests run in under about 2 minutes",
+      "ok": true,
+      "note": "0.9s"
+    },
+    {
+      "name": "naive.patch: type check and existing tests still pass (a competent fix)",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": []
+    },
+    {
+      "name": "naive.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "src/hidden/t5.test.ts::hc: init options set on the client and on the request passes an instance under any key through, and still merges plain objects key by key",
+        "src/hidden/t5.test.ts::hc: init options set on the client and on the request passes any class instance in init through as it is, the request one winning"
+      ],
+      "note": "2/3 hidden fail"
+    }
+  ]
+}

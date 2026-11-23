@@ -1,0 +1,15 @@
+diff --git a/src/router/trie-router/node.ts b/src/router/trie-router/node.ts
+index 28f522b4..580b859a 100644
+--- a/src/router/trie-router/node.ts
++++ b/src/router/trie-router/node.ts
+@@ -182,7 +182,9 @@ export class Node<T> {
+           }
+ 
+           if (matcher === true || matcher.test(part)) {
+-            params[name] = part
++            if (!Object.hasOwn(params, name)) {
++              params[name] = part
++            }
+             if (isLast) {
+               this.#pushHandlerSets(handlerSets, child, method, params, node.#params)
+               if (child.#children['*']) {
