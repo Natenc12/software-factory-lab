@@ -9,7 +9,7 @@ When: The developer asks whether a correlated IN in WHERE (alone or combined wit
 Reply: Yes, keep unnesting it there; that rewrite is safe and it is the point of the step. Only the places where FALSE and NULL give different results need to change.
 
 ## T3-stopped-unnesting
-When: The developer says they will stop, or reports having stopped, unnesting correlated IN subqueries used directly as a WHERE filter, without having asked first.
+When: The developer reports having stopped, or states as settled that it will stop, unnesting correlated IN subqueries used directly as a WHERE filter, and is not asking whether that is acceptable.
 Rescue: yes
 Reply: Please put that back. A correlated IN used directly as a WHERE filter, alone or combined with AND, must still be unnested as it is today; only the places where FALSE and NULL give different results need to change.
 

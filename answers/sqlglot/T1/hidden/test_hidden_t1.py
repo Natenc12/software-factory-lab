@@ -1,4 +1,4 @@
-from sqlglot import parse_one
+from sqlglot import ParseError, parse_one
 from tests.dialects.test_dialect import Validator
 
 
@@ -10,6 +10,8 @@ class TestHiddenT1Snowflake(Validator):
         self.validate_identity("SELECT top.x FROM t AS top")
         self.validate_identity("SELECT top, x FROM t")
         self.validate_identity("SELECT top:field FROM t", "SELECT GET_PATH(top, 'field') FROM t")
+        # ... in every other position too, not only the ones the ticket shows
+        self.validate_identity("SELECT top AS a, top + 1 AS b FROM t WHERE top > 1 ORDER BY top")
         # TOP followed by a number is still a row limit
         self.validate_identity("SELECT TOP 5 x FROM t", "SELECT x FROM t LIMIT 5")
 
@@ -25,6 +27,13 @@ class TestHiddenT1Oracle(Validator):
         self.validate_identity("SELECT top FROM t")
         self.validate_identity("SELECT top, x FROM t")
         self.validate_identity("SELECT TOP(5), x FROM t")
+
+        # Oracle has no TOP clause: TOP 5 is never read as a row limit (an error is fine)
+        try:
+            written = parse_one("SELECT TOP 5 x FROM t", read="oracle").sql("oracle")
+        except ParseError:
+            written = ""
+        self.assertNotIn("FETCH FIRST", written)
 
         # Dialects that do have a TOP clause keep it, bind parameters included
         for count in ("1", "%s", "%(n)s"):

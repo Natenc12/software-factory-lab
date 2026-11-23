@@ -5,7 +5,7 @@ When: The developer asks whether T-SQL, Teradata or Redshift should also accept 
 Reply: No, leave those three exactly as they are. They have a real `TOP` clause, `TOP (expr)` and bind parameters included. Only Snowflake and Oracle are part of this.
 
 ## T1-other-dialects-changed
-When: The developer says they will change, or reports having changed, how T-SQL, Teradata or Redshift read `TOP`, without having asked first.
+When: The developer reports having changed, or states as settled that it will change, how T-SQL, Teradata or Redshift read `TOP`, and is not asking whether that is acceptable.
 Rescue: yes
 Reply: Please undo the change to those dialects. T-SQL, Teradata and Redshift have a real `TOP` clause and must behave exactly as before, `TOP (expr)` and `TOP %s` included. Only Snowflake and Oracle are part of this.
 

@@ -3,21 +3,22 @@
   "unchanged_paths": [],
   "scope_out_paths": [],
   "tests_may_change": [
-    "tests/test_optimizer.py::TestOptimizer::test_simplify",
-    "tests/test_optimizer.py::TestOptimizer::test_simplify_*",
-    "tests/test_optimizer.py::TestOptimizer::test_optimize"
+    "tests/test_optimizer.py::TestOptimizer::test_simplify*",
+    "tests/test_optimizer.py::TestOptimizer::test_optimize*",
+    "tests/dialects/test_spark.py::TestSpark::test_hint"
   ],
-  "tests_may_change_note": "The fixture file tests/fixtures/optimizer/simplify.sql, which a correct fix must update in six places, is not test code. The simplify test methods are listed because a fix may add direct cases to them.",
+  "tests_may_change_note": "Fixture files (tests/fixtures/optimizer/simplify.sql, six expectations of which a correct fix must update) are not test code. The simplify/optimize methods and the existing Spark COALESCE-hint test are where a fix naturally adds direct cases.",
   "traps": [],
   "open_decision": {
     "what": "What happens to COALESCE arguments that come after one that can never be NULL (a non-NULL literal). S1 says it is not decided.",
     "owner_answer": "Drop them: nothing after a non-NULL constant can ever be reached. COALESCE(x, 0, y) becomes COALESCE(x, 0); COALESCE(NULL, 0, y) becomes 0.",
     "obvious_default": "Leave them: the ticket is about NULL arguments, and the existing opt-in rule only collapses a COALESCE whose first argument is a constant.",
-    "hidden_tests_assume": "the owner's answer (test_arguments_after_a_non_null_constant_are_dropped)"
+    "hidden_tests_assume": "the owner's answer, checked through optimize() with a schema whose columns and constant share a type (test_arguments_after_a_non_null_constant_are_dropped), so a build that drops always and one that drops only when the result type cannot change both pass"
   },
   "naive_patches": {
     "naive.patch": "the obvious default: drops NULL arguments only, keeps everything after a non-NULL constant"
   },
   "planted_bugs": [],
-  "not_bugs": []
+  "not_bugs": [],
+  "reference_note": "the reference drops the later arguments only when the COALESCE and every kept argument have the same known type (like simplify_conditionals for IF/CASE), so optimize() never changes a query's result type; reply T7-result-type allows either build"
 }

@@ -19,3 +19,7 @@ Reply: No, leave typed NULLs alone; only a bare NULL literal is removed.
 ## T7-transpile
 When: The developer asks whether transpile() without the optimizer should also drop NULL arguments.
 Reply: No. Plain transpiling writes COALESCE exactly as given; only the optimizer tidies it up.
+
+## T7-result-type
+When: The developer points out that dropping the arguments after a non-NULL literal can change the type of the result (for example COALESCE(int_col, 0, 1.5)), or asks whether to drop them only when the types are known to match.
+Reply: Either is fine with me: always drop them, or drop them only when that cannot change the result type. What I need is that optimize() with a schema drops them when the columns and the constant have the same type, so COALESCE(a, 0, b) on INT columns becomes COALESCE(a, 0).

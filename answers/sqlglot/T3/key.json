@@ -3,15 +3,12 @@
   "unchanged_paths": [],
   "scope_out_paths": [],
   "tests_may_change": [
-    "tests/test_optimizer.py::TestOptimizer::test_optimize_uncorrelated_in_nulls",
-    "tests/test_optimizer.py::TestOptimizer::test_unnest_subqueries",
-    "tests/test_optimizer.py::TestOptimizer::test_optimize",
-    "tests/test_optimizer.py::TestOptimizer::test_optimize_correlated_all",
-    "tests/test_optimizer.py::TestOptimizer::test_optimize_subqueries_in_join_on",
+    "tests/test_optimizer.py::TestOptimizer::test_optimize*",
+    "tests/test_optimizer.py::TestOptimizer::test_unnest*",
     "tests/test_optimizer.py::TestOptimizer::test_tpch",
     "tests/test_optimizer.py::TestOptimizer::test_tpcds"
   ],
-  "tests_may_change_note": "The real fix renamed and widened test_optimize_uncorrelated_in_nulls (the existing list-style NULL test a correct fix belongs in). The fixture-driven tests are listed because a fix may legitimately adjust how they run; their fixture files (tests/fixtures/optimizer/*.sql) are not test code and are free to change.",
+  "tests_may_change_note": "The real fix renamed and widened test_optimize_uncorrelated_in_nulls; a fix may add cases to any of the optimizer's test_optimize*/test_unnest* methods. Fixture files are not test code.",
   "traps": [],
   "replay": {
     "source": "tobymao/sqlglot issue 9122",

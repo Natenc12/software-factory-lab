@@ -1,5 +1,5 @@
 diff --git a/sqlglot/optimizer/simplify.py b/sqlglot/optimizer/simplify.py
-index 23e4a4599..d7b5129e2 100644
+index 23e4a4599..14730a7b6 100644
 --- a/sqlglot/optimizer/simplify.py
 +++ b/sqlglot/optimizer/simplify.py
 @@ -833,6 +833,7 @@ class Simplifier:
@@ -10,10 +10,11 @@ index 23e4a4599..d7b5129e2 100644
              if coalesce_simplification:
                  node = self.simplify_coalesce(node)
              node.parent = parent
-@@ -1415,6 +1416,29 @@ class Simplifier:
+@@ -1415,6 +1416,41 @@ class Simplifier:
  
          return None
  
++    @annotate_types_on_change
 +    def simplify_coalesce_args(self, expression: exp.Expr) -> exp.Expr:
 +        """COALESCE(NULL, x, NULL, 1, y) -> COALESCE(x, 1): a NULL is never picked, and nothing
 +        after a non-NULL constant is ever reached."""
@@ -26,7 +27,7 @@ index 23e4a4599..d7b5129e2 100644
 +            if isinstance(arg, exp.Null):
 +                continue
 +            kept.append(arg)
-+            if _is_nonnull_constant(arg):
++            if _is_nonnull_constant(arg) and self._same_type_without_rest(expression, kept):
 +                break
 +
 +        if len(kept) == len(args):
@@ -37,14 +38,25 @@ index 23e4a4599..d7b5129e2 100644
 +            return kept[0]
 +        return exp.Coalesce(this=kept[0], expressions=kept[1:])
 +
++    @staticmethod
++    def _same_type_without_rest(expression: exp.Expr, kept: list[exp.Expr]) -> bool:
++        # Dropping the arguments after a constant may change the type the COALESCE was promoted to
++        # (COALESCE(int_col, 0, 1.5) is not an INT), so only do it when the types are known to agree
++        dtype = expression.type
++        if dtype is None or dtype.expressions or dtype.is_type(exp.DType.UNKNOWN, exp.DType.NULL):
++            return False
++        return all(
++            arg.type is not None and dtype.is_type(arg.type, check_nullable=True) for arg in kept
++        )
++
      @annotate_types_on_change
      def simplify_coalesce(self, expression: exp.Expr) -> exp.Expr:
          # COALESCE(x) -> x
 diff --git a/tests/fixtures/optimizer/simplify.sql b/tests/fixtures/optimizer/simplify.sql
-index 20f446283..a565081ba 100644
+index 20f446283..a4b993bc9 100644
 --- a/tests/fixtures/optimizer/simplify.sql
 +++ b/tests/fixtures/optimizer/simplify.sql
-@@ -1298,36 +1298,45 @@ CAST(x AS INT) < 0 AND CAST(x AS INT) >= -500;
+@@ -1298,36 +1298,47 @@ CAST(x AS INT) < 0 AND CAST(x AS INT) >= -500;
  # dialect: duckdb
  # execute: true
  SELECT COALESCE(a, NULL, 1) = 1 AS eq FROM x;
@@ -87,8 +99,10 @@ index 20f446283..a565081ba 100644
 +COALESCE(NULL, x, NULL, y);
 +COALESCE(x, y);
 +
-+COALESCE(x, 0, y);
-+COALESCE(x, 0);
++# dialect: duckdb
++# execute: true
++SELECT COALESCE(x.a, 0, x.b) AS c FROM x;
++SELECT COALESCE(x.a, 0) AS c FROM x;
 +
 +COALESCE(NULL, NULL);
 +NULL;

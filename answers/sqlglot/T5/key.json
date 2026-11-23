@@ -3,20 +3,19 @@
   "unchanged_paths": [],
   "scope_out_paths": [],
   "tests_may_change": [
-    "tests/dialects/test_sqlite.py",
-    "tests/dialects/test_dialect.py",
-    "tests/dialects/test_postgres.py",
-    "tests/dialects/test_mysql.py",
-    "tests/dialects/test_teradata.py",
+    "tests/dialects/",
+    "tests/test_transpile.py",
     "tests/test_parser.py",
     "tests/test_generator.py",
     "tests/test_expressions.py"
   ],
-  "tests_may_change_note": "A fix naturally adds cases to the existing SQLite DML tests (where INSERT OR REPLACE is covered), to the default dialect's tests, or to the write tests of the dialects that must report it.",
+  "tests_may_change_note": "New cases go into existing test methods in sqlglot, so every dialect test file plus the transpile, parser, generator and expression tests are allowed.",
   "traps": [],
   "replay": {
     "source": "tobymao/sqlglot issue 9281",
-    "fix_commits": ["68ef75b2b6e6d1223115f16c9ff257fea662ab5c"],
+    "fix_commits": [
+      "68ef75b2b6e6d1223115f16c9ff257fea662ab5c"
+    ],
     "reference_note": "the fix's whole diff, tests included",
     "hidden_tests_from": "the fix's TestSQLite::test_update_or, without its check of the private arg name 'alternative', plus MySQL beside Postgres and Teradata"
   },

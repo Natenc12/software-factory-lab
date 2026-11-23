@@ -1,3 +1,4 @@
+import subprocess
 import sys
 import unittest
 from importlib import metadata
@@ -38,6 +39,20 @@ class TestHiddenT8(unittest.TestCase):
         # sqlglot itself still requires nothing at install time
         required = [r for r in metadata.requires("sqlglot") or [] if "extra ==" not in r]
         self.assertEqual(required, [])
+
+    def test_folds_in_a_process_that_cannot_import_dateutil(self):
+        # A fresh interpreter in which dateutil cannot be imported at all, so an import at the top
+        # of the module fails here instead of being hidden by the copy already loaded
+        code = (
+            "import sys\n"
+            "sys.modules['dateutil'] = None\n"
+            "sys.modules['dateutil.relativedelta'] = None\n"
+            "from sqlglot import parse_one\n"
+            "from sqlglot.optimizer.simplify import simplify\n"
+            "print(simplify(parse_one(\"DATE '2021-01-31' + INTERVAL '1' MONTH\")).sql())\n"
+        )
+        done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+        self.assertEqual(done.stdout.strip(), "CAST('2021-02-28' AS DATE)", done.stderr[-500:])
 
     def test_same_result_with_and_without_dateutil(self):
         for sql in FOLDED:

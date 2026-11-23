@@ -39,7 +39,7 @@ index fad330535..ad2e24f0c 100644
  ## Supported Dialects
  
 diff --git a/sqlglot/optimizer/simplify.py b/sqlglot/optimizer/simplify.py
-index 23e4a4599..45f51c530 100644
+index 23e4a4599..bbfdd2837 100644
 --- a/sqlglot/optimizer/simplify.py
 +++ b/sqlglot/optimizer/simplify.py
 @@ -1,6 +1,7 @@
@@ -83,7 +83,7 @@ index 23e4a4599..45f51c530 100644
          return True
  
      if isinstance(op, (exp.Sub, exp.DateSub, exp.DatetimeSub)):
-@@ -516,29 +516,62 @@ def date_literal(date: object, target_type=None) -> exp.Expr:
+@@ -516,29 +516,65 @@ def date_literal(date: object, target_type=None) -> exp.Expr:
      return exp.cast(exp.Literal.string(date), target_type)
  
  
@@ -100,6 +100,9 @@ index 23e4a4599..45f51c530 100644
 +    def __init__(self, months: int = 0, duration: timedelta = timedelta()) -> None:
 +        self.months = months
 +        self.duration = duration
++
++    def __bool__(self) -> bool:
++        return bool(self.months or self.duration)
 +
 +    def __neg__(self) -> Interval:
 +        return Interval(-self.months, -self.duration)
@@ -158,7 +161,7 @@ index 23e4a4599..45f51c530 100644
  
      raise UnsupportedUnit(f"Unsupported unit: {unit}")
  
-@@ -1224,7 +1257,7 @@ class Simplifier:
+@@ -1224,7 +1260,7 @@ class Simplifier:
          return expression
  
      @annotate_types_on_change
@@ -167,7 +170,7 @@ index 23e4a4599..45f51c530 100644
      def simplify_equality(self, expression: exp.Expr) -> exp.Expr:
          """
          Use the subtraction and addition properties of equality to simplify expressions:
-@@ -1600,7 +1633,7 @@ class Simplifier:
+@@ -1600,7 +1636,7 @@ class Simplifier:
          )
  
      @annotate_types_on_change

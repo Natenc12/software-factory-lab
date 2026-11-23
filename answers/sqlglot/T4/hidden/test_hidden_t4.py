@@ -42,11 +42,13 @@ class TestHiddenT4(unittest.TestCase):
             with self.subTest(dialect=dialect):
                 sql = to(dialect)
                 self.assertIn("x > 2", sql)
-                self.assertNotIn("EXISTS(arr)", sql)
+                self.assertNotIn("EXISTS(arr", sql)
 
     def test_dialects_without_array_filtering_report_it(self):
-        with self.assertRaises(UnsupportedError):
-            to("mysql")
+        for dialect in ("mysql", "sqlite", "tsql"):
+            with self.subTest(dialect=dialect):
+                with self.assertRaises(UnsupportedError):
+                    to(dialect)
 
         # EXISTS over a subquery is untouched everywhere
         for dialect in ("duckdb", "postgres", "bigquery", "presto", "mysql", "spark"):

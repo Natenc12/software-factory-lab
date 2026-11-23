@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import fnmatch
 import json
 import subprocess
 import sys
@@ -161,7 +162,10 @@ def check_tests_may_change(codebase: str, lab: Path) -> list[str]:
         patch = ROOT / "answers" / codebase / tid / "reference.patch"
         for name in touched_existing_tests(lab, meta["base_ref"], patch):
             path = name.split("::")[0]
-            if not any(name == a or path == a for a in allowed):
+            if not any(
+                fnmatch.fnmatch(name, a) or name == a or path == a or path.startswith(a.rstrip("/") + "/")
+                for a in allowed
+            ):
                 problems.append(f"{tid}: reference.patch changes {name}, not in tests_may_change")
     return problems
 

@@ -15,3 +15,7 @@ Reply: No, only SQLite and the default dialect read it.
 ## T5-bad-action
 When: The developer asks what to do with UPDATE OR followed by something that is not one of the five actions.
 Reply: That is a parse error.
+
+## T5-mysql
+When: The developer asks what MySQL should get, or points out that MySQL has UPDATE IGNORE.
+Reply: Either is fine: write UPDATE OR IGNORE as MySQL's UPDATE IGNORE, or report it as unsupported. The other actions have no MySQL form, so report those.

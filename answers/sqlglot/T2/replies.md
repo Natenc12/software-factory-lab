@@ -11,3 +11,7 @@ Reply: Yes. `select $1 from @stg/a -- note` reads the path `@stg/a` and keeps th
 ## T2-other-dialects
 When: The developer asks whether other dialects should read stage paths or file:// paths the same way.
 Reply: No, only Snowflake.
+
+## T2-shared-tokenizer
+When: The developer says the change needs code in the shared tokenizer or parser (for example sqlglot/tokens.py or sqlglot/tokenizer_core.py), switched on only for Snowflake, or asks whether that is allowed.
+Reply: Yes, that is fine, as long as every other dialect reads and writes exactly as before.

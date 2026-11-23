@@ -23,7 +23,7 @@ class TestHiddenT5(Validator):
         self.assertEqual(transpile(sql, read="sqlite", write="")[0], sql)
 
     def test_dialects_without_update_or_report_it(self):
-        for dialect in ("postgres", "mysql", "teradata"):
+        for dialect in ("postgres", "teradata", "snowflake", "bigquery", "tsql"):
             with self.subTest(dialect=dialect):
                 with self.assertRaises(UnsupportedError):
                     transpile(

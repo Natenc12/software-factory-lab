@@ -80,5 +80,7 @@ class TestHiddenT6(unittest.TestCase):
         # Unchanged: DuckDB's fixed-size ARRAY_ variant, and the default dialect's spelling
         array_sql = "SELECT ARRAY_COSINE_SIMILARITY(a, b) FROM t"
         self.assertEqual(to(array_sql, "duckdb", "duckdb"), array_sql)
+        array_distance_sql = "SELECT ARRAY_COSINE_DISTANCE(a, b) FROM t"
+        self.assertEqual(to(array_distance_sql, "duckdb", "duckdb"), array_distance_sql)
         default_sql = "SELECT COSINE_SIMILARITY(a, b) FROM t"
         self.assertEqual(to(default_sql, "", ""), default_sql)

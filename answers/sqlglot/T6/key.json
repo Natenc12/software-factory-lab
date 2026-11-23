@@ -8,9 +8,13 @@
     "tests/dialects/test_bigquery.py",
     "tests/dialects/test_clickhouse.py",
     "tests/dialects/test_dialect.py",
-    "tests/test_expressions.py::TestExpressions::test_functions"
+    "tests/test_expressions.py::TestExpressions::test_functions",
+    "tests/test_transpile.py",
+    "tests/test_generator.py",
+    "tests/dialects/test_presto.py",
+    "tests/dialects/test_trino.py"
   ],
-  "tests_may_change_note": "A feature naturally adds cases to the existing Snowflake test that already round-trips VECTOR_COSINE_SIMILARITY, to the BigQuery/ClickHouse function tests, and to list-style function tests. TestDuckDB::test_nearest_join (which round-trips ARRAY_COSINE_SIMILARITY) is deliberately not listed: the ticket keeps the ARRAY_ variants unchanged. Fixture files (tests/fixtures/...) are not test code.",
+  "tests_may_change_note": "A feature naturally adds cases to the existing Snowflake test that already round-trips VECTOR_COSINE_SIMILARITY, to the BigQuery/ClickHouse function tests, and to list-style function tests. TestDuckDB::test_nearest_join (which round-trips ARRAY_COSINE_SIMILARITY) is deliberately not listed: the ticket keeps the ARRAY_ variants unchanged. Fixture files (tests/fixtures/...) are not test code. The Snowflake, BigQuery, ClickHouse, Presto, Trino and cross-dialect test files are allowed whole; test_duckdb.py is limited to test_duckdb so that test_nearest_join (ARRAY_COSINE_SIMILARITY) stays protected.",
   "traps": [],
   "feature": {
     "modules": [

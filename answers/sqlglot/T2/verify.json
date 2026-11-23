@@ -6,20 +6,20 @@
   "base_sha": "08e3bd7720a0d5fc1152e8452e553925870f182f",
   "s3_base_ref": null,
   "s3_sha": null,
-  "started": "2026-11-23T17:01:12+00:00",
-  "finished": "2026-11-23T17:07:44+00:00",
+  "started": "2026-11-23T18:52:21+00:00",
+  "finished": "2026-11-23T18:55:56+00:00",
   "databases_dropped": [],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "26811 passed, 60 skipped in 177.28s (0:02:57)",
+      "note": "26811 passed, 60 skipped in 89.19s (0:01:29)",
       "counts": {
         "passed": 1584,
         "skipped": 60
       },
-      "seconds": 180.5,
+      "seconds": 90.2,
       "log_tail": ""
     },
     {
@@ -32,13 +32,13 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "2 failed in 1.08s",
+      "note": "2 failed in 0.46s",
       "outcomes": {
         "tests.hidden.test_hidden_t2.TestHiddenT2::test_comment_markers_stay_inside_unquoted_file_uris": "failed",
         "tests.hidden.test_hidden_t2.TestHiddenT2::test_comment_markers_stay_inside_unquoted_stage_paths": "failed"
       },
       "not_failing": [],
-      "seconds": 1.9
+      "seconds": 0.9
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -65,13 +65,13 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "26851 passed, 60 skipped in 97.75s (0:01:37)",
+      "note": "26851 passed, 60 skipped in 55.90s",
       "counts": {
         "passed": 1587,
         "skipped": 60
       },
       "failing": [],
-      "seconds": 98.9,
+      "seconds": 56.8,
       "log_tail": ""
     },
     {
@@ -109,7 +109,7 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "0.9s"
+      "note": "0.8s"
     },
     {
       "name": "naive.patch: at least one hidden test fails",
