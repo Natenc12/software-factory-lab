@@ -199,3 +199,39 @@ called `release-note` and wrote `scratch/RELEASE.md`. The worker ran inside the 
 guard. Its one refused call was `cat` of the skill file, at the path Claude Code gave as the skill's
 base directory (inside the control folder); it already had the skill's text from the Skill call. No
 `SKILL.md` reached the checkout.
+
+## Trials 12–18: Hono and sqlglot with P5P and P6 (2026-11-23, Claude Code 2.1.330)
+
+Stand-ins for the practice repos: local bare clones of upstream Hono (`9075031`, v4.13.21) and sqlglot
+(`d3a2eaf`, with `CLAUDE.md` removed in one commit, as the practice copy will), a fake `gh`, `--db none`,
+and the settings in `harness/README.md` ("Hono and sqlglot"). Each ticket was two lines: Hono, give the
+bearer-auth missing-options error a capital; sqlglot, make `tsort`'s `"Cycle error"` say
+`Cycle detected in dependency graph`. All seven ran as one `harness.stage` plan that set `model` per run
+(trial 18 as a second plan). Before them, five haiku probes found the settings (about 39k counted
+tokens): Hono's suite passes in the session once installed; sqlglot's needs the `.pth` line.
+
+| Run | Arm, model | Counted | Cost | Turns | Skills used | Workers | PR | Scan | Diff |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `p5p-hono-1` | P5P, Opus 5.5 | 30,091 | $0.37 | 22 | check-the-ask | 0 | opened | clean | 2 files |
+| `p5p-hono-2` | P5P, Fable 5.2 | 20,252 | $0.44 | 15 | check-the-ask, prove-each-claim | 0 | opened | clean | 2 files |
+| `p6-hono-1` | P6, Fable 5.2 lead | 28,639 | $0.57 | 14 | check-the-ask, prove-each-claim | 0 | opened | clean | 2 files |
+| `p5p-sqlglot-1` | P5P, Opus 5.5 | 17,751 | $0.25 | 17 | none | 0 | opened | clean, 1 blocked | 2 files |
+| `p5p-sqlglot-2` | P5P, Fable 5.2 | 18,242 | $0.42 | 18 | check-the-ask, prove-each-claim | 0 | opened | clean | 2 files |
+| `p6-sqlglot-1` | P6, Fable 5.2 lead | 16,740 | $0.40 | 19 | check-the-ask, prove-each-claim | 0 | opened | clean | 2 files |
+| `p6-hono-2` | P6, Fable 5.2 lead, two-part ticket | 24,040 | $0.57 | 22 | check-the-ask, prove-each-claim | 0 | opened | clean, 1 blocked | 4 files |
+
+All finished without a stop. `run.json` recorded the plan's model for each run, and `by_model` held one
+model each, because no lead started a worker: in all three P6 runs the `worker` agent and all six skills
+were offered (session `init`), and the Fable lead did the work itself. Trial 18 gave P6 a ticket with
+two independent parts to make delegating natural; the lead still worked alone. **So no Fable-with-Opus
+cost split was seen.** Per counted token, Fable cost 1.7 times Opus here ($22.2 against $12.9 per million
+counted tokens, with cache reads priced into the cost); the list price ratio is 2.
+
+Both blocked attempts were the guard misreading a heredoc: it reads every line of `cat <<'EOF' … EOF`
+(a Python script, a TypeScript test) as a shell command, so a line starting `open(` hit the block on
+macOS's `open`. Each run rewrote the file another way and went on.
+
+In `p6-hono-2` the run reported 5 failures in `build/declaration-emit.test.ts` from the full suite: those
+tests check the built output and need `pnpm run build` first, which the run had not re-run after its edit.
+Trial sandboxes were removed with `harness.sandbox down`, keeping each run's `harness/` records. The pull
+requests were on the fake `gh`; nothing reached GitHub.
