@@ -624,14 +624,14 @@ def pr_info(gh: str, repo: str, number: int | None) -> dict | None:
 
 def pr_from_transcript(folder: Path, hdir: Path) -> dict:
     """Fallback for the PR title and body: the last `lab pr open|update` call and its body file."""
-    from grader.common import transcript_records
+    from grader.common import content_blocks, transcript_records
 
     found: dict = {}
     for rec in transcript_records(hdir):
         if rec.get("type") != "assistant":
             continue
-        for block in (rec.get("message") or {}).get("content") or []:
-            if isinstance(block, dict) and block.get("type") == "tool_use" and block.get("name") == "Bash":
+        for block in content_blocks(rec):
+            if block.get("type") == "tool_use" and block.get("name") == "Bash":
                 cmd = str((block.get("input") or {}).get("command", ""))
                 if re.match(r"\s*(\S*/)?lab\s+pr\s+(open|update)\b", cmd):
                     try:

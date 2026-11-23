@@ -181,6 +181,19 @@ def transcript_records(hdir: Path):
             yield rec
 
 
+def content_blocks(rec) -> list[dict]:
+    """The content blocks of a transcript record's message, or [] for any other shape.
+
+    Most records carry `message` as an object with a `content` list. Some do not: a `system` record with
+    subtype `permission_denied` carries `message` as the denial text (seen in stage 2, p5-t10-1, from a
+    subagent's Write in don't-ask mode). That text also reaches the transcript as the tool call's own
+    error result, so nothing is lost by skipping it here.
+    """
+    msg = rec.get("message") if isinstance(rec, dict) else None
+    content = msg.get("content") if isinstance(msg, dict) else None
+    return [b for b in content if isinstance(b, dict)] if isinstance(content, list) else []
+
+
 def final_message(hdir: Path) -> str:
     """The text of the session's last result record (what the run said when it ended)."""
     text = ""
