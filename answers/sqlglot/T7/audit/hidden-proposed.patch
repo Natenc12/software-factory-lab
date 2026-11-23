@@ -1,0 +1,24 @@
+--- a/answers/sqlglot/T7/hidden/test_hidden_t7.py
++++ b/answers/sqlglot/T7/hidden/test_hidden_t7.py
+@@ -37,11 +37,16 @@
+         self.assertEqual(simplify(parse_one(hint, read="spark")).sql("spark"), hint)
+ 
+     def test_arguments_after_a_non_null_constant_are_dropped(self):
++        # Through optimize() with same-typed columns, so a fix that only drops the arguments when
++        # the result type cannot change passes as well as one that always drops them
++        schema = {"t": {"a": "INT", "b": "INT", "s": "VARCHAR", "u": "VARCHAR"}}
+         for sql, expected in (
+-            ("COALESCE(x, 0, y)", "COALESCE(x, 0)"),
+-            ("COALESCE(NULL, 0, y)", "0"),
+-            ("COALESCE(x, 'a', NULL, y)", "COALESCE(x, 'a')"),
+-            ("COALESCE(x, NULL, 0, y, NULL)", "COALESCE(x, 0)"),
++            ("SELECT COALESCE(a, 0, b) AS c FROM t", 'COALESCE("t"."a", 0)'),
++            ("SELECT COALESCE(NULL, 0, b) AS c FROM t", "0"),
++            ("SELECT COALESCE(s, 'a', NULL, u) AS c FROM t", """COALESCE("t"."s", 'a')"""),
++            ("SELECT COALESCE(a, NULL, 0, b, NULL) AS c FROM t", 'COALESCE("t"."a", 0)'),
+         ):
+             with self.subTest(sql=sql):
+-                self.assertEqual(simplified(sql), expected)
++                self.assertEqual(
++                    optimize(sql, schema=schema).sql(), f'SELECT {expected} AS "c" FROM "t" AS "t"'
++                )

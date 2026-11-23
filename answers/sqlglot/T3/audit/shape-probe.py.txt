@@ -1,0 +1,39 @@
+import duckdb, sys
+from sqlglot.optimizer import optimize
+con = duckdb.connect()
+con.execute("CREATE TABLE t1(a INT, b INT); INSERT INTO t1 VALUES (1,2),(2,3),(NULL,NULL),(3,7),(4,8)")
+con.execute("CREATE TABLE t2(a INT, x INT); INSERT INTO t2 VALUES (1,10),(2,3),(NULL,7),(NULL,8),(9,8)")
+schema = {"t1": {"a": "INT", "b": "INT"}, "t2": {"a": "INT", "x": "INT"}}
+bad = 0
+for pred in ["a IN (SELECT a FROM t2 WHERE t2.x = t1.b)", "a = ANY (SELECT a FROM t2 WHERE t2.x = t1.b)"]:
+    shapes = [
+      f"SELECT a, b FROM t1 WHERE ({pred}) = FALSE",
+      f"SELECT a, {pred} AS r FROM t1",
+      f"SELECT a, COALESCE({pred}, TRUE) AS r FROM t1",
+      f"SELECT a FROM t1 WHERE NOT ({pred} AND a > 0)",
+      f"SELECT a FROM t1 WHERE NOT ({pred})",
+      f"SELECT a FROM t1 WHERE ({pred}) IS NULL",
+      f"SELECT a FROM t1 WHERE {pred}",
+      f"SELECT a FROM t1 WHERE {pred} AND a > 0",
+      f"SELECT a FROM t1 WHERE {pred} OR a > 2",
+      f"SELECT a, b FROM t1 ORDER BY {pred}, a",
+      f"SELECT a, b FROM t1 GROUP BY a, b HAVING ({pred}) = FALSE",
+      f"SELECT a, b FROM t1 GROUP BY a, b HAVING {pred}",
+      f"SELECT a, b, ROW_NUMBER() OVER (ORDER BY a, b) AS rn FROM t1 QUALIFY ({pred}) = FALSE",
+      f"SELECT a, b, ROW_NUMBER() OVER (ORDER BY a, b) AS rn FROM t1 QUALIFY {pred}",
+      f"SELECT t1.a FROM t1 JOIN (SELECT 1 AS k) AS j ON (t1.{pred}) = FALSE",
+      f"SELECT t1.a FROM t1 JOIN (SELECT 1 AS k) AS j ON t1.{pred}",
+      f"SELECT t1.a FROM t1 LEFT JOIN (SELECT 1 AS k) AS j ON t1.{pred}",
+    ]
+    for sql in shapes:
+        want = sorted(con.execute(sql).fetchall(), key=repr)
+        try:
+            opt = optimize(sql, schema=schema, dialect="duckdb").sql("duckdb")
+            got = sorted(con.execute(opt).fetchall(), key=repr)
+        except Exception as e:
+            got = f"ERR {type(e).__name__} {str(e)[:80]}"; opt = ""
+        ok = want == got
+        bad += not ok
+        print("OK " if ok else "BAD", sql, "| IN left:" , " IN (" in opt or "ANY (" in opt)
+        if not ok: print("   want", want, "\n   got ", got, "\n   ", opt)
+print("bad:", bad)

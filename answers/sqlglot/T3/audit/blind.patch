@@ -1,0 +1,93 @@
+diff --git a/sqlglot/optimizer/unnest_subqueries.py b/sqlglot/optimizer/unnest_subqueries.py
+index 15e785e4e..a05efe892 100644
+--- a/sqlglot/optimizer/unnest_subqueries.py
++++ b/sqlglot/optimizer/unnest_subqueries.py
+@@ -236,6 +236,14 @@ def decorrelate(select, parent_select, external_columns, next_alias_name):
+     ):
+         return
+ 
++    # The LEFT JOIN rewrite of IN / ANY yields NULL instead of FALSE when no row matches, which
++    # only goes unnoticed when the predicate is a WHERE filter combined with other filters by AND.
++    if isinstance(parent_predicate, (exp.In, exp.Any)) and not _is_where_conjunct(
++        parent_predicate.parent if isinstance(parent_predicate, exp.Any) else parent_predicate,
++        parent_select,
++    ):
++        return
++
+     # determine location of join that owns the ON clause whose subquery we will decorrelate
+     on_clause_join_index = None
+     on_clause_ancestor = (
+@@ -540,6 +548,13 @@ def decorrelate(select, parent_select, external_columns, next_alias_name):
+         parent_select.set("joins", joins.pop(), index=on_clause_join_index, overwrite=False)
+ 
+ 
++def _is_where_conjunct(predicate: exp.Expr | None, select: exp.Select) -> bool:
++    ancestor = predicate.parent if predicate else None
++    while isinstance(ancestor, (exp.And, exp.Paren)):
++        ancestor = ancestor.parent
++    return isinstance(ancestor, exp.Where) and ancestor.parent is select
++
++
+ def _is_negated(expression: exp.Expression) -> bool:
+     parent = expression.parent
+     while isinstance(parent, exp.Paren):
+diff --git a/tests/test_optimizer.py b/tests/test_optimizer.py
+index d249709d2..b007b6e18 100644
+--- a/tests/test_optimizer.py
++++ b/tests/test_optimizer.py
+@@ -2332,6 +2332,55 @@ SELECT :with_,WITH :expressions,CTE :this,UNION :this,SELECT :expressions,1,:exp
+                         else:
+                             self.assertCountEqual(actual, expected)
+ 
++    def test_optimize_correlated_in_outside_filters(self):
++        # A correlated IN / = ANY is FALSE when its subquery finds no rows; the LEFT JOIN rewrite
++        # would make it NULL, so it must only be unnested where that makes no difference
++        for subquery in (
++            "SELECT y.b FROM y WHERE y.c = x.b",
++            "SELECT y.b FROM y WHERE y.c = x.b + 2",
++            "SELECT NULLIF(y.b, y.b) FROM y WHERE y.c = x.b",
++        ):
++            for predicate in (f"x.a IN ({subquery})", f"x.a = ANY ({subquery})"):
++                for sql in (
++                    f"SELECT x.a, {predicate} AS r FROM x",
++                    f"SELECT x.a, NOT ({predicate}) AS r FROM x",
++                    f"SELECT x.a, ({predicate}) AND x.a > 1 AS r FROM x",
++                    f"SELECT x.a, ({predicate}) OR x.a > 1 AS r FROM x",
++                    f"SELECT x.a, COALESCE(({predicate}), TRUE) AS r FROM x",
++                    f"SELECT x.a FROM x WHERE NOT ({predicate})",
++                    f"SELECT x.a FROM x WHERE NOT (({predicate}) AND x.a > 0)",
++                    f"SELECT x.a FROM x WHERE ({predicate}) IS NULL",
++                    f"SELECT x.a FROM x WHERE COALESCE(({predicate}), TRUE)",
++                    f"SELECT x.a FROM x WHERE ({predicate}) = FALSE",
++                    f"SELECT x.a FROM x WHERE ({predicate}) AND x.a > 1",
++                    f"SELECT x.a FROM x WHERE ({predicate}) OR x.a > 1",
++                    f"SELECT x.a, x.b FROM x GROUP BY x.a, x.b HAVING ({predicate}) = FALSE",
++                    f"SELECT x.a FROM x QUALIFY ROW_NUMBER() OVER () > 0 AND ({predicate}) = FALSE",
++                    f"SELECT x.a FROM x JOIN z ON x.a = z.b AND ({predicate}) = FALSE",
++                    f"SELECT x.a FROM x ORDER BY ({predicate}), x.a",
++                ):
++                    with self.subTest(sql=sql):
++                        optimized = optimizer.optimize(sql, schema=self.schema, dialect="duckdb")
++                        expected = self.conn.execute(sql).fetchall()
++                        actual = self.conn.execute(optimized.sql("duckdb")).fetchall()
++                        if "ORDER BY" in sql:
++                            self.assertEqual(actual, expected)
++                        else:
++                            self.assertCountEqual(actual, expected)
++
++        # A plain filter is still unnested
++        for sql in (
++            "SELECT x.a FROM x WHERE x.a IN (SELECT y.b FROM y WHERE y.c = x.a)",
++            "SELECT x.a FROM x WHERE x.a IN (SELECT y.b FROM y WHERE y.c = x.a) AND x.a > 1",
++        ):
++            with self.subTest(sql=sql):
++                optimized = optimizer.optimize(sql, schema=self.schema, dialect="duckdb")
++                self.assertIsNone(optimized.find(exp.In))
++                self.assertCountEqual(
++                    self.conn.execute(optimized.sql("duckdb")).fetchall(),
++                    self.conn.execute(sql).fetchall(),
++                )
++
+     def test_optimize_uncorrelated_exists(self):
+         for subquery in (
+             "SELECT y.b FROM y",
