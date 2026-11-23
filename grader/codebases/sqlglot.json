@@ -14,6 +14,10 @@
     "UV_PYTHON": "3.13",
     "SETUPTOOLS_SCM_PRETEND_VERSION": "0.0.0"
   },
+  "run_setup": [
+    "uv venv -q -p 3.13 .venv && uv pip install -q -p .venv -e \".[dev]\"",
+    "echo \"import os; _f = os.sysconf; os.sysconf = lambda n, _f=_f: -1 if n == \\\"SC_SEM_NSEMS_MAX\\\" else _f(n)\" > \"$(.venv/bin/python -c \"import sysconfig; print(sysconfig.get_path(\\\"purelib\\\"))\")/zz_sandbox_sem_limit.pth\""
+  ],
   "install": [
     "sh",
     "-c",
@@ -55,6 +59,7 @@
     "-p no:subtests: pytest 9 reports a failing unittest subTest only as `SUBFAILED(...) node`, which the grader's failing-node pattern does not read; without the plugin the test itself is reported FAILED, as before pytest 9.",
     "pytest does not run the 105 doctests that tests/test_docs.py adds through unittest's load_tests; `python -m unittest` does.",
     "SKIP_INTEGRATION=1 skips the TPC-H executor tests; the integration-test submodule is not in the practice copy.",
-    "SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0: sqlglot takes its version from git tags (setuptools_scm), and the stage-4-candidate/... tags on the starting commits are not versions, so an install at a tagged checkout fails without it."
+    "SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0: sqlglot takes its version from git tags (setuptools_scm), and the stage-4-candidate/... tags on the starting commits are not versions, so an install at a tagged checkout fails without it.",
+    "run_setup and run_env come from the harness builder (harness/README.md, trials 12-17): the .pth line answers os.sysconf('SC_SEM_NSEMS_MAX'), which the macOS run sandbox refuses; grading runs outside the sandbox and does not need it."
   ]
 }

@@ -6,20 +6,20 @@
   "base_sha": "7dca8e2e229a52165304f06c6e2c38d22ef189dc",
   "s3_base_ref": null,
   "s3_sha": null,
-  "started": "2026-11-23T15:22:04+00:00",
-  "finished": "2026-11-23T15:27:42+00:00",
+  "started": "2026-11-23T17:19:40+00:00",
+  "finished": "2026-11-23T17:24:38+00:00",
   "databases_dropped": [],
   "ok": true,
   "steps": [
     {
       "name": "base: existing tests pass",
       "ok": true,
-      "note": "26992 passed, 60 skipped in 124.17s (0:02:04)",
+      "note": "26992 passed, 60 skipped in 92.11s (0:01:32)",
       "counts": {
         "passed": 1605,
         "skipped": 60
       },
-      "seconds": 125.0,
+      "seconds": 93.2,
       "log_tail": ""
     },
     {
@@ -32,14 +32,14 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "3 failed in 0.69s",
+      "note": "3 failed in 0.79s",
       "outcomes": {
         "tests.hidden.test_hidden_t1.TestHiddenT1Snowflake::test_top_is_an_ordinary_name": "failed",
         "tests.hidden.test_hidden_t1.TestHiddenT1Snowflake::test_top_with_parentheses_is_a_function_call": "failed",
         "tests.hidden.test_hidden_t1.TestHiddenT1Oracle::test_top_is_an_ordinary_name": "failed"
       },
       "not_failing": [],
-      "seconds": 1.1
+      "seconds": 1.2
     },
     {
       "name": "reference: leaves unchanged_paths alone",
@@ -67,13 +67,13 @@
     {
       "name": "reference: existing tests pass",
       "ok": true,
-      "note": "26996 passed, 60 skipped in 62.11s (0:01:02)",
+      "note": "26996 passed, 60 skipped in 72.03s (0:01:12)",
       "counts": {
         "passed": 1609,
         "skipped": 60
       },
       "failing": [],
-      "seconds": 62.9,
+      "seconds": 73.1,
       "log_tail": ""
     },
     {
@@ -111,7 +111,7 @@
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "0.7s"
+      "note": "0.9s"
     },
     {
       "name": "naive-retreat.patch: at least one hidden test fails",
