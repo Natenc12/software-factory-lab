@@ -61,14 +61,43 @@ flags, the clean room and resume.
 
 - `run_allow_domains`: hosts the run's sandbox may reach on top of `pypi.org` and `files.pythonhosted.org`.
 - `run_allow_write`: folders outside the run the sandbox may write, such as a toolchain's shared cache.
+- `run_setup`: shell commands the harness runs once in the checkout before the session starts, outside
+  the sandbox and with network (installing dependencies). Output goes to `harness/setup.log` and the
+  exit codes to `run.json` (`setup`); a failing command makes the run a `harness_fault` before any
+  model call. `{run}` in a command becomes the run's folder.
 - `run_env`: environment variables. `{run}` in a value becomes the run's folder, for example
   `"GOMODCACHE": "{run}/scratch/gomod"` to keep a cache inside the run.
 
-`grader.make_plan` copies these into every run as `allow_domain`, `allow_write` and `env`. A plan can
+`grader.make_plan` copies these into every run as `allow_domain`, `allow_write`, `env` and `setup`. A plan can
 also set them per run; `harness.stage` passes them to `harness.run` as `--allow-domain`,
 `--allow-write` and `--env`. `tests/test_codebase_sandbox.py` checks the path from config to the run's
 settings. A write folder may not be home, `/`, this repo, `~/repos`, `~/.claude`, the gh login, other
 runs, or a parent of any of these.
+
+**Hono and sqlglot (checked in the run sandbox, 2026-11-23; `harness/TRIALS.md` trials 12–17).**
+Installing before the session keeps the sandbox at its default hosts: the session needs no package
+registry, so no package downloads or install scripts run where the agent works.
+
+| Key | Hono (`grader/codebases/hono.json`) | sqlglot (`grader/codebases/sqlglot.json`) |
+| --- | --- | --- |
+| `db` | `"none"` | `"none"` |
+| `run_setup` | `["pnpm install --frozen-lockfile"]` | `["uv venv -q -p 3.13 .venv && uv pip install -q -p .venv -e \".[dev]\"", <the line below>]` |
+| `run_env` | `{"CI": "1", "PNPM_HOME": "{run}/scratch/pnpm-home", "XDG_CACHE_HOME": "{run}/scratch/xdg-cache", "XDG_CONFIG_HOME": "{run}/scratch/xdg-config", "XDG_DATA_HOME": "{run}/scratch/xdg-data", "XDG_STATE_HOME": "{run}/scratch/xdg-state"}` | `{"SKIP_INTEGRATION": "1"}` |
+| `run_allow_domains` | none | none |
+| `run_allow_write` | none | none |
+
+- **Hono:** `PNPM_HOME` inside the run holds the pinned pnpm (12.6.0, fetched at setup) and the package
+  store. pnpm hard-links `node_modules` to its store, so a shared store would let one run's edits reach
+  another's. In the session, `pnpm run build` and `pnpm test` pass with no network (147 files, 6,147
+  tests, 108 skipped); pnpm's calls to `registry.npmjs.org` are refused and do no harm.
+- **sqlglot:** macOS's sandbox refuses the one system query Python's process pool makes at start
+  (`os.sysconf("SC_SEM_NSEMS_MAX")`), so `tests/test_optimizer.py` fails at class setup. The second setup
+  line writes a one-line `.pth` file into the run's own `.venv` that answers that query with `-1`
+  (Python's "no limit"):
+  `echo "import os; _f = os.sysconf; os.sysconf = lambda n, _f=_f: -1 if n == \"SC_SEM_NSEMS_MAX\" else _f(n)" > "$(.venv/bin/python -c "import sysconfig; print(sysconfig.get_path(\"purelib\"))")/zz_sandbox_sem_limit.pth"`.
+  With it the suite passes in the session (1,779 tests, 60 skipped). Grading runs outside the sandbox
+  and doesn't need it. One test runs a bare `python`, so it needs `.venv/bin` on `PATH`
+  (`PATH="$PWD/.venv/bin:$PATH" python -m unittest`).
 
 **What a non-Python codebase would need** (from the docs and the sandbox rules, not tried):
 
