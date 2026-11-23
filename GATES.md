@@ -31,12 +31,25 @@ start stage 3 on pointed skills alone?" The owner's reply: "yeah". Applied:
 `results/stage-2b/page/tie-break-results.html`): 33 runs graded. `P5PA` is 0.17 of a trustworthy pull
 request in eight better than `P5P` at 9% more cost, under the bar of one, so `P5P` stays the base.
 
-**Waiting for the owner:** what to run next. The orchestrator recommends folding stages 3 and 4
-together: run `P5P` on Opus, `P5P` on Fable and the chief-of-staff setup on one or two other
-codebases, because on these eight tickets Opus with `P5P` is at 7.3 of 8 with one correction round in
-24 runs and the charter's Q5 rule cannot come out for Fable here. The alternative is stage 3 as
-chartered on these tickets (32 runs). Price ratio stated before any result: at list price Fable 5.2
-costs twice what Opus 5.5 does per token. No decision recorded yet.
+**Decision on what to run next (2026-11-22).** The orchestrator recommended folding stages 3 and 4
+together, because on these eight tickets Opus with `P5P` is at 7.3 of 8 with one correction round in
+24 runs and the charter's Q5 rule cannot come out for Fable here, and asked: "Which do you want: new
+codebases, or run it here first?" The owner's reply: "new codebase". Applied:
+
+1. **`P5P` is the way of working** carried forward.
+2. **Stages 3 and 4 are folded together.** The model comparison runs on one or two other codebases:
+   `P5P` on Opus 5.5, `P5P` on Fable 5.2, and the chief-of-staff setup (`P6`: a Fable lead with the
+   same guide and skills that may start Opus workers at its own discretion). The charter's fixed-role
+   "Fable plans and reviews while Opus builds" arm is folded into `P6`.
+3. **Price ratio, stated before any result:** at list price Fable 5.2 costs twice what Opus 5.5 does
+   per token. The Q5 rule is unchanged.
+4. **Next stop for the owner:** a helper proposes candidate open-source projects
+   (`research/stage-4-codebases.md`) and the owner picks. After that: eight tickets per project, an
+   independent audit, trials, a freeze note, then the runs.
+
+Started on this decision, none of it runs: the candidate research, the `P6` arm file, and harness
+support for a lead with workers, for other languages' package registries, and a fix to the leak scan
+(`results/stage-2b/FLAWS.md`, item 1).
 
 ## Gate 3 · confirm round results and the stage 2 plan · approved 2026-11-22
 
