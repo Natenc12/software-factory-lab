@@ -204,3 +204,12 @@ def test_claude_gets_default_sigint_even_when_the_harness_inherited_it_ignored(l
     seen = calls(lab_env)
     assert len(seen) == 3  # session, reply judge, resumed session
     assert all(c["signals"] == {"SIGINT": "default", "SIGQUIT": "default"} for c in seen), seen
+
+
+def test_the_reply_judge_does_not_get_the_codebase_run_env(lab_env, practice):
+    scenario(lab_env, p1_t1_1=["stop", "finish"])
+    assert run.main(run_args(lab_env, practice, "p1-t1-1", "--env", "XDG_CONFIG_HOME={run}/scratch/xdg")) == 0
+    session = [c for c in calls(lab_env) if "stream-json" in c["argv"]]
+    judge = [c for c in calls(lab_env) if "stream-json" not in c["argv"]]
+    assert all("XDG_CONFIG_HOME" in c["env"] for c in session)
+    assert judge and all("XDG_CONFIG_HOME" not in c["env"] for c in judge)

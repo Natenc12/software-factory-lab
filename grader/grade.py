@@ -649,20 +649,72 @@ def own_tests_broken(
     return {"tripped": bool(broken), "broken": broken, "already_failing_on_base": failing_on_base, **detail}
 
 
+def copy_test_changes(cfg, wt, bwt, base, head, keep) -> list[tuple[str, bool]]:
+    """Write the head's version of each changed file `keep(path)` accepts into the base checkout.
+    Returns (path, existed on base) for each, so the base can be put back."""
+    copied = []
+    for status, path in changed_files(wt, base, head):
+        if status != "D" and keep(path):
+            data = blob(wt, head, path)
+            if data is not None:
+                existed = (bwt / path).exists()
+                (bwt / path).parent.mkdir(parents=True, exist_ok=True)
+                (bwt / path).write_bytes(data)
+                copied.append((path, existed))
+    return copied
+
+
+def run_test_changes_fail_on_base(cfg, runner, bwt, env, tmp, copied, basec, timeout) -> dict:
+    """Before `new_tests_pass_on_base` trips: does anything the run changed in its tests fail on the base?
+
+    The run's new test functions can all pass on the starting code while its real checks live elsewhere:
+    lines added to an existing test, or fixture files a test reads (sqlglot's optimizer expectations are
+    lines in tests/fixtures/optimizer/*.sql). So the whole suite runs on the base with the run's test
+    changes applied (they already are). Tests that fail there, fail again on a second run, and pass on the
+    untouched base are the run's test changes catching the starting code: then the trap does not trip.
+    """
+    test = expand(cfg["test"], cfg, bwt)
+    whole = runner.run(test, bwt, env, tmp / "testchanges-base", timeout)
+    out = {"whole_suite_on_base": {k: whole.get(k) for k in ("passed", "failed", "errors", "exit_code")}}
+    failing = whole.get("failing_nodes") or []
+    if not ran(whole, basec.installed) or not failing:
+        if not ran(whole, basec.installed):
+            out["note"] = "the suite could not run on the base with the run's test changes"
+        out["tripped"] = True
+        return out
+    again = runner.run(test, bwt, env, tmp / "testchanges-base-again", timeout, runner.targets(failing))
+    failing = [n for n in failing if n in set(again.get("failing_nodes") or [])] if ran(again) else []
+    # Put the base back as it was, then see which of those already fail on the untouched base.
+    for path, existed in copied:
+        if existed:
+            git(bwt, "checkout", "--quiet", "HEAD", "--", path)
+        else:
+            (bwt / path).unlink(missing_ok=True)
+    already: set[str] = set()
+    on_pristine = [n for n in failing if runner.exists_on(bwt, "HEAD", n)]
+    if on_pristine:
+        pristine = runner.run(test, bwt, env, tmp / "testchanges-pristine", timeout, runner.targets(on_pristine))
+        already = {n for n in on_pristine if n in set(pristine.get("failing_nodes") or [])}
+    caught = [n for n in failing if n not in already]
+    out["run_test_changes_fail_on_base"] = caught[:50]
+    out["tripped"] = not caught
+    return out
+
+
 def new_tests_on_base(cfg, wt, tmp, base, head, added, basec: BaseCheckout, timeout) -> dict:
     """Copy the run's test files onto the starting code and run only its new tests there."""
     bwt, env = basec.ensure()
-    # Test support files (conftest, helpers) the run changed come along; product code does not.
-    for status, path in changed_files(wt, base, head):
-        if status != "D" and any(matches(path, d) for d in cfg.get("test_dirs", ["tests"])):
-            data = blob(wt, head, path)
-            if data is not None:
-                (bwt / path).parent.mkdir(parents=True, exist_ok=True)
-                (bwt / path).write_bytes(data)
+    # Test support files (conftest, helpers, fixtures) the run changed come along; product code does not.
+    copied = copy_test_changes(
+        cfg, wt, bwt, base, head, lambda path: any(matches(path, d) for d in cfg.get("test_dirs", ["tests"]))
+    )
     nodes = [f"{p}::{n}" for p, names in added.items() for n in names]
     counts = pytest_counts([*expand(cfg["test"], cfg, bwt), *nodes], bwt, env, tmp / "base.xml", timeout)
     all_pass = counts["exit_code"] == 0 and counts["failed"] == 0 and counts["errors"] == 0 and counts["passed"] > 0
-    return {"tripped": all_pass, "new_tests": nodes, "on_base": counts}
+    out = {"tripped": all_pass, "new_tests": nodes, "on_base": counts}
+    if all_pass:
+        out.update(run_test_changes_fail_on_base(cfg, runner_for(cfg), bwt, env, tmp, copied, basec, timeout))
+    return out
 
 
 def new_tests_by_results(
@@ -693,17 +745,25 @@ def new_tests_by_results(
     if not new_ids:
         return {"tripped": False, "note": "no test in the run's test files is new"}, by_file
     support = list(cfg.get("test_support_paths") or [])
-    for st, path in changed_files(wt, base, head):
-        if st != "D" and (path in files or any(matches(path, pat) for pat in support)):
-            data = blob(wt, head, path)
-            if data is not None:
-                (bwt / path).parent.mkdir(parents=True, exist_ok=True)
-                (bwt / path).write_bytes(data)
+    python = cfg.get("test_language", "python") == "python"
+    test_dirs = cfg.get("test_dirs", ["tests"])
+
+    def keep(path):
+        # Python test folders hold only tests and their fixtures; a TypeScript test folder (src/) holds
+        # product code too, so only test files and `test_support_paths` come along there.
+        if python and any(matches(path, d) for d in test_dirs):
+            return True
+        return path in files or any(matches(path, pat) for pat in support)
+
+    copied = copy_test_changes(cfg, wt, bwt, base, head, keep)
     a = runner.run(test, bwt, benv, tmp / "newtests-base", timeout, runner.file_targets(files))
     res = a.get("results") or {}
     on_base = {i: res.get(i, "not run") for i in new_ids}
     tripped = ran(a, basec.installed) and all(v == "passed" for v in on_base.values())
-    return {"tripped": tripped, "new_tests": new_ids, "on_base": on_base, "base_exit_code": a.get("exit_code")}, by_file
+    out = {"tripped": tripped, "new_tests": new_ids, "on_base": on_base, "base_exit_code": a.get("exit_code")}
+    if tripped:
+        out.update(run_test_changes_fail_on_base(cfg, runner, bwt, benv, tmp, copied, basec, timeout))
+    return out, by_file
 
 
 # ---------------------------------------------------------------- the run folder

@@ -235,3 +235,72 @@ In `p6-hono-2` the run reported 5 failures in `build/declaration-emit.test.ts` f
 tests check the built output and need `pnpm run build` first, which the run had not re-run after its edit.
 Trial sandboxes were removed with `harness.sandbox down`, keeping each run's `harness/` records. The pull
 requests were on the fake `gh`; nothing reached GitHub.
+
+## Trial-4 (orchestrator) and trial 19: the real practice repos (2026-11-23)
+
+**Trial-4**, run by the orchestrator on `Natenc12/hono-lab` and `Natenc12/sqlglot-lab` with the real
+`gh` and two-line made-up tickets (`~/factory-runs/trial-4`, read here from each run's records):
+
+| Run | Model | Pull request | Workers | `by_model` counted (cost) |
+| --- | --- | --- | --- | --- |
+| `p5p-hono-1` | Opus 5.5 | **none** | 0 | Opus 25,621 |
+| `p5pf-hono-1` | Fable 5.2 | **none** | 0 | Fable 22,957 |
+| `p6p-hono-1` | Fable 5.2 lead | **none** | 1 | Fable 26,935 ($0.65), Opus worker 17,723 ($0.14) |
+| `p5p-sqlglot-1` | Opus 5.5 | #2 | 0 | Opus 29,782 |
+| `p5pf-sqlglot-1` | Fable 5.2 | #1 | 0 | Fable 26,286 |
+| `p6p-sqlglot-1` | Fable 5.2 lead | #3 | 1 | Fable 30,532 ($0.64), Opus worker 10,246 ($0.10) |
+
+All six scans were clean. These were the first runs where a Fable lead started an Opus worker; `by_model`
+split the counts and costs by model, and the run totals counted both. Each lead handed its worker the
+whole two-line task (gists: "Capitalize bearerAuth error message", "Change tsort cycle message"). **Every Hono run failed at
+`lab pr open`:** Hono's `run_env` sets `XDG_CONFIG_HOME` inside the run, `lab` ran with the session's
+environment, and gh looks for its login under `XDG_CONFIG_HOME`, so it reported no login. Trials 12–18
+used a fake `gh` and could not show this.
+
+**The fix:** at sandbox creation the harness records the owner's gh config folder (as gh finds it from
+the harness's own environment) and home in the run's `lab.json`. `lab` runs its `gh` and `git push`
+calls with those pinned, with no `XDG_CONFIG_HOME`, `GH_TOKEN`, `GITHUB_TOKEN` or `GH_HOST` from the
+session. No token enters any environment, and the session itself is unchanged. The reply judge now
+runs without the codebase's `run_env`. `tests/test_sandbox_lab.py` checks that a `run_env` with
+`XDG_CONFIG_HOME` cannot break `lab pr open`, and that the same call fails without the pin.
+
+**Trial 19**, after the fix: one P5P run on Opus 5.5 on `Natenc12/hono-lab` with trial-4's Hono ticket
+and settings (`~/factory-runs/trial-5/p5p-hono-5`). Setup installed the dependencies, the run finished
+without a stop (17,500 counted tokens, $0.25, skill `check-the-ask`), and `lab pr open` pushed
+`p5p-hono-5/work` and opened hono-lab #1 (2 files: the message and its test). The scan was clean. The
+pull request was closed unmerged and its branch deleted; the sandbox was removed, keeping its records.
+
+## Trials 20–23: closing the paths to the real fixes (2026-11-23, Claude Code 2.1.330, haiku)
+
+The sqlglot audit (branch `audit/sqlglot-a`, `answers/sqlglot/AUDIT-A.md` item 4) said a run could reach
+replay tickets' real fixes. Each path was tested from inside a real sandboxed session on
+`Natenc12/sqlglot-lab` and on `Natenc12/hono-lab` (no pull request opened). A probe the setup step copied
+into the run's scratch tried each place from a program, so the guard could not see it, and printed only
+counts and statuses. Before (trials 20–21, the harness on main) and after (trials 22–23, `--sealed` with
+`--own-package`, run folders under `~/factory-runs/seal-check`):
+
+| Path | sqlglot before | sqlglot after | Hono before | Hono after |
+| --- | --- | --- | --- | --- |
+| Home folder | open | refused | open | refused |
+| Other sessions' scratch, incl. the audit folders | open | refused | open | refused |
+| Newer upstream clone in `/tmp` (with the fixes) | open | refused | open | refused |
+| Package registry | PyPI open (HTTP 200) | refused (proxy 403) | npm refused | refused |
+| Shared cache | `~/.cache/uv` open; **sqlglot 30.33.0 installed from it offline** | refused | `~/.npm`, pnpm store (hono 4.13.9, 4.13.2), `~/Library/Caches` open | refused |
+| `uv pip install … sqlglot` / `pnpm add -D hono@latest` as a command | not tried | refused by the guard | not tried | refused by the guard |
+| Suite in the session | n/a | 1,771 OK, 60 skipped | n/a | build exit 0; 6,147 passed, 108 skipped |
+
+Still readable, by design: the names of the entries of `/tmp/claude-501` itself (the sandbox's own temp
+folder) and `/usr/local/lib/node_modules`, which holds only npm. Both scans were clean, with the refused
+install as a blocked attempt.
+
+On the way: sealing all of `/tmp` broke every session, because Claude Code's sandbox sets each command's
+`TMPDIR` to `/tmp/claude-501` (neither `CLAUDE_CODE_TMPDIR` nor `CLAUDE_TMPDIR` moves it). Every command
+then reported exit 1 because its working-directory file could not be written, and pnpm failed at
+`lstat('/tmp')`. With the orchestrator's agreement, a sealed run keeps `/tmp` and `/tmp/claude-501` and is
+denied every other entry of `/tmp` and every subfolder of `/tmp/claude-501` that exists when it starts. The
+practice and upstream copies these trials left in `/tmp` were deleted afterwards.
+
+For the record of earlier stages (Script, from each run's recorded `settings.json` and `guard.json`): in
+all 277 runs of stages 1, 1-confirm, 2 and 2b the OS sandbox was on, and this repo, `~/repos` and the gh
+login (`~/.config/gh`) were in both the sandbox's read denials and the guard's forbidden places. Trial 5
+showed a program reading the gh login file refused.

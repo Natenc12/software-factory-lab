@@ -268,3 +268,15 @@ SUBFAILED tests/test_d.py::TestD::test_four
         "tests/test_c.py::TestC::test_three",
         "tests/test_d.py::TestD::test_four",
     ]
+
+
+def test_vitest_an_added_line_in_an_existing_case_counts_as_catching(ts):
+    stronger = TS_TESTS.replace(
+        "    expect(PRODUCT).toBe(6)\n  })\n\n  it('still",
+        "    expect(PRODUCT).toBe(6)\n    expect(SUM).toBe(5)\n  })\n\n  it('still",
+    )
+    stronger = stronger.replace("\n})\n", "\n\n  it('product again', () => {\n    expect(PRODUCT).toBe(6)\n  })\n})\n")
+    head = commit(ts["repo"], ts["base"], {"src/calc.ts": TS_FIXED, "src/calc.test.ts": stronger})
+    trap = ts_grade(ts, head)["traps"]["new_tests_pass_on_base"]
+    assert trap["on_base"] == {"src/calc.test.ts::calc > product again": "passed"}
+    assert trap["tripped"] is False and trap["run_test_changes_fail_on_base"] == ["src/calc.test.ts::calc > multiplies"]
