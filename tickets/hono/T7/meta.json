@@ -3,6 +3,7 @@
   "kind": "vague",
   "title": "Allow subdomain patterns in cors() and csrf() origins",
   "repo": "Natenc12/hono-lab",
+  "db": "none",
   "base_ref": "base/T7",
   "deliverable": "pull_request",
   "spec_levels": [

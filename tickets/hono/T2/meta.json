@@ -3,6 +3,7 @@
   "kind": "replay",
   "title": "WWW-Authenticate header breaks when the realm ends in a backslash",
   "repo": "Natenc12/hono-lab",
+  "db": "none",
   "base_ref": "base/T2",
   "deliverable": "pull_request",
   "spec_levels": [

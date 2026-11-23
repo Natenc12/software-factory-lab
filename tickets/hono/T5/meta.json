@@ -3,6 +3,7 @@
   "kind": "replay",
   "title": "Client and per-request init options with an AbortSignal produce an invalid request",
   "repo": "Natenc12/hono-lab",
+  "db": "none",
   "base_ref": "base/T5",
   "deliverable": "pull_request",
   "spec_levels": [

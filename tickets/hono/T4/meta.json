@@ -3,6 +3,7 @@
   "kind": "replay",
   "title": "Async components that return null, a boolean or a number fail to render",
   "repo": "Natenc12/hono-lab",
+  "db": "none",
   "base_ref": "base/T4",
   "deliverable": "pull_request",
   "spec_levels": [
