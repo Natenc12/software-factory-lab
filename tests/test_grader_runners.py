@@ -212,3 +212,59 @@ def test_python_existing_tests_rule_is_unchanged_for_gct():
     assert cfg.get("test_language", "python") == "python" and cfg.get("test_runner", "pytest") == "pytest"
     assert grade.is_test_file("tests/gct/test_x.py", cfg) and not grade.is_test_file("src/x.test.ts", cfg)
     assert grade.runner_for(cfg).name == "pytest"
+
+
+CASE_FILE = """export const runTest = ({ skip = [] }) => {
+  describe('Common', () => {
+    it('matches /a', () => {
+      expect(A).toBe(1)
+    })
+  })
+}
+"""
+ROUTER_TEST = """import { runTest } from '../common.case.test'
+
+describe('MyRouter', () => {
+  runTest({
+    skip: [{ reason: 'unsupported', tests: ['Common > matches /a'] }],
+  })
+})
+"""
+
+
+def test_shared_case_data_edits_are_reported_not_tripped(ts):
+    # Hono's routers pass skip lists to a shared case file; editing one is not a changed test case.
+    files = {"src/router/common.case.test.ts": CASE_FILE, "src/router/my/router.test.ts": ROUTER_TEST}
+    base = commit(ts["repo"], ts["base"], files)
+    added_case = CASE_FILE.replace("  })\n}", "    it('matches /b', () => {\n      expect(A).toBe(1)\n    })\n  })\n}")
+    skip_edit = ROUTER_TEST.replace("'Common > matches /a'", "'Common > matches /a', 'Common > matches /b'")
+    head = commit(
+        ts["repo"], base, {"src/router/common.case.test.ts": added_case, "src/router/my/router.test.ts": skip_edit}
+    )
+    trap = grade.existing_ts_tests_changed(ts["repo"], base, head, ts["config"])
+    assert trap["tripped"] is False and trap["changed"] == []
+    assert trap["changed_outside_cases"] == ["src/router/my/router.test.ts: changed outside named cases"]
+    trap = grade.existing_ts_tests_changed(ts["repo"], base, head, ts["config"], ["src/router/*/router.test.ts"])
+    assert trap["changed_outside_cases"] == [] and trap["allowed_by_key"] == [
+        "src/router/my/router.test.ts: changed outside named cases"
+    ]
+    edited_case = CASE_FILE.replace("toBe(1)", "toBe(2)")
+    head = commit(ts["repo"], base, {"src/router/common.case.test.ts": edited_case})
+    trap = grade.existing_ts_tests_changed(ts["repo"], base, head, ts["config"])
+    assert trap["changed"] == ["src/router/common.case.test.ts::Common > matches /a modified"]
+
+
+def test_pytest_node_ids_include_subtest_failures():
+    out = """=========================== short test summary info ============================
+FAILED tests/test_a.py::test_one - assert 1 == 2
+ERROR tests/test_b.py::TestB::test_two - RuntimeError
+SUBFAILED(dialect='duckdb') tests/test_c.py::TestC::test_three - AssertionError: x != y
+SUBFAILED(dialect='spark') tests/test_c.py::TestC::test_three - AssertionError
+SUBFAILED tests/test_d.py::TestD::test_four
+"""
+    assert list(dict.fromkeys(grade.NODE_RE.findall(out))) == [
+        "tests/test_a.py::test_one",
+        "tests/test_b.py::TestB::test_two",
+        "tests/test_c.py::TestC::test_three",
+        "tests/test_d.py::TestD::test_four",
+    ]

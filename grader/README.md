@@ -247,14 +247,27 @@ Other languages and runners (stage 4):
   the base removed, or its call text changed, trips it (whitespace, comments, semicolons, trailing commas
   and quote style ignored), with `tests_may_change` matching the path or `path::describe > ... > case`. A
   file the reader cannot follow falls back to a line rule (a non-blank line removed or altered trips,
-  pure additions pass). It can miss changes to hooks (`beforeEach`), helpers and fixtures outside a named
-  case, and the line rule misses a change that only moves lines. `test_file_patterns` (default
+  pure additions pass). An edit outside any named case (a hook such as `beforeEach`, a helper, an
+  import, or data passed to a shared case file, like the skip lists Hono's routers pass to `runTest()`
+  from `src/router/common.case.test.ts`) does not trip it: the file is listed under
+  `changed_outside_cases`, or under `allowed_by_key` when `tests_may_change` names its path. Editing a
+  case inside the shared case file itself is a changed case. The line rule misses a change that only
+  moves lines. `test_file_patterns` (default
   `*.test.ts`, `*.test.tsx`, `*.spec.ts`, ...) and `test_dirs` say which files are tests.
 - With `unittest` or `vitest`, `new_tests_pass_on_base` works from the runner's own results: new tests
   are those the head's run of its changed test files reports and the base's own versions do not; the
   head's test files (and `test_support_paths`, if set) are copied onto the base and run there, and the
   trap trips when every new test passes. `own_tests_broken` re-runs failing tests by id (unittest) or by
   file (vitest), with the same meaning as before. pytest keeps its own path, unchanged.
+- The hidden tests are copied in only after the repo's own suite and `own_tests_broken` have run, so a
+  hidden test using an API the run lacks cannot break `pnpm test`'s type check (Hono's `tsc` includes
+  `src`, and hidden tests sit in `src/hidden/`).
+- pytest 9 reports a failing unittest subTest only as `SUBFAILED(...) <node>`; the grader reads that as a
+  failing node too, so `-p no:subtests` is not needed.
+- Known gap for sqlglot under `test_runner: pytest`: pytest does not run the 105 doctests that
+  `tests/test_docs.py` adds through unittest's `load_tests`, so its own-test count is 1,606, not
+  unittest's 1,771. `test_runner: unittest` (with `.venv/bin/python -m unittest`) runs them; it took
+  about 50 s on upstream.
 - Traps from key.json that read Python (`ast_unchanged`) only work on Python files; for TypeScript use
   `unchanged_paths` or `scope_out_paths`.
 

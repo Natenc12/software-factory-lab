@@ -14,14 +14,12 @@ Every runner returns the same counts: passed, failed, errors, skipped, exit_code
 
 import json
 import os
-import re
 import shutil
 from pathlib import Path
 
 from grader.common import run_cmd, tail
 
 HERE = Path(__file__).resolve().parent
-NODE_RE = re.compile(r"^(?:FAILED|ERROR) (\S+?)(?: - .*)?$", re.M)
 
 
 def finish(counts: dict, results: dict[str, str], code: int, out: str, produced: bool) -> dict:

@@ -5,8 +5,10 @@ modifiers such as `.skip`, `.only`, `.each(table)`), nests cases under their `de
 each case's body as a token stream with whitespace, comments, semicolons, trailing commas and quote style
 taken out, so a formatting-only change compares equal.
 
-What it can miss (said in the trap's detail too):
-- changes outside a named case: `beforeEach`/`afterEach` hooks, helpers and fixtures at file level;
+What it does not count as a changed case (said in the trap's detail too):
+- changes outside a named case: `beforeEach`/`afterEach` hooks, helpers, fixtures, and data passed to
+  a shared case file (Hono's routers call `runTest({ skip: [...] })` from `common.case.test.ts`). These
+  are listed per file as changed outside named cases, and do not trip the trap;
 - a case whose name is built at run time is keyed by the expression's text, so renaming the variable
   that holds the name reads as a removed case;
 - `it.each` tables: a changed table counts as a changed case (the table is part of the call);
@@ -181,7 +183,7 @@ def first_arg(toks, open_i: int, close_i: int):
     return toks[open_i + 1 : close_i]
 
 
-def walk(toks, lo: int, hi: int, prefix: list[str], out: dict[str, str]) -> None:
+def walk(toks, lo: int, hi: int, prefix: list[str], out: dict[str, str], spans: list | None = None) -> None:
     k = lo
     while k < hi:
         kind, text = toks[k]
@@ -201,7 +203,7 @@ def walk(toks, lo: int, hi: int, prefix: list[str], out: dict[str, str]) -> None
                 name = name_of(first_arg(toks, j, close))
                 path = [*prefix, name]
                 if text in GROUP_WORDS:
-                    walk(toks, j + 1, close, path, out)
+                    walk(toks, j + 1, close, path, out, spans)
                 else:
                     key = " > ".join(path)
                     n = 2
@@ -209,6 +211,8 @@ def walk(toks, lo: int, hi: int, prefix: list[str], out: dict[str, str]) -> None
                         key = f"{' > '.join(path)} #{n}"
                         n += 1
                     out[key] = normal(toks[k : close + 1])
+                    if spans is not None:
+                        spans.append((k, close))
                 k = close + 1
                 continue
         k += 1
@@ -216,12 +220,25 @@ def walk(toks, lo: int, hi: int, prefix: list[str], out: dict[str, str]) -> None
 
 def cases(src: str | None) -> dict[str, str]:
     """Case name (`describe > ... > it`) -> its normalised call text. Raises ParseError."""
+    return split(src)[0]
+
+
+def split(src: str | None) -> tuple[dict[str, str], str]:
+    """(cases, the normalised text of everything outside them). Raises ParseError.
+
+    The rest is how an edit outside any named case shows up: a shared case file's `runTest({ skip: [...] })`
+    call, a hook, a helper, an import.
+    """
     if src is None:
-        return {}
+        return {}, ""
     toks = tokens(src)
     out: dict[str, str] = {}
-    walk(toks, 0, len(toks), [], out)
-    return out
+    spans: list[tuple[int, int]] = []
+    walk(toks, 0, len(toks), [], out, spans)
+    inside = set()
+    for a, b in spans:
+        inside.update(range(a, b + 1))
+    return out, normal([t for k, t in enumerate(toks) if k not in inside])
 
 
 def lines_removed(before: str | None, after: str | None) -> list[str]:

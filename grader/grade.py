@@ -180,7 +180,8 @@ def run_steps(value, cfg, cwd: Path, env: dict, timeout: int) -> dict | None:
 # ---------------------------------------------------------------- tests
 
 
-NODE_RE = re.compile(r"^(?:FAILED|ERROR) (\S+?)(?: - .*)?$", re.M)
+# pytest 9 reports a failing unittest subTest only as `SUBFAILED(<subtest>) <node>`.
+NODE_RE = re.compile(r"^(?:FAILED|ERROR|SUBFAILED(?:\(.*?\))?) (\S+?)(?: - .*)?$", re.M)
 
 
 def pytest_counts(cmd: list[str], cwd: Path, env: dict, xml_path: Path, timeout: int) -> dict:
@@ -322,7 +323,7 @@ def existing_ts_tests_changed(repo, base, head, cfg, may_change=()) -> dict:
     additions pass. `tests_may_change` matches the file path or `path::describe > ... > case`."""
     from grader import ts_tests
 
-    changed, allowed, line_rule = [], [], []
+    changed, allowed, line_rule, outside = [], [], [], []
 
     def allow(path, name):
         return any(matches(path, p) or (name and matches(f"{path}::{name}", p)) for p in may_change)
@@ -334,7 +335,7 @@ def existing_ts_tests_changed(repo, base, head, cfg, may_change=()) -> dict:
         if src_before == src_after:
             continue
         try:
-            before, after = ts_tests.cases(src_before), ts_tests.cases(src_after)
+            (before, rest_before), (after, rest_after) = ts_tests.split(src_before), ts_tests.split(src_after)
         except ts_tests.ParseError as e:
             line_rule.append(f"{path}: {e}")
             gone = ts_tests.lines_removed(src_before, src_after)
@@ -346,6 +347,8 @@ def existing_ts_tests_changed(repo, base, head, cfg, may_change=()) -> dict:
             what = "removed" if name not in after else "modified" if after[name] != text else None
             if what:
                 (allowed if allow(path, name) else changed).append(f"{path}::{name} {what}")
+        if rest_before != rest_after:
+            (allowed if allow(path, None) else outside).append(f"{path}: changed outside named cases")
     return {
         "tripped": bool(changed),
         "changed": changed,
@@ -353,7 +356,10 @@ def existing_ts_tests_changed(repo, base, head, cfg, may_change=()) -> dict:
         "tests_may_change": list(may_change),
         "rule": "named it/test cases (TypeScript)",
         "files_on_line_rule": line_rule,
-        "can_miss": "hooks and helpers outside a named case; a change that only moves lines (line rule)",
+        # Reported, not tripped: hooks, helpers, imports, and data passed to shared case files (skip lists).
+        "changed_outside_cases": outside,
+        "can_miss": "a change outside a named case trips nothing (listed in changed_outside_cases); "
+        "a change that only moves lines (line rule)",
     }
 
 
