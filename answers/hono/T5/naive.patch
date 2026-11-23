@@ -1,0 +1,12 @@
+diff --git a/src/client/utils.ts b/src/client/utils.ts
+--- a/src/client/utils.ts
++++ b/src/client/utils.ts
+@@ -74,7 +74,7 @@ export function deepMerge<T>(target: T, source: Record<string, unknown>): T {
+ 
+   for (const key in source) {
+     const value = source[key]
+-    if (isObject(merged[key]) && isObject(value)) {
++    if (key !== 'signal' && isObject(merged[key]) && isObject(value)) {
+       merged[key] = deepMerge(merged[key], value)
+     } else {
+       merged[key] = value as T[keyof T] & T

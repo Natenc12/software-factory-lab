@@ -1,0 +1,13 @@
+diff --git a/src/middleware/serve-static/index.ts b/src/middleware/serve-static/index.ts
+index 3e37feda..01ea4cf2 100644
+--- a/src/middleware/serve-static/index.ts
++++ b/src/middleware/serve-static/index.ts
+@@ -60,7 +60,7 @@ export const serveStatic = <E extends Env = Env>(
+       return next()
+     }
+ 
+-    if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
++    if (c.req.method !== 'GET' && c.req.method !== 'HEAD' && c.req.method !== 'POST') {
+       return next()
+     }
+ 

@@ -1,0 +1,171 @@
+{
+  "ticket": "T6",
+  "codebase": "hono",
+  "repo": "Natenc12/hono-lab",
+  "base_ref": "base/T6",
+  "base_sha": "e4a792524930039d99162e3b3f46ce623410b444",
+  "started": "2026-11-23T17:16:03+00:00",
+  "finished": "2026-11-23T17:18:14+00:00",
+  "ok": true,
+  "steps": [
+    {
+      "name": "base: type check and existing tests pass",
+      "ok": true,
+      "note": "{'passed': 5032, 'skipped': 102} in 15.5s",
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "log_tail": ""
+    },
+    {
+      "name": "hidden tests exist",
+      "ok": true,
+      "files": [
+        "src/hidden/t6.test.ts"
+      ]
+    },
+    {
+      "name": "base: every hidden test fails",
+      "ok": true,
+      "note": "{'failed': 6}",
+      "outcomes": {
+        "src/hidden/t6.test.ts::logger with a request id puts the id on both lines when requestId runs first, and nothing changes without it": "failed",
+        "src/hidden/t6.test.ts::logger with a request id puts the id only on the outgoing line when the logger runs first": "failed",
+        "src/hidden/t6.test.ts::logger with a request id uses the id the client sent when requestId accepts it": "failed",
+        "src/hidden/t6.test.ts::timing with a request id adds the id as the last Server-Timing entry, in either middleware order": "failed",
+        "src/hidden/t6.test.ts::timing with a request id quotes and escapes the id like any other description": "failed",
+        "src/hidden/t6.test.ts::timing with a request id adds nothing without a request id, and no header at all when timing is disabled": "failed"
+      },
+      "not_failing": []
+    },
+    {
+      "name": "reference: leaves unchanged_paths alone",
+      "ok": true,
+      "touched": [],
+      "changed": [
+        "src/middleware/logger/index.test.ts",
+        "src/middleware/logger/index.ts",
+        "src/middleware/request-id/request-id.ts",
+        "src/middleware/timing/index.test.ts",
+        "src/middleware/timing/timing.ts"
+      ]
+    },
+    {
+      "name": "reference: lint and format clean",
+      "ok": true,
+      "runs": [
+        {
+          "cmd": "run lint",
+          "exit": 0,
+          "tail": "ipt(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:29: warning eslint(no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2101:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+        },
+        {
+          "cmd": "run format",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 246ms on 432 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+        }
+      ]
+    },
+    {
+      "name": "reference: type check and existing tests pass",
+      "ok": true,
+      "note": "{'passed': 5034, 'skipped': 102} in 14.5s",
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": [],
+      "log_tail": ""
+    },
+    {
+      "name": "reference: every hidden test passes",
+      "ok": true,
+      "note": "6 hidden",
+      "outcomes": {
+        "src/hidden/t6.test.ts::logger with a request id puts the id on both lines when requestId runs first, and nothing changes without it": "passed",
+        "src/hidden/t6.test.ts::logger with a request id puts the id only on the outgoing line when the logger runs first": "passed",
+        "src/hidden/t6.test.ts::logger with a request id uses the id the client sent when requestId accepts it": "passed",
+        "src/hidden/t6.test.ts::timing with a request id adds the id as the last Server-Timing entry, in either middleware order": "passed",
+        "src/hidden/t6.test.ts::timing with a request id quotes and escapes the id like any other description": "passed",
+        "src/hidden/t6.test.ts::timing with a request id adds nothing without a request id, and no header at all when timing is disabled": "passed"
+      },
+      "not_passing": []
+    },
+    {
+      "name": "base and reference ran the same hidden tests",
+      "ok": true,
+      "missing_on_base": [],
+      "base_load_errors": []
+    },
+    {
+      "name": "reference: type check, lint and format clean with the hidden tests in place",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "runs": [
+        {
+          "cmd": "run lint",
+          "exit": 0,
+          "tail": "no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/react.ts:5:93: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2101:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+        },
+        {
+          "cmd": "run format",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 406ms on 433 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+        },
+        {
+          "cmd": "exec vp lint src/hidden/t6.test.ts",
+          "exit": 0,
+          "tail": "note: You are running `vp lint` as a Vite+ built-in command. If you meant to run the lint npm script, use `vpr lint` instead.\n"
+        },
+        {
+          "cmd": "exec vp fmt --check src/hidden/t6.test.ts",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 119ms on 1 files using 8 threads.\n"
+        }
+      ]
+    },
+    {
+      "name": "hidden tests run in under about 2 minutes",
+      "ok": true,
+      "note": "2.3s"
+    },
+    {
+      "name": "naive-logger.patch: type check and existing tests still pass (a competent fix)",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": []
+    },
+    {
+      "name": "naive-logger.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "src/hidden/t6.test.ts::logger with a request id puts the id only on the outgoing line when the logger runs first"
+      ],
+      "note": "1/6 hidden fail"
+    },
+    {
+      "name": "naive-timing.patch: type check and existing tests still pass (a competent fix)",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": []
+    },
+    {
+      "name": "naive-timing.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "src/hidden/t6.test.ts::timing with a request id quotes and escapes the id like any other description"
+      ],
+      "note": "1/6 hidden fail"
+    }
+  ]
+}

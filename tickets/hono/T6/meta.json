@@ -1,0 +1,15 @@
+{
+  "id": "T6",
+  "kind": "feature",
+  "title": "Show the request id in the logger's lines and the Server-Timing header",
+  "repo": "Natenc12/hono-lab",
+  "base_ref": "base/T6",
+  "deliverable": "pull_request",
+  "spec_levels": [
+    "S1"
+  ],
+  "spec_words": {
+    "S1": 599
+  },
+  "base_commit": "e4a792524930039d99162e3b3f46ce623410b444"
+}

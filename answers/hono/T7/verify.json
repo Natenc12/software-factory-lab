@@ -1,0 +1,190 @@
+{
+  "ticket": "T7",
+  "codebase": "hono",
+  "repo": "Natenc12/hono-lab",
+  "base_ref": "base/T7",
+  "base_sha": "e4a792524930039d99162e3b3f46ce623410b444",
+  "started": "2026-11-23T19:02:37+00:00",
+  "finished": "2026-11-23T19:05:41+00:00",
+  "ok": true,
+  "steps": [
+    {
+      "name": "base: type check and existing tests pass",
+      "ok": true,
+      "note": "{'passed': 5018, 'skipped': 102} in 26.6s",
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "log_tail": ""
+    },
+    {
+      "name": "hidden tests exist",
+      "ok": true,
+      "files": [
+        "src/hidden/t7.test.ts"
+      ]
+    },
+    {
+      "name": "base: every hidden test fails",
+      "ok": true,
+      "note": "{'failed': 6}",
+      "outcomes": {
+        "src/hidden/t7.test.ts::cors() with a wildcard origin allows a subdomain at any depth and refuses everything else": "failed",
+        "src/hidden/t7.test.ts::cors() with a wildcard origin matches the port given in the pattern, and mixes with exact origins in a list": "failed",
+        "src/hidden/t7.test.ts::cors() with a wildcard origin works for any domain, scheme and port, not only the examples": "failed",
+        "src/hidden/t7.test.ts::cors() with a wildcard origin answers a preflight for a matching origin": "failed",
+        "src/hidden/t7.test.ts::csrf() with a wildcard origin accepts a subdomain at any depth and refuses everything else": "failed",
+        "src/hidden/t7.test.ts::csrf() with a wildcard origin mixes with exact origins in a list": "failed"
+      },
+      "not_failing": []
+    },
+    {
+      "name": "reference: leaves unchanged_paths alone",
+      "ok": true,
+      "touched": [],
+      "changed": [
+        "src/middleware/cors/index.ts",
+        "src/middleware/csrf/index.ts",
+        "src/utils/origin.test.ts",
+        "src/utils/origin.ts"
+      ]
+    },
+    {
+      "name": "reference: lint and format clean",
+      "ok": true,
+      "runs": [
+        {
+          "cmd": "run lint",
+          "exit": 0,
+          "tail": "ipt(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:29: warning eslint(no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2101:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+        },
+        {
+          "cmd": "run format",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 265ms on 434 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+        }
+      ]
+    },
+    {
+      "name": "reference: type check and existing tests pass",
+      "ok": true,
+      "note": "{'passed': 5021, 'skipped': 102} in 18.4s",
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": [],
+      "log_tail": ""
+    },
+    {
+      "name": "reference: every hidden test passes",
+      "ok": true,
+      "note": "6 hidden",
+      "outcomes": {
+        "src/hidden/t7.test.ts::cors() with a wildcard origin allows a subdomain at any depth and refuses everything else": "passed",
+        "src/hidden/t7.test.ts::cors() with a wildcard origin matches the port given in the pattern, and mixes with exact origins in a list": "passed",
+        "src/hidden/t7.test.ts::cors() with a wildcard origin works for any domain, scheme and port, not only the examples": "passed",
+        "src/hidden/t7.test.ts::cors() with a wildcard origin answers a preflight for a matching origin": "passed",
+        "src/hidden/t7.test.ts::csrf() with a wildcard origin accepts a subdomain at any depth and refuses everything else": "passed",
+        "src/hidden/t7.test.ts::csrf() with a wildcard origin mixes with exact origins in a list": "passed"
+      },
+      "not_passing": []
+    },
+    {
+      "name": "base and reference ran the same hidden tests",
+      "ok": true,
+      "missing_on_base": [],
+      "base_load_errors": []
+    },
+    {
+      "name": "reference: type check, lint and format clean with the hidden tests in place",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "runs": [
+        {
+          "cmd": "run lint",
+          "exit": 0,
+          "tail": "ipt(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:29: warning eslint(no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2101:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+        },
+        {
+          "cmd": "run format",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 472ms on 435 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+        },
+        {
+          "cmd": "exec vp lint src/hidden/t7.test.ts",
+          "exit": 0,
+          "tail": "note: You are running `vp lint` as a Vite+ built-in command. If you meant to run the lint npm script, use `vpr lint` instead.\n"
+        },
+        {
+          "cmd": "exec vp fmt --check src/hidden/t7.test.ts",
+          "exit": 0,
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 130ms on 1 files using 8 threads.\n"
+        }
+      ]
+    },
+    {
+      "name": "hidden tests run in under about 2 minutes",
+      "ok": true,
+      "note": "1.4s"
+    },
+    {
+      "name": "naive-any-chars.patch: type check and existing tests still pass (a competent fix)",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": []
+    },
+    {
+      "name": "naive-any-chars.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "src/hidden/t7.test.ts::cors() with a wildcard origin allows a subdomain at any depth and refuses everything else"
+      ],
+      "note": "1/6 hidden fail"
+    },
+    {
+      "name": "naive-cors-only.patch: type check and existing tests still pass (a competent fix)",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": []
+    },
+    {
+      "name": "naive-cors-only.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "src/hidden/t7.test.ts::csrf() with a wildcard origin accepts a subdomain at any depth and refuses everything else",
+        "src/hidden/t7.test.ts::csrf() with a wildcard origin mixes with exact origins in a list"
+      ],
+      "note": "2/6 hidden fail"
+    },
+    {
+      "name": "naive.patch: type check and existing tests still pass (a competent fix)",
+      "ok": true,
+      "typecheck": {
+        "exit": 0,
+        "tail": ""
+      },
+      "failing": []
+    },
+    {
+      "name": "naive.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "src/hidden/t7.test.ts::cors() with a wildcard origin allows a subdomain at any depth and refuses everything else",
+        "src/hidden/t7.test.ts::cors() with a wildcard origin works for any domain, scheme and port, not only the examples",
+        "src/hidden/t7.test.ts::csrf() with a wildcard origin accepts a subdomain at any depth and refuses everything else"
+      ],
+      "note": "3/6 hidden fail"
+    }
+  ]
+}

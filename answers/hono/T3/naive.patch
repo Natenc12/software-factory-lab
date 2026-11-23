@@ -1,0 +1,58 @@
+diff --git a/src/adapter/bun/websocket.ts b/src/adapter/bun/websocket.ts
+index c8301346..5c8bd8b4 100644
+--- a/src/adapter/bun/websocket.ts
++++ b/src/adapter/bun/websocket.ts
+@@ -84,6 +84,20 @@ export const upgradeWebSocket: UpgradeWebSocket<any> = defineWebSocketHelper((c,
+   return // failed
+ })
+ 
++const callHandler = (ws: BunServerWebSocket<BunWebSocketData>, handler: () => unknown): void => {
++  try {
++    handler()
++  } catch (error) {
++    const onError = ws.data.events.onError
++    if (!onError) {
++      throw error
++    }
++    const event = new Event('error') as Event & { error: unknown }
++    event.error = error
++    onError(event, createWSContext(ws))
++  }
++}
++
+ /**
+  * @deprecated `hono/bun` will be removed in v5. Install `@hono/bun` and import from there instead.
+  */
+@@ -91,18 +105,14 @@ export const websocket: BunWebSocketHandler<BunWebSocketData> = {
+   open(ws) {
+     const websocketListeners = ws.data.events
+     if (websocketListeners.onOpen) {
+-      websocketListeners.onOpen(new Event('open'), createWSContext(ws))
++      callHandler(ws, () => websocketListeners.onOpen!(new Event('open'), createWSContext(ws)))
+     }
+   },
+   close(ws, code, reason) {
+     const websocketListeners = ws.data.events
+     if (websocketListeners.onClose) {
+-      websocketListeners.onClose(
+-        new CloseEvent('close', {
+-          code,
+-          reason,
+-        }),
+-        createWSContext(ws)
++      callHandler(ws, () =>
++        websocketListeners.onClose!(new CloseEvent('close', { code, reason }), createWSContext(ws))
+       )
+     }
+   },
+@@ -112,7 +122,9 @@ export const websocket: BunWebSocketHandler<BunWebSocketData> = {
+       const normalizedReceiveData: WSMessageReceive =
+         typeof message === 'string' ? message : message.buffer
+ 
+-      websocketListeners.onMessage(createWSMessageEvent(normalizedReceiveData), createWSContext(ws))
++      callHandler(ws, () =>
++        websocketListeners.onMessage!(createWSMessageEvent(normalizedReceiveData), createWSContext(ws))
++      )
+     }
+   },
+ }

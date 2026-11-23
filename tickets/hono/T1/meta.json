@@ -1,0 +1,16 @@
+{
+  "id": "T1",
+  "kind": "replay",
+  "title": "Duplicate path parameter values depend on which router is picked",
+  "repo": "Natenc12/hono-lab",
+  "base_ref": "base/T1",
+  "deliverable": "pull_request",
+  "spec_levels": [
+    "S1"
+  ],
+  "spec_words": {
+    "S1": 471
+  },
+  "base_commit": "0cc562dd4ec413007f571fc4ede89b415b833afb",
+  "source_fix": "08807ce12aa3aa27c8c5adf63e677bbab6bceda9"
+}

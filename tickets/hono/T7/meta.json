@@ -1,0 +1,15 @@
+{
+  "id": "T7",
+  "kind": "vague",
+  "title": "Allow subdomain patterns in cors() and csrf() origins",
+  "repo": "Natenc12/hono-lab",
+  "base_ref": "base/T7",
+  "deliverable": "pull_request",
+  "spec_levels": [
+    "S1"
+  ],
+  "spec_words": {
+    "S1": 466
+  },
+  "base_commit": "e4a792524930039d99162e3b3f46ce623410b444"
+}

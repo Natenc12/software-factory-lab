@@ -1,0 +1,60 @@
+diff --git a/src/middleware/serve-static/index.test.ts b/src/middleware/serve-static/index.test.ts
+index 86a5e713..659b0b47 100644
+--- a/src/middleware/serve-static/index.test.ts
++++ b/src/middleware/serve-static/index.test.ts
+@@ -466,3 +466,27 @@ describe('Serve Static Middleware', () => {
+     })
+   })
+ })
++
++describe('Serve Static Middleware with redirectPost', () => {
++  it('Should answer a POST with 303 to the same path and query', async () => {
++    const getContent = vi.fn(async (path: string) => `Hello in ${path}`)
++    const app = new Hono().use('/static/*', baseServeStatic({ getContent, redirectPost: true }))
++
++    const res = await app.request('/static/hello.html?a=1', { method: 'POST' })
++
++    expect(res.status).toBe(303)
++    expect(res.headers.get('Location')).toBe('/static/hello.html?a=1')
++    expect(getContent).not.toBeCalled()
++  })
++
++  it('Should still pass other methods to the next handler', async () => {
++    const getContent = vi.fn(async (path: string) => `Hello in ${path}`)
++    const app = new Hono().use('/static/*', baseServeStatic({ getContent, redirectPost: true }))
++    app.put('/static/hello.html', (c) => c.text('Handled downstream', 202))
++
++    const res = await app.request('/static/hello.html', { method: 'PUT' })
++
++    expect(res.status).toBe(202)
++    expect(getContent).not.toBeCalled()
++  })
++})
+diff --git a/src/middleware/serve-static/index.ts b/src/middleware/serve-static/index.ts
+index 3e37feda..e9b13740 100644
+--- a/src/middleware/serve-static/index.ts
++++ b/src/middleware/serve-static/index.ts
+@@ -21,6 +21,12 @@ export type ServeStaticOptions<E extends Env = Env> = {
+   rewriteRequestPath?: (path: string) => string
+   onFound?: (path: string, c: Context<E>) => void | Promise<void>
+   onNotFound?: (path: string, c: Context<E>) => void | Promise<void>
++  /**
++   * Answer a POST with `303 See Other` to the same path and query, so a form posted to a static page
++   * lands on that page (post/redirect/get). The file system is not touched. Defaults to false: every
++   * method but GET and HEAD is passed to the next handler.
++   */
++  redirectPost?: boolean
+ }
+ 
+ const ENCODINGS = {
+@@ -61,6 +67,10 @@ export const serveStatic = <E extends Env = Env>(
+     }
+ 
+     if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
++      if (options.redirectPost && c.req.method === 'POST') {
++        const url = new URL(c.req.url)
++        return c.redirect(url.pathname + url.search, 303)
++      }
+       return next()
+     }
+ 

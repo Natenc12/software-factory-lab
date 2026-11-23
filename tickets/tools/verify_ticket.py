@@ -20,6 +20,12 @@ For one ticket it:
 
 It writes `answers/<codebase>/<T>/verify.json` and exits 0 only if every check passed.
 Standard library only, plus `git`, `uv` and `psql` on PATH.
+
+Codebases other than gct (sqlglot so far) take their commands from the grader's config,
+`grader/codebases/<codebase>.json`: its `env`, `install` (run in each checkout, which keeps its
+virtual environment in the repo folder), `test` (a pytest command), `lint` and `hidden_dir`. They have
+no database, so step 1 makes none, and there are no migrations. The practice clone defaults to
+`~/repos/<codebase>-lab`.
 """
 
 from __future__ import annotations
@@ -97,11 +103,12 @@ def junit_outcomes(path: Path) -> dict[str, str]:
     return outcomes
 
 
-def run_pytest(wt: Path, env: dict, args: list[str], tag: str) -> dict:
+def run_pytest(wt: Path, env: dict, args: list[str], tag: str, cmd: list[str] | None = None) -> dict:
     xml = wt.parent / f"junit-{tag}.xml"
     xml.unlink(missing_ok=True)
     t0 = time.time()
-    out = sh(TEST_CMD + [f"--junitxml={xml}", *args], cwd=wt, env=env, check=False, timeout=3600)
+    base_cmd = cmd if cmd is not None else TEST_CMD
+    out = sh(base_cmd + [f"--junitxml={xml}", *args], cwd=wt, env=env, check=False, timeout=3600)
     outcomes = junit_outcomes(xml)
     counts: dict[str, int] = {}
     for state in outcomes.values():
@@ -121,8 +128,8 @@ def hidden_outcomes(res: dict) -> dict[str, str]:
     return {k: v for k, v in res["outcomes"].items() if "hidden" in k.split("::")[0]}
 
 
-def collect_ids(wt: Path, env: dict, paths: list[str]) -> list[str]:
-    out = sh(TEST_CMD + ["--collect-only", *paths], cwd=wt, env=env, check=False)
+def collect_ids(wt: Path, env: dict, paths: list[str], cmd: list[str] | None = None) -> list[str]:
+    out = sh((cmd if cmd is not None else TEST_CMD) + ["--collect-only", *paths], cwd=wt, env=env, check=False)
     return [line.strip() for line in out.stdout.splitlines() if "::" in line]
 
 
@@ -145,13 +152,13 @@ class Tree:
         out = sh(["git", "status", "--porcelain", "--untracked-files=all"], cwd=self.path).stdout
         return sorted(line[3:].strip() for line in out.splitlines() if line.strip())
 
-    def add_hidden(self, hidden: Path) -> list[str]:
-        dest = self.path / "tests" / "hidden"
+    def add_hidden(self, hidden: Path, hidden_dir: str = "tests/hidden") -> list[str]:
+        dest = self.path / hidden_dir
         dest.mkdir(parents=True, exist_ok=True)
         names = []
         for f in sorted(hidden.glob("*.py")):
             shutil.copy2(f, dest / f.name)
-            names.append(f"tests/hidden/{f.name}")
+            names.append(f"{hidden_dir}/{f.name}")
         return names
 
     def remove(self) -> None:
@@ -175,16 +182,25 @@ class Verifier:
         self.steps: list[dict] = []
         self.tmp = Path(tempfile.mkdtemp(prefix=f"verify-{tid}-"))
         self.env_base = {k: v for k, v in os.environ.items() if k not in ("VIRTUAL_ENV", "OPENAI_API_KEY")}
+        # Codebases other than gct: commands from the grader's config, no database.
+        self.cfg = None
+        if codebase != "gct":
+            self.cfg = json.loads((ROOT / "grader" / "codebases" / f"{codebase}.json").read_text())
+        self.hidden_dir = (self.cfg or {}).get("hidden_dir", "tests/hidden")
+        self.test_cmd = list(self.cfg["test"]) + ["-p", "no:cacheprovider"] if self.cfg else None
         # UV_PYTHON matches the practice repo's own CI. gct-lab does not compile on Python 3.13+ (a lone
         # surrogate in a docstring), and with no .python-version uv would otherwise pick the newest one.
-        self.env_base.update(
-            {
-                "CI": "1",
-                "OPENAI_API_KEY": "",
-                "GCT_STAGING_DIR": str(self.tmp / "staging"),
-                "UV_PYTHON": os.environ.get("VERIFY_UV_PYTHON", "3.10"),
-            }
-        )
+        if self.cfg:
+            self.env_base.update({k: str(v) for k, v in (self.cfg.get("env") or {}).items()})
+        else:
+            self.env_base.update(
+                {
+                    "CI": "1",
+                    "OPENAI_API_KEY": "",
+                    "GCT_STAGING_DIR": str(self.tmp / "staging"),
+                    "UV_PYTHON": os.environ.get("VERIFY_UV_PYTHON", "3.10"),
+                }
+            )
 
     def step(self, name: str, ok: bool, **detail) -> bool:
         self.steps.append({"name": name, "ok": bool(ok), **detail})
@@ -193,6 +209,8 @@ class Verifier:
         return ok
 
     def fresh_db(self, phase: str) -> dict:
+        if self.cfg:
+            return dict(self.env_base)
         name = f"author_{self.codebase}_{self.tid.lower()}_{phase}_{os.getpid()}"
         url = create_db(name)
         self.dbs.append(name)
@@ -203,10 +221,29 @@ class Verifier:
         if patch is not None:
             tree.apply(patch)
         env = self.fresh_db(phase)
+        if self.cfg:
+            if self.cfg.get("install"):
+                sh(list(self.cfg["install"]), cwd=tree.path, env=env)
+            return env
         sh(["uv", "sync", "--locked", "--extra", "dev", "-q"], cwd=tree.path, env=env)
         for _ in range(2):
             sh(["uv", "run", "--locked", "python", "scripts/migrate.py"], cwd=tree.path, env=env)
         return env
+
+    def pytest(self, tree: Tree, env: dict, args: list[str], tag: str) -> dict:
+        return run_pytest(tree.path, env, args, tag, self.test_cmd)
+
+    def lint_cmds(self, files: list[str] | None = None) -> list[list[str]]:
+        """The tree's lint commands, or with `files` the same checks on those files only."""
+        if self.cfg:
+            cmds = [list(c) for c in self.cfg.get("lint") or []]
+            return [[*c, *files] for c in cmds] if files else cmds
+        if files:
+            return [
+                ["uv", "run", "--locked", "ruff", "check", *files],
+                ["uv", "run", "--locked", "ruff", "format", "--check", *files],
+            ]
+        return [["uv", "run", "--locked", "ruff", "check"], ["uv", "run", "--locked", "ruff", "format", "--check", "."]]
 
     def resolve(self, ref: str) -> str:
         return sh(["git", "-C", str(self.lab), "rev-parse", "--verify", f"{ref}^{{commit}}"]).stdout.strip()
@@ -252,7 +289,7 @@ class Verifier:
 
     def check_base(self, tree: Tree, base_ref: str) -> None:
         env = self.prepare(tree, base_ref, "base")
-        res = run_pytest(tree.path, env, [], "base-existing")
+        res = self.pytest(tree, env, [], "base-existing")
         ok = res["exit"] == 0 and res["counts"].get("passed", 0) > 0
         self.step(
             "base: existing tests pass",
@@ -262,9 +299,9 @@ class Verifier:
             seconds=res["seconds"],
             log_tail=res["log_tail"],
         )
-        files = tree.add_hidden(self.hidden)
+        files = tree.add_hidden(self.hidden, self.hidden_dir)
         self.step("hidden tests exist", bool(files), files=files)
-        res = run_pytest(tree.path, env, ["tests/hidden"], "base-hidden")
+        res = self.pytest(tree, env, [self.hidden_dir], "base-hidden")
         hid = hidden_outcomes(res)
         not_failing = sorted(k for k, v in hid.items() if v not in ("failed", "error"))
         self.base_hidden = hid
@@ -285,18 +322,15 @@ class Verifier:
         self.step("reference: leaves unchanged_paths alone", not touched, touched=touched, changed=changed)
         # Lint the patched tree as the app's CI does, before the hidden tests are copied in.
         self.tree_lint = []
-        for cmd in (
-            ["uv", "run", "--locked", "ruff", "check"],
-            ["uv", "run", "--locked", "ruff", "format", "--check", "."],
-        ):
+        for cmd in self.lint_cmds():
             out = sh(cmd, cwd=tree.path, env=env, check=False)
             self.tree_lint.append(
-                {"cmd": " ".join(cmd[3:]), "exit": out.returncode, "tail": (out.stdout + out.stderr)[-1500:]}
+                {"cmd": " ".join(cmd[-4:]), "exit": out.returncode, "tail": (out.stdout + out.stderr)[-1500:]}
             )
-        hidden_files = tree.add_hidden(self.hidden)
-        ids = collect_ids(tree.path, env, ["tests/hidden"])
+        hidden_files = tree.add_hidden(self.hidden, self.hidden_dir)
+        ids = collect_ids(tree.path, env, [self.hidden_dir], self.test_cmd)
         self.hidden_ids = ids
-        res = run_pytest(tree.path, env, [], "ref-all")
+        res = self.pytest(tree, env, [], "ref-all")
         hid = hidden_outcomes(res)
         bad = sorted(k for k, v in hid.items() if v != "passed")
         self.step(
@@ -327,26 +361,22 @@ class Verifier:
             missing_on_base=missing,
             base_collection_errors=collection_errors,
         )
-        lint = [
-            ["uv", "run", "--locked", "ruff", "check", *hidden_files],
-            ["uv", "run", "--locked", "ruff", "format", "--check", *hidden_files],
-        ]
         outs = list(self.tree_lint)
-        for cmd in lint:
+        for cmd in self.lint_cmds(hidden_files):
             out = sh(cmd, cwd=tree.path, env=env, check=False)
-            outs.append({"cmd": " ".join(cmd[3:]), "exit": out.returncode, "tail": (out.stdout + out.stderr)[-1500:]})
+            outs.append({"cmd": " ".join(cmd[-4:]), "exit": out.returncode, "tail": (out.stdout + out.stderr)[-1500:]})
         self.step(
             "reference: lint and format clean (tree and hidden tests)", all(o["exit"] == 0 for o in outs), runs=outs
         )
         t0 = time.time()
-        res = run_pytest(tree.path, env, ["tests/hidden"], "ref-hidden-timing")
+        res = self.pytest(tree, env, [self.hidden_dir], "ref-hidden-timing")
         secs = round(time.time() - t0, 1)
         self.step("hidden tests run in under about 2 minutes", res["exit"] == 0 and secs < 150, note=f"{secs}s")
 
     def check_naive(self, tree: Tree, base_ref: str, patch: Path) -> None:
         env = self.prepare(tree, base_ref, patch.stem.replace("-", "_"), patch)
-        tree.add_hidden(self.hidden)
-        res = run_pytest(tree.path, env, [], f"{patch.stem}-all")
+        tree.add_hidden(self.hidden, self.hidden_dir)
+        res = self.pytest(tree, env, [], f"{patch.stem}-all")
         hid = hidden_outcomes(res)
         failing = sorted(k for k, v in hid.items() if v in ("failed", "error"))
         others_bad = sorted(k for k, v in res["outcomes"].items() if k not in hid and v in ("failed", "error"))
@@ -371,7 +401,7 @@ class Verifier:
             files=accept,
         )
         env = self.prepare(tree, s3_ref, "s3base")
-        res = run_pytest(tree.path, env, accept, "s3-base")
+        res = self.pytest(tree, env, accept, "s3-base")
         fails = res["counts"].get("failed", 0) + res["counts"].get("error", 0) > 0
         if self.key.get("acceptance_may_pass_on_base"):
             # A false-premise ticket: what its examples end in is already true on the base.
@@ -389,8 +419,8 @@ class Verifier:
                 outcomes=res["outcomes"],
             )
         env = self.prepare(tree, s3_ref, "s3ref", self.ref_patch)
-        tree.add_hidden(self.hidden)
-        res = run_pytest(tree.path, env, [], "s3-ref")
+        tree.add_hidden(self.hidden, self.hidden_dir)
+        res = self.pytest(tree, env, [], "s3-ref")
         bad = sorted(k for k, v in res["outcomes"].items() if v in ("failed", "error"))
         self.step(
             "s3: with the reference fix, acceptance, hidden and existing tests pass",
@@ -405,8 +435,8 @@ class Verifier:
             self.step("s3: hidden tests check beyond the acceptance tests", False, note="no naive patch to show it")
             return
         env = self.prepare(tree, s3_ref, "s3naive", naive)
-        tree.add_hidden(self.hidden)
-        res = run_pytest(tree.path, env, [*accept, "tests/hidden"], "s3-naive")
+        tree.add_hidden(self.hidden, self.hidden_dir)
+        res = self.pytest(tree, env, [*accept, self.hidden_dir], "s3-naive")
         acc = {k: v for k, v in res["outcomes"].items() if k not in hidden_outcomes(res)}
         hid = hidden_outcomes(res)
         acc_bad = sorted(k for k, v in acc.items() if v != "passed")
@@ -423,11 +453,19 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("codebase")
     ap.add_argument("ticket")
-    ap.add_argument("--lab", default=str(Path.home() / "repos" / "gct-lab"), help="local clone of the practice repo")
+    ap.add_argument("--lab", help="local clone of the practice repo (default ~/repos/<codebase>-lab)")
     ap.add_argument("--keep", action="store_true", help="keep the temporary folder (junit files) for debugging")
     ap.add_argument("--out", help="where to write verify.json (default answers/<codebase>/<T>/verify.json)")
     args = ap.parse_args(argv)
-    v = Verifier(args.codebase, args.ticket, Path(args.lab).expanduser(), args.keep)
+    cfg_path = ROOT / "grader" / "codebases" / f"{args.codebase}.json"
+    if cfg_path.is_file() and json.loads(cfg_path.read_text()).get("test_runner") == "vitest":
+        # TypeScript codebases (hono) build, type-check and read vitest's report: their own verifier.
+        from verify_ticket_hono import main as verify_typescript
+
+        rest = [args.ticket, *(["--lab", args.lab] if args.lab else []), *(["--keep"] if args.keep else [])]
+        return verify_typescript([*rest, *(["--out", args.out] if args.out else [])])
+    lab = Path(args.lab or Path.home() / "repos" / f"{args.codebase}-lab").expanduser()
+    v = Verifier(args.codebase, args.ticket, lab, args.keep)
     result = v.run()
     out = Path(args.out) if args.out else v.adir / "verify.json"
     out.write_text(json.dumps(result, indent=2, sort_keys=False) + "\n", encoding="utf-8")

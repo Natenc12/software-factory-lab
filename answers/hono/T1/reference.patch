@@ -1,0 +1,137 @@
+diff --git a/src/hono.test.ts b/src/hono.test.ts
+index 01a51dbf..3d158b86 100644
+--- a/src/hono.test.ts
++++ b/src/hono.test.ts
+@@ -2217,6 +2217,24 @@ describe('Multiple handler', () => {
+       })
+     })
+ 
++    describe('self with trailing static is stable across SmartRouter fallback', () => {
++      it('Should return the first id whether or not an unrelated route is registered', async () => {
++        const a = new Hono()
++        a.get('/:id/:id/x', (c) => c.text(c.req.param('id')))
++        const resA = await a.request('/123/456/x')
++        expect(resA.status).toBe(200)
++        expect(await resA.text()).toBe('123')
++
++        const b = new Hono()
++        b.get('/:id/:id/x', (c) => c.text(c.req.param('id')))
++        b.get('/a', (c) => c.text('a'))
++        const resB = await b.request('/123/456/x')
++        expect(resB.status).toBe(200)
++        expect(await resB.text()).toBe('123')
++        expect(b.router.name).toBe('SmartRouter + TrieRouter')
++      })
++    })
++
+     describe('hierarchy', () => {
+       const app = new Hono()
+       app.get('/posts/:id/comments/:comment_id', (c) => {
+diff --git a/src/router/common.case.test.ts b/src/router/common.case.test.ts
+index 907f3d01..59dd8b4a 100644
+--- a/src/router/common.case.test.ts
++++ b/src/router/common.case.test.ts
+@@ -305,6 +305,22 @@ export const runTest = ({
+         expect(res[0].params['id']).toBe('123')
+       })
+ 
++      it('self with trailing static', () => {
++        router.add('GET', '/:id/:id/x', 'foo')
++        const res = match('GET', '/123/456/x')
++        expect(res.length).toBe(1)
++        expect(res[0].handler).toEqual('foo')
++        expect(res[0].params['id']).toBe('123')
++      })
++
++      it('self three times', () => {
++        router.add('GET', '/:id/:id/:id', 'foo')
++        const res = match('GET', '/1/2/3')
++        expect(res.length).toBe(1)
++        expect(res[0].handler).toEqual('foo')
++        expect(res[0].params['id']).toBe('1')
++      })
++
+       it('parent', () => {
+         router.add('GET', '/:id/:action', 'foo')
+         router.add('GET', '/posts/:id', 'bar')
+diff --git a/src/router/pattern-router/router.test.ts b/src/router/pattern-router/router.test.ts
+index 847845e8..12beb32a 100644
+--- a/src/router/pattern-router/router.test.ts
++++ b/src/router/pattern-router/router.test.ts
+@@ -7,7 +7,11 @@ describe('Pattern', () => {
+     skip: [
+       {
+         reason: 'UnsupportedPath',
+-        tests: ['Duplicate param name > self'],
++        tests: [
++          'Duplicate param name > self',
++          'Duplicate param name > self with trailing static',
++          'Duplicate param name > self three times',
++        ],
+       },
+       {
+         reason: 'PatternRouter allows trailing slashes',
+diff --git a/src/router/trie-router/node.test.ts b/src/router/trie-router/node.test.ts
+index 5ba5d685..0f461ff5 100644
+--- a/src/router/trie-router/node.test.ts
++++ b/src/router/trie-router/node.test.ts
+@@ -534,6 +534,33 @@ describe('Duplicate param name', () => {
+     expect(res[0][1]['id']).toBe('123')
+   })
+ 
++  it('self with trailing static', () => {
++    const node = new Node()
++    node.insert('get', '/:id/:id/x', 'foo')
++    const [res] = node.search('get', '/123/456/x')
++    expect(res.length).toBe(1)
++    expect(res[0][0]).toBe('foo')
++    expect(res[0][1]['id']).toBe('123')
++  })
++
++  it('self three times', () => {
++    const node = new Node()
++    node.insert('get', '/:id/:id/:id', 'foo')
++    const [res] = node.search('get', '/1/2/3')
++    expect(res.length).toBe(1)
++    expect(res[0][0]).toBe('foo')
++    expect(res[0][1]['id']).toBe('1')
++  })
++
++  it('self with regexp matcher', () => {
++    const node = new Node()
++    node.insert('get', '/:id/:id{[0-9]+}', 'foo')
++    const [res] = node.search('get', '/abc/123')
++    expect(res.length).toBe(1)
++    expect(res[0][0]).toBe('foo')
++    expect(res[0][1]['id']).toBe('abc')
++  })
++
+   describe('parent', () => {
+     const node = new Node()
+     node.insert('get', '/:id/:action', 'foo')
+diff --git a/src/router/trie-router/node.ts b/src/router/trie-router/node.ts
+index 28f522b4..580b859a 100644
+--- a/src/router/trie-router/node.ts
++++ b/src/router/trie-router/node.ts
+@@ -155,7 +155,9 @@ export class Node<T> {
+ 
+             const m = matcher.exec(restPathString)
+             if (m) {
+-              params[name] = m[0]
++              if (!Object.hasOwn(params, name)) {
++                params[name] = m[0]
++              }
+               this.#pushHandlerSets(handlerSets, child, method, node.#params, params)
+ 
+               // '/:id{[0-9]+}/*' => match '/123'
+@@ -182,7 +184,9 @@ export class Node<T> {
+           }
+ 
+           if (matcher === true || matcher.test(part)) {
+-            params[name] = part
++            if (!Object.hasOwn(params, name)) {
++              params[name] = part
++            }
+             if (isLast) {
+               this.#pushHandlerSets(handlerSets, child, method, params, node.#params)
+               if (child.#children['*']) {

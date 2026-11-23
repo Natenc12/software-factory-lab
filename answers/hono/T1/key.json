@@ -1,0 +1,25 @@
+{
+  "hidden_test_cmd": "pnpm exec vp test --run src/hidden",
+  "source": {
+    "fix": "08807ce12aa3aa27c8c5adf63e677bbab6bceda9",
+    "pull_request": "honojs/hono#5423",
+    "issue": "honojs/hono#5422",
+    "author": "a person (not the hono-kun bot)"
+  },
+  "unchanged_paths": [],
+  "scope_out_paths": [
+    "adapters/",
+    "src/router/smart-router/router.ts"
+  ],
+  "tests_may_change": [
+    "src/router/common.case.test.ts",
+    "src/router/*/router.test.ts",
+    "src/router/reg-exp-router/prepared-router.test.ts"
+  ],
+  "tests_may_change_note": "A new shared router case goes in common.case.test.ts, and every file that calls runTest() passes it a skip list as data (each router's router.test.ts, and reg-exp-router/prepared-router.test.ts); a router that cannot take a new case gets it added to that list. The upstream fix edited PatternRouter's list; the blind fix also edited RegExpRouter's and PreparedRegExpRouter's.",
+  "traps": [],
+  "naive_patches": {
+    "naive.patch": "Keeps the first value only on the plain-segment path of TrieRouter's search, not on the path for a parameter with a pattern: `/:id/:id{[0-9]+}` still returns the second value."
+  },
+  "hidden_tests_note": "The upstream fix's own tests, moved into one file: TrieRouter node and router cases that fail on the base, and the app-level SmartRouter fallback case. The shared cases that already pass on RegExpRouter and LinearRouter are left out, because every hidden test must fail on the base."
+}

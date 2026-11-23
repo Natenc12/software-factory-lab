@@ -1,0 +1,26 @@
+diff --git a/src/middleware/basic-auth/index.ts b/src/middleware/basic-auth/index.ts
+index 5b2011ea..b09bfd73 100644
+--- a/src/middleware/basic-auth/index.ts
++++ b/src/middleware/basic-auth/index.ts
+@@ -132,7 +132,7 @@ export const basicAuth = (
+     // Invalid user.
+     const status = 401
+     const headers = {
+-      'WWW-Authenticate': 'Basic realm="' + options.realm?.replace(/"/g, '\\"') + '"',
++      'WWW-Authenticate': 'Basic realm="' + options.realm?.replace(/[\\"]/g, '\\$&') + '"',
+     }
+     const responseMessage =
+       typeof options.invalidUserMessage === 'function'
+diff --git a/src/middleware/bearer-auth/index.ts b/src/middleware/bearer-auth/index.ts
+index 6122e3b3..282656aa 100644
+--- a/src/middleware/bearer-auth/index.ts
++++ b/src/middleware/bearer-auth/index.ts
+@@ -115,7 +115,7 @@ export const bearerAuth = <E extends Env = Env>(
+     options.prefix = PREFIX
+   }
+ 
+-  const realm = options.realm?.replace(/"/g, '\\"')
++  const realm = options.realm?.replace(/[\\"]/g, '\\$&')
+   const prefix = options.prefix
+   const tokenRegexp = new RegExp(`^${TOKEN_STRINGS}$`)
+   const wwwAuthenticatePrefix = prefix === '' ? '' : `${prefix} `

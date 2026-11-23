@@ -1,0 +1,26 @@
+{
+  "hidden_test_cmd": "pnpm exec vp test --run src/hidden",
+  "source": {
+    "fix": "fb48e2b2",
+    "pull_request": "honojs/hono#5620",
+    "issue": "honojs/hono#5598",
+    "author": "a person (not the hono-kun bot)"
+  },
+  "unchanged_paths": [],
+  "scope_out_paths": [
+    "src/adapter/deno/",
+    "src/adapter/cloudflare-workers/",
+    "src/helper/websocket/"
+  ],
+  "tests_may_change": [],
+  "tests_may_change_note": "None: the existing Bun adapter tests use handlers that do not throw, and new cases are new tests.",
+  "traps": [],
+  "naive_patches": {
+    "naive.patch": "Wraps each handler call in try/catch and forwards to onError, but ignores the promise an async handler returns, so a rejection never reaches onError."
+  },
+  "hidden_tests_note": "The upstream fix's own onError tests, with two changes: the upstream 'rethrow when onError is not set' test passes on the base, so its check is folded into the end of the first test; and the async test waits for setTimeout(0) instead of one microtask (`await Promise.resolve()`), so a correct fix that takes more promise steps still passes. The adapters/bun copy is in scope but not graded: its tests need Bun and are outside the root suite. The issue's own 'Recommended Fix' (adding a Bun `error` hook to the handler object) is removed from the ticket; a fix built only that way would not satisfy the ticket's Decisions and fails all three hidden tests.",
+  "issue_hints_removed": [
+    "the issue's diagnosis that Bun only catches exceptions when the handler object has an error method",
+    "the issue's Recommended Fix code"
+  ]
+}
