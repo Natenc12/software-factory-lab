@@ -129,7 +129,30 @@ def _git_sub(args: list[str]) -> str | None:
     return None
 
 
-def bash_reason(cmd: str, cwd: str, cfg: dict, depth: int = 0) -> str | None:
+def _is_relative(p: str) -> bool:
+    return not p.startswith(("/", "~", "$HOME", "${HOME}"))
+
+
+def _cd_target(words: list[str], cwd: str | None, home: str) -> tuple[bool, str | None]:
+    """(known, new working directory) after a `cd` or `pushd` segment."""
+    target = words[1] if len(words) > 1 else "~"
+    if target == "-" or "$" in target.replace("$HOME", "").replace("${HOME}", "") or "`" in target:
+        return False, None
+    if cwd is None and _is_relative(target):
+        return False, None
+    return True, resolve(target, cwd or "/", home)
+
+
+def bash_reason(
+    cmd: str, cwd: str | None, cfg: dict, depth: int = 0, unresolved: list | None = None, scan: bool = False
+) -> str | None:
+    """Why a Bash command must be refused, or None.
+
+    Relative paths are resolved against the working directory in effect: `cd` (or `pushd`) earlier in
+    the same command moves it. `cwd=None` means it is not known (the scan only); then a relative path is
+    added to `unresolved` instead of being judged. When a `cd` target can't be known (a variable, `cd -`),
+    the live guard keeps the last known folder and the scan stops resolving relative paths.
+    """
     low = cmd.lower()
     for word in cfg.get("forbidden_words", []):
         if word.lower() in low:
@@ -157,41 +180,103 @@ def bash_reason(cmd: str, cwd: str, cfg: dict, depth: int = 0) -> str | None:
             words = ["cd", "~"]
         for tok in words[1:] if "/" not in words[0] else words:
             if depth < 3 and (" " in tok or (name in SHELLS and tok not in ("-c", "-lc", "-l"))):
-                r = bash_reason(tok, cwd, cfg, depth + 1)
+                r = bash_reason(tok, cwd, cfg, depth + 1, unresolved, scan)
                 if r:
                     return r
-            for p in {_looks_like_path(tok), *EMBEDDED_PATH.findall(tok)} - {None}:
-                r = path_reason(p, cwd, cfg)
+            for p in sorted({_looks_like_path(tok), *EMBEDDED_PATH.findall(tok)} - {None}):
+                if cwd is None and _is_relative(p):
+                    if unresolved is not None:
+                        unresolved.append(p)
+                    continue
+                r = path_reason(p, cwd or "/", cfg)
                 if r:
                     return r
+        if name in ("cd", "pushd"):
+            known, new = _cd_target(words, cwd, cfg["home"])
+            if known:
+                cwd = new
+            elif scan:
+                cwd = None
     return None
 
 
-def check(tool: str, inp: dict, cwd: str, cfg: dict) -> str | None:
-    """Return why a tool call must be refused, or None to let it through."""
+def _top_level(cmd: str) -> str:
+    """The command with everything inside (...), $(...) and backticks blanked out, quotes respected."""
+    out, depth, quote, tick = [], 0, None, False
+    for ch in cmd:
+        if quote:
+            if ch == quote:
+                quote = None
+            out.append(ch if depth == 0 and not tick else " ")
+            continue
+        if ch in ("'", '"'):
+            quote = ch
+        elif ch == "`":
+            tick = not tick
+            out.append(" ")
+            continue
+        elif ch == "(":
+            depth += 1
+        elif ch == ")" and depth:
+            depth -= 1
+            out.append(" ")
+            continue
+        out.append(ch if depth == 0 and not tick else " ")
+    return "".join(out)
+
+
+def final_cwd(cmd: str, cwd: str | None, cfg: dict) -> str | None:
+    """The shell's working directory after a command, following its top-level `cd`s; None if unknown.
+
+    A `cd` inside parentheses or `$(...)` runs in a subshell and does not carry over.
+    """
+    top = _top_level(cmd)
+    for seg in _segments(top):
+        words = list(seg)
+        while words and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[0]):
+            words.pop(0)
+        if words and words[0] in ("cd", "pushd"):
+            known, new = _cd_target(words if len(words) > 1 else ["cd", "~"], cwd, cfg["home"])
+            cwd = new if known else None
+    return cwd
+
+
+def check(
+    tool: str, inp: dict, cwd: str | None, cfg: dict, unresolved: list | None = None, scan: bool = False
+) -> str | None:
+    """Return why a tool call must be refused, or None to let it through.
+
+    The live hook always knows `cwd`. The scan passes `scan=True`, and `cwd=None` when the transcript
+    does not show it; relative paths then go to `unresolved` instead of being judged.
+    """
     inp = inp or {}
     if tool in BLOCKED_TOOLS or tool.startswith("mcp__"):
         return f"the {tool} tool is not available in this lab"
-    cwd = cwd or cfg["sandbox"]
+    if not scan:
+        cwd = cwd or cfg["sandbox"]
     if tool == "Bash":
         cmd = str(inp.get("command") or "")
-        if not _under(_real(cwd), cfg["sandbox"]):
+        if not scan and not _under(_real(cwd), cfg["sandbox"]):
             first = (_segments(cmd) or [[]])[0]
             if not (
                 len(first) == 2 and first[0] == "cd" and _under(resolve(first[1], cwd, cfg["home"]), cfg["sandbox"])
             ):
                 return f"your shell is outside the sandbox; run `cd {cfg['sandbox']}` first"
-        return bash_reason(cmd, cwd, cfg)
-    for key in PATH_KEYS:
-        if inp.get(key):
-            r = path_reason(str(inp[key]), cwd, cfg, write=tool in WRITE_TOOLS)
-            if r:
-                return r
+        return bash_reason(cmd, cwd, cfg, unresolved=unresolved, scan=scan)
+    paths = [(str(inp[key]), tool in WRITE_TOOLS) for key in PATH_KEYS if inp.get(key)]
     pat = str(inp.get("pattern") or "")
     if tool == "Glob" and (pat.startswith(("/", "~")) or ".." in pat):
         p = _looks_like_path(pat)
         if p:
-            return path_reason(p, cwd, cfg)
+            paths.append((p, False))
+    for p, write in paths:
+        if cwd is None and _is_relative(p):
+            if unresolved is not None:
+                unresolved.append(p)
+            continue
+        r = path_reason(p, cwd or "/", cfg, write=write)
+        if r:
+            return r
     return None
 
 

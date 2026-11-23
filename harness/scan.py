@@ -3,13 +3,15 @@
     python -m harness.scan <run folder>
 
 Reads <run folder>/harness/transcript.jsonl (every tool call, subagents' included) and judges each call
-with the same rules as the run's guard, plus a check for other runs' branches. Writes
+with the same rules as the run's guard, plus a check for other runs' branches. Relative paths are
+resolved against the working directory in effect, following `cd` within a command and across commands. Writes
 <run folder>/harness/scan.json. `clean` is false when any offending call got through; calls the guard
 or the permission rules refused are listed as blocked attempts.
 """
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -43,6 +45,9 @@ def tool_results(lines: list[str]) -> dict[str, tuple[bool, str]]:
     return out
 
 
+SHELL_RESET_RE = re.compile(r"Shell cwd was reset to (\S+)")
+
+
 def scan(folder: Path) -> dict:
     folder = Path(folder).resolve()
     hdir = folder / "harness"
@@ -53,11 +58,35 @@ def scan(folder: Path) -> dict:
     own_branch = run.get("branch") or f"{folder.name}/work"
     lines = (hdir / "transcript.jsonl").read_text(encoding="utf-8", errors="replace").splitlines()
     results = tool_results(lines)
-    calls, offences = 0, []
+    # The working directory per shell: the lead's, and each subagent's (keyed by the call that started it).
+    # Every shell starts in the checkout; a `cd` carries to the next command once its result is in.
+    start = str(Path(cfg["sandbox"]) / "repo")
+    cwd: dict[str | None, str | None] = {}
+    pending: dict[str, tuple[str | None, str, str | None]] = {}
+    calls, offences, unresolved = 0, [], []
     for no, line in enumerate(lines, 1):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
+            continue
+        shell = rec.get("parent_tool_use_id") if isinstance(rec, dict) else None
+        if rec.get("type") == "user":
+            content = (rec.get("message") or {}).get("content")
+            for block in content if isinstance(content, list) else []:
+                if not isinstance(block, dict) or block.get("type") != "tool_result":
+                    continue
+                if block.get("tool_use_id") in pending:
+                    owner, cmd, before = pending.pop(block["tool_use_id"])
+                    after = guard.final_cwd(cmd, before, cfg)
+                    if block.get("is_error") and after != before and not (after and os.path.isdir(after)):
+                        # The command failed somewhere and its `cd` target is not a folder on disk, so
+                        # the `cd` may not have run. (A failing test after a good `cd` keeps the folder.)
+                        after = None
+                    cwd[owner] = after
+                text = block.get("content")
+                reset = SHELL_RESET_RE.search(text if isinstance(text, str) else json.dumps(text))
+                if reset:
+                    cwd[shell] = reset.group(1)
             continue
         if rec.get("type") != "assistant":
             continue
@@ -66,7 +95,11 @@ def scan(folder: Path) -> dict:
                 continue
             calls += 1
             name, inp = block.get("name", ""), block.get("input") or {}
-            reason = guard.check(name, inp, str(folder / "repo"), cfg)
+            here = cwd.get(shell, start)
+            unknown: list[str] = []
+            reason = guard.check(name, inp, here, cfg, unresolved=unknown, scan=True)
+            if name == "Bash":
+                pending[block.get("id")] = (shell, str(inp.get("command") or ""), here)
             text = json.dumps(inp)
             if not reason:
                 others = sorted(set(BRANCH_RE.findall(text)) - {own_branch})
@@ -82,6 +115,8 @@ def scan(folder: Path) -> dict:
                 is_error, result = results.get(block.get("id"), (False, ""))
                 blocked = is_error and any(k.lower() in result.lower() for k in REFUSED)
                 offences.append({"line": no, "tool": name, "input": inp, "reason": reason, "blocked": blocked})
+            elif unknown:
+                unresolved.append({"line": no, "tool": name, "input": inp, "paths": sorted(set(unknown))})
     calls_by_id = {}
     for line in lines:
         try:
@@ -110,6 +145,9 @@ def scan(folder: Path) -> dict:
         "tool_calls": calls,
         "offences": got_through,
         "blocked_attempts": [o for o in offences if o["blocked"]],
+        # Relative paths used where the transcript does not show the working directory. Listed for a
+        # reader; they do not make the scan unclean.
+        "could_not_resolve": unresolved,
     }
 
 
@@ -121,7 +159,8 @@ def main(argv: list[str] | None = None) -> int:
     write_json(Path(args.run_folder) / "harness" / "scan.json", report)
     print(
         f"{'clean' if report['clean'] else 'NOT CLEAN'}: {report['tool_calls']} tool calls, "
-        f"{len(report['offences'])} offending, {len(report['blocked_attempts'])} blocked attempts"
+        f"{len(report['offences'])} offending, {len(report['blocked_attempts'])} blocked attempts, "
+        f"{len(report['could_not_resolve'])} with paths it could not resolve"
     )
     for o in report["offences"]:
         print(f"  line {o['line']}: {o['tool']} {json.dumps(o['input'])[:200]} -> {o['reason']}")
