@@ -228,3 +228,36 @@ def test_extra_env_reaches_the_run_but_never_beats_the_database(lab_env, practic
     root, manifest = make(lab_env, practice, "p0-t1-1", extra_env={"UV_PYTHON": "3.10", "DATABASE_URL": "x"})
     assert manifest["env"]["UV_PYTHON"] == "3.10"
     assert manifest["env"]["DATABASE_URL"].startswith("sqlite:///")
+
+
+def test_a_codebase_run_env_cannot_hide_the_owner_gh_login(lab_env, practice, tmp_path, monkeypatch):
+    """Hono's run_env sets XDG_CONFIG_HOME inside the run; gh looks for its login there. `lab` must not."""
+    from harness import run
+
+    login = tmp_path / "owner-gh-config"
+    login.mkdir()
+    monkeypatch.setenv("GH_CONFIG_DIR", str(login))
+    root, manifest = make(lab_env, practice, "p1-t1-1", extra_env={"XDG_CONFIG_HOME": "{run}/scratch/xdg-config"})
+    assert manifest["env"]["XDG_CONFIG_HOME"] == f"{root}/scratch/xdg-config"
+    # The session's own environment, as the harness builds it, plus what the fake gh needs.
+    session = run.clean_env(root, manifest["env"])
+    assert "GH_CONFIG_DIR" not in session or session["GH_CONFIG_DIR"] != str(login)
+    session.update({k: os.environ[k] for k in ("FAKE_GH_LOG",)}, FAKE_GH_REQUIRE_CONFIG=str(login), GH_TOKEN="from-run")
+    g = ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid"]
+    (root / "repo" / "app.py").write_text("print('fixed')\n")
+    sh(*g, "commit", "-qam", "fix", cwd=root / "repo")
+    (root / "scratch" / "body.md").write_text("Fixes T1.")
+
+    def lab_call(*args):
+        return subprocess.run(["lab", *args], cwd=root / "repo", env=session, capture_output=True, text=True)
+
+    out = lab_call("pr", "open", "--title", "Fix", "--body-file", "../scratch/body.md")
+    assert out.returncode == 0, out.stderr
+    assert lab_call("pr", "checks").returncode == 0
+    # Control: without the pinned login, the same call fails as the real one did in trial 4.
+    cfg_path = sandbox.control_dir(root) / "lab.json"
+    cfg = json.loads(cfg_path.read_text())
+    cfg.pop("owner_env")
+    cfg_path.write_text(json.dumps(cfg))
+    failed = lab_call("pr", "checks")
+    assert failed.returncode != 0 and "not logged into any GitHub hosts" in failed.stdout + failed.stderr

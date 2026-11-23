@@ -176,7 +176,8 @@ def handle_stop(a, root: Path, rec: dict, question: str, env: dict) -> dict:
                 break
     sheet = owner.parse_sheet(Path(a.reply_sheet))
     (hdir / "judge").mkdir(exist_ok=True)
-    judge_env = {k: v for k, v in env.items() if k not in ("LAB_DB", "DATABASE_URL")}
+    # The judge runs on the owner's side: without the codebase's run_env, which is for the run's toolchain.
+    judge_env = {k: v for k, v in clean_env(root, {}).items() if k not in ("LAB_DB", "DATABASE_URL")}
     verdict = owner.ask_judge(
         a.claude_bin,
         a.judge_model,

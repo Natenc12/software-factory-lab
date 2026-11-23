@@ -217,6 +217,14 @@ def writable_folders(paths: list[str], cfg: dict) -> list[str]:
     return out
 
 
+def gh_config_dir() -> str:
+    """Where the owner's gh login lives, as gh itself finds it from the harness's own environment."""
+    if os.environ.get("GH_CONFIG_DIR"):
+        return os.path.realpath(os.path.expanduser(os.environ["GH_CONFIG_DIR"]))
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    return os.path.realpath(os.path.join(xdg, "gh") if xdg else os.path.expanduser("~/.config/gh"))
+
+
 def guard_config(root: Path, runs_root: Path, extra_forbidden: list[str]) -> dict:
     """The guard's view of the run: its sandbox, its private folders, and places it may never touch."""
     home = os.path.realpath(os.path.expanduser("~"))
@@ -423,6 +431,9 @@ def create(
                 "private": [str(hdir), str(ctl)],
                 "events": str(hdir / "lab-events.jsonl"),
                 "gh": gh_bin,
+                # `lab` runs inside the session's environment, which a codebase's run_env can change
+                # (XDG_CONFIG_HOME moves gh's login). Its gh and git calls use these instead.
+                "owner_env": {"HOME": os.path.realpath(os.path.expanduser("~")), "GH_CONFIG_DIR": gh_config_dir()},
             },
         )
         manifest["env"] = env
