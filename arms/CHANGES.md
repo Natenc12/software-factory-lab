@@ -256,3 +256,19 @@ The only difference from P5P is the lead and its workers.
   `--plugin-dir` and `--agents`, with `Task`, `Agent` and `Skill` in its tools.
   `tests/test_arms.py::test_p6_run_gets_its_skills_and_its_worker` confirms this with the fake
   `claude`. No real `claude -p` call has started a P6 worker or used a skill in the same run yet.
+
+## P6P: chief of staff, pointed
+
+The orchestrator's brief (owner-approved): in trial runs the P6 lead never started a worker, so P6P
+tells it to delegate, beside P6 as P5P sits beside P5. `P6P` is `P6` exactly (guide, `agents/worker.md`
+with `Skill`, `skills/`), plus three sentences at the end of "Leading the work", replacing nothing:
+
+> Hand the building to workers. You plan the work, give each worker its brief, check what comes back
+> by reading the diff and re-running the checks yourself, and report to the owner. Do not write the
+> code yourself unless a worker has failed at the same task twice.
+
+No roles, no required number of workers, no other new steps. P6's earlier sentence "You may work the
+ticket yourself, or start `worker` subagents…" stays, because the addition replaces nothing; the new
+sentences narrow it. The skills apply to the lead as in P5P, through the unchanged P5P lines at the
+top of the guide. `tests/test_arms.py` pins the guide as P6's plus exactly these sentences and the
+worker and skills as byte for byte P6's.

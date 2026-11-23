@@ -17,11 +17,16 @@ skills unchanged, and one general `worker` subagent on `claude-opus-5-5`. The le
 and when to delegate. The lead's own model (Fable 5.2, `claude-fable-5-2`) is set by the run plan's
 `--model`, not by the arm; nothing in the folder names it.
 
+`P6P` Chief of staff, pointed, is P6 with three sentences added at the end of "Leading the work",
+telling the lead to hand the building to workers. It sits beside P6 as P5P sits beside P5. Its worker
+and skills are P6's, unchanged. Only P6P runs in a stage: P6 is kept as P6P's base and was not run in
+a stage.
+
 What a run receives from a folder: its top-level `.md` files other than `README.md`, appended to the
 system prompt; `agents/*.md`, passed as `--agents`; and, only if the folder has one, `skills/<name>/SKILL.md`
 (see `harness/README.md`). Skills are opt-in: each is one file with `name` and `description` front
 matter. The run sees every description up front and loads a skill's body only when it calls the skill;
-it may use them at its own discretion. Only P5, P5P, P5PA and P6 have skills. Nothing else here is loaded into a run:
+it may use them at its own discretion. Only P5, P5P, P5PA, P6 and P6P have skills. Nothing else here is loaded into a run:
 
 - `CHANGES.md`: every departure from the arms' sources, with the reason.
 - `SIZES.md`: each arm's word count.
