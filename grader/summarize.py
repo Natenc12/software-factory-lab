@@ -11,14 +11,16 @@ Two readings are reported, each with the decision rules applied to it. `decision
 reading, which decides. `decision_second_reading` (gate 2, item 3) uses each verdict's
 `second_reading.trustworthy_second_reading` and its agreed rescues; it is reported beside, not instead.
 
-Stage 2 (any stage folder named stage-2...): the decision is the charter's Q3 rule instead, for each
-add-on arm (P1T, P1L, P1A, P5, P5P) against P1 on the tickets both have (default: the eight stage-2
+Stage 2 (any stage folder named stage-2..., so stage-2b too): the decision is the charter's Q3 rule
+instead, for each add-on arm (P1T, P1L, P1A, P5, P5P, and stage 2b's P5PA) against P1 on the tickets both have (default: the eight stage-2
 tickets; `--tickets` to change). Trustworthy rate, quality (mean of the three 1-5 scores) and rescues are
 each taken per ticket as the cell's mean over its repeats, then averaged over tickets, so a cell with
 three runs does not outweigh one with two (trustworthy and rescues are shown per 8 tickets, quality on
 its 1-5 scale). An add-on goes in only if it improves at least two of the three (higher trustworthy,
 higher quality, fewer rescues) and its mean counted tokens per run, averaged the same way, are no more
 than 30% above P1's. Skills used (from each run's run.json `skills_used`) are counted per row.
+`--control ARM` (default P1) also writes the same table against that arm under `against_control` (both
+readings), with `plain_facts`: per arm, the difference in trustworthy per 8 and the cost ratio.
 
 One row per run, totals per row of the plan (an arm on S1 is its own name, `P0`; a spec-level row is
 `P0/S2`), and the charter's decision rules applied literally:
@@ -44,11 +46,11 @@ import sys
 from pathlib import Path
 
 from grader.common import (
-    ADDON_ARMS,
     ARM_ORDER,
     LAB_ROOT,
     PROCESS_ARMS,
     STAGE2_TICKETS,
+    SUMMARY_ADDONS,
     now_iso,
     parse_arm,
     read_json,
@@ -315,21 +317,25 @@ def r3(x):
     return None if x is None else round(x, 3)
 
 
-def decide_q3(verdicts: list[dict], reading: str = "current") -> dict:
-    """The charter's Q3 rule for each add-on arm against P1, on the tickets both have."""
-    by_row = {}
-    for row in ["P1", *ADDON_ARMS]:
-        by_row[row] = cells([v for v in verdicts if v["row"] == row], reading)
-    out: dict = {"rule": "Q3", "reading": reading, "rules_applied_literally": True, "cost_limit": Q3_COST_LIMIT,
-                 "addons": {}}  # fmt: skip
-    p1 = by_row["P1"]
-    for arm in ADDON_ARMS:
+def decide_q3(verdicts: list[dict], reading: str = "current", control: str = "P1") -> dict:
+    """The charter's Q3 rule for each add-on arm against P1, on the tickets both have.
+
+    With another `control`, the same table against that arm (every other add-on, and P1, compared with
+    it), plus `plain_facts`: per arm, the difference in trustworthy per 8 and the cost ratio.
+    """
+    arms = [a for a in ["P1", *SUMMARY_ADDONS] if a != control] if control != "P1" else list(SUMMARY_ADDONS)
+    by_row = {row: cells([v for v in verdicts if v["row"] == row], reading) for row in [control, *arms]}
+    rule = "Q3" if control == "P1" else f"Q3 table against {control} (the charter's Q3 rule is against P1)"
+    out: dict = {"rule": rule, "reading": reading, "control": control, "rules_applied_literally": True,
+                 "cost_limit": Q3_COST_LIMIT, "addons": {}}  # fmt: skip
+    p1 = by_row[control]
+    for arm in arms:
         c = by_row[arm]
         if not c:
             continue
         tickets = sorted(set(c) & set(p1), key=lambda t: int(t[1:]))
         if not tickets:
-            out["addons"][arm] = {"answer": None, "why": "no ticket graded for both this arm and P1"}
+            out["addons"][arm] = {"answer": None, "why": f"no ticket graded for both this arm and {control}"}
             continue
         a, b = over_tickets(c, tickets), over_tickets(p1, tickets)
         diff = {
@@ -345,7 +351,8 @@ def decide_q3(verdicts: list[dict], reading: str = "current") -> dict:
         out["addons"][arm] = {
             "tickets": tickets,
             "addon": {k: r3(v) for k, v in a.items()},
-            "p1": {k: r3(v) for k, v in b.items()},
+            "control": {k: r3(v) for k, v in b.items()},
+            **({"p1": {k: r3(v) for k, v in b.items()}} if control == "P1" else {}),
             "differences": {k: r3(v) for k, v in diff.items()},
             "improved": improved,
             "improved_count": sum(improved.values()),
@@ -353,6 +360,12 @@ def decide_q3(verdicts: list[dict], reading: str = "current") -> dict:
             "cost_within_limit": None if ratio is None else ratio <= Q3_COST_LIMIT,
             "answer": None if ratio is None else (sum(improved.values()) >= 2 and ratio <= Q3_COST_LIMIT),
         }
+    if control != "P1":
+        out["plain_facts"] = {
+            arm: {"trustworthy_per_8_difference": x.get("differences", {}).get("trustworthy_per_8"),
+                  "cost_ratio": x.get("cost_ratio")}
+            for arm, x in out["addons"].items()
+        }  # fmt: skip
     return out
 
 
@@ -399,7 +412,9 @@ def csv_row(v: dict) -> dict:
     return row
 
 
-def summarize(stages, root: str | None = None, out_dir: Path | None = None, rows_only=None, tickets_only=None) -> dict:
+def summarize(
+    stages, root: str | None = None, out_dir: Path | None = None, rows_only=None, tickets_only=None, control: str = "P1"
+) -> dict:
     stages = [stages] if isinstance(stages, str) else list(stages)
     q3 = any(st.startswith("stage-2") for st in stages)
     if q3 and tickets_only is None:
@@ -444,8 +459,15 @@ def summarize(stages, root: str | None = None, out_dir: Path | None = None, rows
         "per_row_second_reading": by_row["second"],
         "decision_second_reading": second,
         "skills_used": skills_by_row(verdicts),
+        "control": control,
         "run_rows": [csv_row(v) for v in verdicts],
     }
+    if q3 and control != "P1":
+        summary["against_control"] = decide_q3(verdicts, "current", control)
+        summary["against_control_second_reading"] = decide_q3(verdicts, "second", control)
+        summary["against_control_second_reading"]["label"] = (
+            "second reading (gate 2, item 3): reported beside the current reading; it does not decide"
+        )
     out_dir.mkdir(parents=True, exist_ok=True)
     write_json(out_dir / "summary.json", summary)
     with open(out_dir / "summary.csv", "w", newline="", encoding="utf-8") as f:
@@ -480,10 +502,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--tickets", help="keep only these tickets, comma-separated (stage 2 default: its eight)")
     ap.add_argument("--runs-root", help="default $FACTORY_RUNS_ROOT or ~/factory-runs")
     ap.add_argument("--out-dir", help="default results/<last stage> in this repo")
+    ap.add_argument("--control", default="P1", help="stage 2: also compare every add-on against this arm (default P1)")
     a = ap.parse_args(argv)
+    a.control = a.control.upper()
+    if a.control != "P1" and not any(st.startswith("stage-2") for st in a.stages):
+        ap.error("--control is for summaries that include a stage-2 folder")
     rows_only = [r.strip() for r in a.rows.split(",") if r.strip()] if a.rows else None
     tickets_only = [t.strip().upper() for t in a.tickets.split(",") if t.strip()] if a.tickets else None
-    s = summarize(a.stages, a.runs_root, Path(a.out_dir) if a.out_dir else None, rows_only, tickets_only)
+    s = summarize(a.stages, a.runs_root, Path(a.out_dir) if a.out_dir else None, rows_only, tickets_only, a.control)
     label = " (provisional)" if s["provisional"] else ""
     print(f"{s['stage']}{label}: {s['runs']} verdicts, repeats {s['repeats']}")
     for name, key, dkey in (("current reading (decides)", "per_row", "decision"),
@@ -494,6 +520,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"    {row}: {t['trustworthy_per_8']} per 8 (mean over repeats: {reps or 'none'}), "
                   f"{len(t['discarded'])} discarded, {len(t['incomplete'])} incomplete")  # fmt: skip
         print(f"    {describe(s[dkey])}")
+    if "against_control" in s:
+        for name, key in (("current", "against_control"), ("second, reported", "against_control_second_reading")):
+            facts = s[key].get("plain_facts", {})
+            print(f"  against {s['control']} ({name} reading): " + "; ".join(
+                f"{arm}: trustworthy {f['trustworthy_per_8_difference']:+} per 8, cost x{f['cost_ratio']}"
+                if f["trustworthy_per_8_difference"] is not None and f["cost_ratio"] is not None else f"{arm}: undecided"
+                for arm, f in facts.items()))  # fmt: skip
     return 0
 
 

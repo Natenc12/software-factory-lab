@@ -27,6 +27,10 @@ PROCESS_ARMS = ["P1", "P1R", "P3", "P2", "P4"]
 # skills library (pure discretion) and skills library (pointed).
 ADDON_ARMS = ["P1T", "P1L", "P1A", "P5", "P5P"]
 STAGE2_TICKETS = ["T2", "T5", "T6", "T7", "T9", "T10", "T11", "T12"]
+# Stage 2b (an extra round on the same eight tickets): the pointed skills plus the architecture brief.
+STAGE2B_ARMS = ["P5PA"]
+# Every add-on the stage 2 summary compares (stage 2's five and stage 2b's).
+SUMMARY_ADDONS = [*ADDON_ARMS, *STAGE2B_ARMS]
 
 # List prices in US dollars per million tokens. Source: the claude-api skill's model table (cached
 # 2026-11-03): Opus 5.5 $4 / $20, cache reads $0.20; Fable 5.2 $8 / $40, cache reads $0.20; Sonnet 5.5
