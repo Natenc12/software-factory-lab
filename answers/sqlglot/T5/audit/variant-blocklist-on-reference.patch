@@ -1,0 +1,75 @@
+diff --git a/sqlglot/dialects/dialect.py b/sqlglot/dialects/dialect.py
+index fe74c7ee0..7b6000023 100644
+--- a/sqlglot/dialects/dialect.py
++++ b/sqlglot/dialects/dialect.py
+@@ -666,7 +666,7 @@ class Dialect(metaclass=_Dialect):
+     Whether LIMIT ALL is supported (equivalent to no limit) as in Postgres.
+     """
+ 
+-    SUPPORTS_UPDATE_OR = False
++    SUPPORTS_UPDATE_OR = True
+     """Whether UPDATE accepts an OR conflict resolution algorithm before the table name."""
+ 
+     PROJECTION_ALIASES_SHADOW_SOURCE_NAMES = False
+diff --git a/sqlglot/dialects/mysql.py b/sqlglot/dialects/mysql.py
+index 825f54d57..e492ac0ba 100644
+--- a/sqlglot/dialects/mysql.py
++++ b/sqlglot/dialects/mysql.py
+@@ -14,6 +14,7 @@ from sqlglot.typing.mysql import EXPRESSION_METADATA
+ 
+ 
+ class MySQL(Dialect):
++    SUPPORTS_UPDATE_OR = False
+     PROMOTE_TO_INFERRED_DATETIME_TYPE = True
+     USING_COLUMN_ORDER = UsingColumnOrder.LEFT_TABLE
+ 
+diff --git a/sqlglot/dialects/postgres.py b/sqlglot/dialects/postgres.py
+index 11c221078..3303238d7 100644
+--- a/sqlglot/dialects/postgres.py
++++ b/sqlglot/dialects/postgres.py
+@@ -9,6 +9,7 @@ from sqlglot.typing.postgres import EXPRESSION_METADATA
+ 
+ 
+ class Postgres(Dialect):
++    SUPPORTS_UPDATE_OR = False
+     EXPRESSION_METADATA = EXPRESSION_METADATA.copy()
+     INDEX_OFFSET = 1
+     ASCII_ONLY_NORMALIZATION = True
+diff --git a/sqlglot/dialects/sqlite.py b/sqlglot/dialects/sqlite.py
+index 474f2a388..4ea8772f3 100644
+--- a/sqlglot/dialects/sqlite.py
++++ b/sqlglot/dialects/sqlite.py
+@@ -24,7 +24,6 @@ class SQLite(Dialect):
+         exp.Qualify: AliasPrecedence.SOURCE,
+     }
+     SAFE_TO_ELIMINATE_DOUBLE_NEGATION = False
+-    SUPPORTS_UPDATE_OR = True
+     USING_COLUMN_ORDER = UsingColumnOrder.IN_PLACE
+     CONCAT_COALESCE = True
+     CONCAT_WS_COALESCE = True
+diff --git a/sqlglot/generator.py b/sqlglot/generator.py
+index dca66c432..ba4209d02 100644
+--- a/sqlglot/generator.py
++++ b/sqlglot/generator.py
+@@ -2875,7 +2875,7 @@ class Generator:
+         hint = self.sql(expression, "hint")
+         alternative = self.sql(expression, "alternative")
+         if alternative:
+-            if self.dialect.SUPPORTS_UPDATE_OR or self.dialect == "":
++            if self.dialect.SUPPORTS_UPDATE_OR:
+                 alternative = f" OR {alternative}"
+             else:
+                 self.unsupported(f"UPDATE OR {alternative} is not supported")
+diff --git a/sqlglot/parser.py b/sqlglot/parser.py
+index eb85e5bc2..569f9390c 100644
+--- a/sqlglot/parser.py
++++ b/sqlglot/parser.py
+@@ -4047,7 +4047,7 @@ class Parser:
+ 
+     def _parse_update(self) -> exp.Update:
+         kwargs: dict[str, object] = {"hint": self._parse_hint()}
+-        if (self.dialect.SUPPORTS_UPDATE_OR or self.dialect == "") and self._match(TokenType.OR):
++        if self._match(TokenType.OR):
+             if self._match_texts(self.CONFLICT_ALGORITHMS):
+                 kwargs["alternative"] = self._prev.text.upper()
+             else:

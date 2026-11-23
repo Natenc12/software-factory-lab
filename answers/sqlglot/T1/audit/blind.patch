@@ -1,0 +1,89 @@
+diff --git a/sqlglot/dialects/oracle.py b/sqlglot/dialects/oracle.py
+index 9330c033e..b2f7dd1a6 100644
+--- a/sqlglot/dialects/oracle.py
++++ b/sqlglot/dialects/oracle.py
+@@ -113,7 +113,6 @@ class Oracle(Dialect):
+             "SAMPLE": TokenType.TABLE_SAMPLE,
+             "START": TokenType.BEGIN,
+             "SUBPARTITION": TokenType.PARTITION,
+-            "TOP": TokenType.TOP,
+             "VARCHAR2": TokenType.VARCHAR,
+             "SYSTIMESTAMP": TokenType.SYSTIMESTAMP,
+         }
+diff --git a/sqlglot/parsers/snowflake.py b/sqlglot/parsers/snowflake.py
+index cf34de31c..afbbc3eab 100644
+--- a/sqlglot/parsers/snowflake.py
++++ b/sqlglot/parsers/snowflake.py
+@@ -376,7 +376,7 @@ class SnowflakeParser(parser.Parser):
+         TokenType.VOLUME,
+     }
+ 
+-    FUNC_TOKENS = parser.Parser.FUNC_TOKENS | {TokenType.ROLLBACK}
++    FUNC_TOKENS = parser.Parser.FUNC_TOKENS | {TokenType.ROLLBACK, TokenType.TOP}
+ 
+     ALIAS_TOKENS = parser.Parser.ALIAS_TOKENS | {
+         TokenType.INTEGRATION,
+@@ -975,6 +975,25 @@ class SnowflakeParser(parser.Parser):
+         ),
+     }
+ 
++    def _parse_limit(
++        self,
++        this: exp.Expr | None = None,
++        top: bool = False,
++        skip_limit_token: bool = False,
++    ) -> exp.Expr | None:
++        # TOP is not reserved in Snowflake: it only starts a row limit when it is directly
++        # followed by a number (SELECT TOP 5 ...). Anywhere else it is an ordinary name.
++        if (
++            top
++            and not skip_limit_token
++            and self._curr
++            and self._curr.token_type == TokenType.TOP
++            and not (self._next and self._next.token_type == TokenType.NUMBER)
++        ):
++            return None
++
++        return super()._parse_limit(this=this, top=top, skip_limit_token=skip_limit_token)
++
+     def _parse_directory(self) -> exp.DirectoryStage:
+         table = self._parse_table_parts()
+         this = table.this if isinstance(table, exp.Table) else table
+diff --git a/tests/dialects/test_oracle.py b/tests/dialects/test_oracle.py
+index aecad6a25..83cfd5a5a 100644
+--- a/tests/dialects/test_oracle.py
++++ b/tests/dialects/test_oracle.py
+@@ -6,6 +6,12 @@ from sqlglot.optimizer.qualify import qualify
+ class TestOracle(Validator):
+     dialect = "oracle"
+ 
++    def test_top_is_an_ordinary_name(self):
++        # Oracle has no TOP clause
++        self.validate_identity("SELECT top FROM t").selects[0].assert_is(exp.Column)
++        self.validate_identity("SELECT top, x FROM t")
++        self.validate_identity("SELECT TOP(5), x FROM t").selects[0].assert_is(exp.Anonymous)
++
+     def test_create_table_tablespace(self):
+         sql = "CREATE TABLE t (id NUMBER) TABLESPACE ts"
+         create = self.validate_identity(sql).assert_is(exp.Create)
+diff --git a/tests/dialects/test_snowflake.py b/tests/dialects/test_snowflake.py
+index 2a868f346..85db338ea 100644
+--- a/tests/dialects/test_snowflake.py
++++ b/tests/dialects/test_snowflake.py
+@@ -123,6 +123,16 @@ class TestSnowflake(Validator):
+             },
+         )
+ 
++    def test_top_is_not_reserved(self):
++        # TOP only starts a row limit when a number follows it
++        self.validate_identity("SELECT TOP 5 x FROM t", "SELECT x FROM t LIMIT 5")
++        self.validate_identity("SELECT top FROM t").selects[0].assert_is(exp.Column)
++        self.validate_identity("SELECT top.x FROM t AS top")
++        self.validate_identity("SELECT top, x FROM t")
++        self.validate_identity("SELECT top:field FROM t", "SELECT GET_PATH(top, 'field') FROM t")
++        self.validate_identity("SELECT TOP(x) FROM t").selects[0].assert_is(exp.Anonymous)
++        self.validate_identity("SELECT TOP(5), x FROM t")
++
+     def test_set_operation_top(self):
+         for op in ("UNION", "UNION ALL", "INTERSECT", "EXCEPT"):
+             with self.subTest(op=op):

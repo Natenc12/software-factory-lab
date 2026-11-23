@@ -1,0 +1,40 @@
+diff --git a/sqlglot/generator.py b/sqlglot/generator.py
+index e034cc586..a82b61879 100644
+--- a/sqlglot/generator.py
++++ b/sqlglot/generator.py
+@@ -3904,7 +3904,6 @@ class Generator:
+             filtered = exp.ArrayFilter(this=expression.this, expression=predicate)
+             return self.sql(exp.paren(exp.ArraySize(this=filtered).neq(0)))
+ 
+-        self.unsupported("EXISTS with a lambda predicate is unsupported")
+         return self.function_fallback_sql(expression)
+ 
+     def case_sql(self, expression: exp.Case) -> str:
+diff --git a/sqlglot/generators/mysql.py b/sqlglot/generators/mysql.py
+index 91c1fef14..6ea7dc2a8 100644
+--- a/sqlglot/generators/mysql.py
++++ b/sqlglot/generators/mysql.py
+@@ -615,6 +615,11 @@ class MySQLGenerator(generator.Generator):
+ 
+     SQL_SECURITY_VIEW_LOCATION: t.ClassVar = exp.Properties.Location.POST_CREATE
+ 
++    def exists_sql(self, expression: exp.Exists) -> str:
++        if expression.expression:
++            self.unsupported("EXISTS with a lambda predicate is unsupported")
++        return super().exists_sql(expression)
++
+     def makeinterval_sql(self: MySQLGenerator, expression: exp.MakeInterval) -> str:
+         intervals: list[exp.Interval] = []
+         for arg_key, value in expression.args.items():
+diff --git a/tests/dialects/test_hive.py b/tests/dialects/test_hive.py
+index a6d68b49b..413ba6d96 100644
+--- a/tests/dialects/test_hive.py
++++ b/tests/dialects/test_hive.py
+@@ -1000,7 +1000,6 @@ class TestHive(Validator):
+                 "bigquery": "SELECT (ARRAY_LENGTH(ARRAY(SELECT x FROM UNNEST(arr) AS x WHERE x > 2)) <> 0)",
+                 "presto": "SELECT ANY_MATCH(arr, x -> x > 2)",
+                 "trino": "SELECT ANY_MATCH(arr, x -> x > 2)",
+-                "snowflake": UnsupportedError,
+                 "mysql": UnsupportedError,
+             },
+         )
