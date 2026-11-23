@@ -8,12 +8,14 @@ The TypeScript counterpart of `verify_ticket.py` (which is for the Python codeba
 1. checks out `base_ref` in a temporary worktree of the practice repo, installs from pnpm's local
    store (`--offline`), builds, and shows the type check and the existing tests pass;
 2. copies `answers/hono/<T>/hidden/*` into `src/hidden/` and shows every hidden test fails (a hidden
-   file that cannot load counts as failing);
+   file that cannot load counts as failing), except guard tests named in `key.json`'s
+   `hidden_tests_may_pass_on_base`;
 3. applies `reference.patch` and shows lint and format are clean, no path in `unchanged_paths`
    changed, the type check and existing tests pass, every hidden test passes, and the type check and
    lint stay clean with the hidden tests in place;
 4. for each `naive*.patch` (a careless but competent fix), shows at least one hidden test fails while
-   the type check and existing tests still pass;
+   the type check and existing tests still pass; for each `built-as-asked*.patch` (the request built as
+   written), shows every hidden test its `hidden_tests_pass` trap names fails;
 5. removes the worktree.
 
 The main suite always runs before the hidden tests are copied in, as the grader must do: `src/hidden`
@@ -179,6 +181,8 @@ class Verifier:
             self.check_reference(tree, base_ref)
             for patch in sorted(self.adir.glob("naive*.patch")):
                 self.check_naive(tree, base_ref, patch)
+            for patch in sorted(self.adir.glob("built-as-asked*.patch")):
+                self.check_built_as_asked(tree, base_ref, patch)
         except Exception as exc:  # a crash is a failed check, recorded, never a silent pass
             self.step("crash", False, note=str(exc)[:4000])
         finally:
@@ -205,11 +209,15 @@ class Verifier:
         self.step("hidden tests exist", bool(files), files=files)
         res = self.vitest(tree, [HIDDEN_DIR], "base-hidden")
         hid = res["outcomes"]
-        not_failing = sorted(k for k, v in hid.items() if v not in ("failed", "error"))
+        # A guard test the key names may pass on the base (it checks that something is NOT built).
+        guards = self.key.get("hidden_tests_may_pass_on_base", [])
+        is_guard = lambda name: any(g in name for g in guards)  # noqa: E731
+        not_failing = sorted(k for k, v in hid.items() if v not in ("failed", "error") and not is_guard(k))
+        failing = [k for k, v in hid.items() if v in ("failed", "error")]
         self.base_hidden = hid
         self.step(
-            "base: every hidden test fails",
-            bool(hid) and not not_failing,
+            "base: every hidden test fails" + (" (guards in hidden_tests_may_pass_on_base excepted)" if guards else ""),
+            bool(failing) and not not_failing,
             note=f"{res['counts']}",
             outcomes=hid,
             not_failing=not_failing,
@@ -292,6 +300,21 @@ class Verifier:
             bool(failing),
             failing=failing,
             note=f"{len(failing)}/{len(res['outcomes'])} hidden fail",
+        )
+
+    def check_built_as_asked(self, tree: Tree, base_ref: str, patch: Path) -> None:
+        """The request built as written: every hidden test a `hidden_tests_pass` trap names must fail."""
+        self.prepare(tree, base_ref, patch)
+        tree.add_hidden(self.hidden)
+        res = self.vitest(tree, [HIDDEN_DIR], f"{patch.stem}-hidden")
+        names = [
+            n for t in self.key.get("traps", []) if t.get("check") == "hidden_tests_pass" for n in t.get("tests", [])
+        ]
+        watched = {k: v for k, v in res["outcomes"].items() if any(n in k for n in names)}
+        self.step(
+            f"{patch.name}: the trap's hidden tests fail",
+            bool(names) and bool(watched) and all(v in ("failed", "error") for v in watched.values()),
+            watched=watched,
         )
 
 

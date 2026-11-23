@@ -2,7 +2,7 @@
 import { Hono } from '../hono'
 import { logger } from '../middleware/logger'
 import { requestId } from '../middleware/request-id'
-import { setMetric, timing } from '../middleware/timing'
+import { setMetric, startTime, timing } from '../middleware/timing'
 
 // The logger colours the status when colour is enabled; accept either form.
 const status = (code: number) => `(?:\\x1b\\[\\d+m)?${code}(?:\\x1b\\[0m)?`
@@ -75,11 +75,21 @@ describe('timing with a request id', () => {
         setMetric(c, 'db', 12.3, 'Database')
         return c.text('ok')
       })
+      app.get('/open', (c) => {
+        startTime(c, 'open')
+        return c.text('ok')
+      })
 
       const res = await app.request('http://localhost/p')
       const header = res.headers.get('Server-Timing') ?? ''
       expect(header).toMatch(
         /^db;dur=12\.3;desc="Database",total;dur=[\d.]+;desc="Total Response Time",reqid;desc="req-3"$/
+      )
+
+      // a timer the handler left open is ended by the middleware, and still comes before the id
+      const open = (await app.request('http://localhost/open')).headers.get('Server-Timing') ?? ''
+      expect(open).toMatch(
+        /^total;dur=[\d.]+;desc="Total Response Time",open;dur=[\d.]+,reqid;desc="req-3"$/
       )
     }
   })
@@ -117,5 +127,25 @@ describe('timing with a request id', () => {
     app3.get('/p', (c) => c.text('ok'))
     const res3 = await app3.request('http://localhost/p')
     expect(res3.headers.get('Server-Timing')).toBe('reqid;desc="req-5"')
+
+    // an empty id, or a value that is not a string, is no id
+    for (const value of ['', 42]) {
+      const { lines, fn } = collect()
+      const app4 = new Hono()
+      app4.use(async (c, next) => {
+        c.set('requestId', value as string)
+        await next()
+      })
+      app4.use(logger(fn))
+      app4.use(timing({ total: false }))
+      app4.get('/p', (c) => {
+        setMetric(c, 'db', 1, 'Database')
+        return c.text('ok')
+      })
+      const res4 = await app4.request('http://localhost/p')
+      expect(res4.headers.get('Server-Timing')).toBe('db;dur=1.0;desc="Database"')
+      expect(lines[0]).toBe('<-- GET /p')
+      expect(lines[1]).toMatch(new RegExp(`^--> GET /p ${status(200)} ${elapsed}$`))
+    }
   })
 })

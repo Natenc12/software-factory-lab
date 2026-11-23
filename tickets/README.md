@@ -152,6 +152,10 @@ Differences from the gct format:
   include. Replays use the upstream fix's own tests, minus cases that already pass on the base.
 - **Traps** use `unchanged_paths`, `scope_out_paths` and `hidden_tests_pass` only (`ast_unchanged` is
   Python-specific).
+- **Guard tests.** A wrong-request ticket may have one hidden test that passes on the base because it
+  checks that the request as written was not built (T8: a POST is not served the file by default). The
+  key names it in `hidden_tests_may_pass_on_base`, its `built-as-asked` trap watches only it, and
+  `verify_ticket_hono.py` checks that each `built-as-asked*.patch` fails it.
 - **An existing test** is an `it(...)` / `test(...)` block in a `*.test.ts(x)` file, or a `runTest(...)`
   call: `src/router/common.case.test.ts` holds cases every router runs, and each router's
   `router.test.ts` passes `runTest()` a skip list as data. `check_packages.py hono --lab ~/repos/hono-lab`

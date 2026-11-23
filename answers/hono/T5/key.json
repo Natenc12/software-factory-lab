@@ -20,7 +20,7 @@
   "naive_patches": {
     "naive.patch": "Special-cases the key `signal` in the merge, so other class instances (a dispatcher) are still flattened into plain objects."
   },
-  "hidden_tests_note": "The first test is the upstream client test with plain-key checks folded in; the second is the author's, for the issue's general case (any class instance), through the public client only. The upstream unit tests of the internal deepMerge helper are not used, so a correct fix outside that helper passes.",
+  "hidden_tests_note": "The first test is the upstream client test with plain-key checks folded in; the second is the author's, for the issue's general case (any class instance), through the public client only. The upstream unit tests of the internal deepMerge helper are not used, so a correct fix outside that helper passes. A third test (audit B) puts an instance under a key the ticket does not name (`agent`) and a plain object (`cf`) at both levels: special-casing `signal` and `dispatcher`, or merging init only one level deep, fails it.",
   "issue_hints_removed": [
     "none needed beyond the reproduction; the issue left override versus compose open, and the ticket decides override, as the upstream fix did"
   ]

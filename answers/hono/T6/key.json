@@ -1,8 +1,12 @@
 {
   "hidden_test_cmd": "pnpm exec vp test --run src/hidden",
-  "source": {"idea": "research/stage-4-codebases.md, Hono ticket ideas (feature)"},
+  "source": {
+    "idea": "research/stage-4-codebases.md, Hono ticket ideas (feature)"
+  },
   "unchanged_paths": [],
-  "scope_out_paths": ["adapters/"],
+  "scope_out_paths": [
+    "adapters/"
+  ],
   "tests_may_change": [],
   "tests_may_change_note": "None: the change is automatic only when a request id is set, and no existing logger or timing test sets one; a correct fix adds tests and changes none. Checked against the blind fix as well.",
   "traps": [],
@@ -10,5 +14,6 @@
     "naive-logger.patch": "Reads the request id once, before the rest of the chain runs, so with the logger registered first the outgoing line has no id.",
     "naive-timing.patch": "Writes the id into Server-Timing without escaping, so an id with a quote or backslash breaks the header."
   },
-  "hidden_tests_note": "Exact lines and headers, with the logger's elapsed time and colour codes matched by pattern; no test depends on timing."
+  "hidden_tests_note": "Exact lines and headers, with the logger's elapsed time and colour codes matched by pattern; no test depends on timing. Audit B added two checks folded into failing tests: an empty or non-string id is no id, and reqid stays last when a timer the handler left open is ended by the middleware.",
+  "scripts_cannot_see": "A run that adds an option (default on) without asking passes every script check; only the judges and the T6-option-plan reply can see it."
 }
