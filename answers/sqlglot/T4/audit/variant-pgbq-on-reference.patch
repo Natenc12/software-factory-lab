@@ -1,0 +1,68 @@
+diff --git a/sqlglot/generator.py b/sqlglot/generator.py
+index e034cc586..ab70c1b30 100644
+--- a/sqlglot/generator.py
++++ b/sqlglot/generator.py
+@@ -3899,12 +3899,6 @@ class Generator:
+         if not predicate:
+             return f"EXISTS{self.wrap(expression)}"
+ 
+-        # Spark's EXISTS(array, lambda)
+-        if self.CAN_IMPLEMENT_ARRAY_ANY:
+-            filtered = exp.ArrayFilter(this=expression.this, expression=predicate)
+-            return self.sql(exp.paren(exp.ArraySize(this=filtered).neq(0)))
+-
+-        self.unsupported("EXISTS with a lambda predicate is unsupported")
+         return self.function_fallback_sql(expression)
+ 
+     def case_sql(self, expression: exp.Case) -> str:
+diff --git a/sqlglot/generators/duckdb.py b/sqlglot/generators/duckdb.py
+index 5cf4b8423..42d7fe629 100644
+--- a/sqlglot/generators/duckdb.py
++++ b/sqlglot/generators/duckdb.py
+@@ -3639,6 +3639,12 @@ class DuckDBGenerator(generator.Generator):
+         result = exp.replace_placeholders(self.APPROXIMATE_SIMILARITY_TEMPLATE.copy(), expr=expr)
+         return f"({self.sql(result)})"
+ 
++    def exists_sql(self, expression: exp.Exists) -> str:
++        if expression.expression:
++            filtered = exp.ArrayFilter(this=expression.this, expression=expression.expression)
++            return self.sql(exp.paren(exp.ArraySize(this=filtered).neq(0)))
++        return super().exists_sql(expression)
++
+     def arrayall_sql(self, expression: exp.ArrayAll) -> str:
+         return self.func(
+             "LIST_REDUCE",
+diff --git a/sqlglot/generators/mysql.py b/sqlglot/generators/mysql.py
+index 91c1fef14..6ea7dc2a8 100644
+--- a/sqlglot/generators/mysql.py
++++ b/sqlglot/generators/mysql.py
+@@ -615,6 +615,11 @@ class MySQLGenerator(generator.Generator):
+ 
+     SQL_SECURITY_VIEW_LOCATION: t.ClassVar = exp.Properties.Location.POST_CREATE
+ 
++    def exists_sql(self, expression: exp.Exists) -> str:
++        if expression.expression:
++            self.unsupported("EXISTS with a lambda predicate is unsupported")
++        return super().exists_sql(expression)
++
+     def makeinterval_sql(self: MySQLGenerator, expression: exp.MakeInterval) -> str:
+         intervals: list[exp.Interval] = []
+         for arg_key, value in expression.args.items():
+diff --git a/tests/dialects/test_hive.py b/tests/dialects/test_hive.py
+index a6d68b49b..5307d8abd 100644
+--- a/tests/dialects/test_hive.py
++++ b/tests/dialects/test_hive.py
+@@ -996,11 +996,10 @@ class TestHive(Validator):
+                 "hive": "SELECT EXISTS(arr, x -> x > 2)",
+                 "spark": "SELECT EXISTS(arr, x -> x > 2)",
+                 "duckdb": "SELECT (ARRAY_LENGTH(LIST_FILTER(arr, LAMBDA x : x > 2)) <> 0)",
+-                "postgres": "SELECT (ARRAY_LENGTH(ARRAY(SELECT x FROM UNNEST(arr) AS _t0(x) WHERE x > 2), 1) <> 0)",
+-                "bigquery": "SELECT (ARRAY_LENGTH(ARRAY(SELECT x FROM UNNEST(arr) AS x WHERE x > 2)) <> 0)",
++                "postgres": "SELECT EXISTS(arr, x -> x > 2)",
++                "bigquery": "SELECT EXISTS(arr, x -> x > 2)",
+                 "presto": "SELECT ANY_MATCH(arr, x -> x > 2)",
+                 "trino": "SELECT ANY_MATCH(arr, x -> x > 2)",
+-                "snowflake": UnsupportedError,
+                 "mysql": UnsupportedError,
+             },
+         )

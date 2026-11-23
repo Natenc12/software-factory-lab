@@ -1,0 +1,3 @@
+# Hidden tests here run inside the sqlglot practice repo, whose ruff settings use 100-character lines.
+extend = "../../pyproject.toml"
+line-length = 100

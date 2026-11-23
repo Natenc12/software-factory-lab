@@ -1,0 +1,26 @@
+{
+  "hidden_test_cmd": "sh -c 'PATH=\"$PWD/.venv/bin:$PATH\" exec python -m pytest -q -p no:subtests \"$@\"' sh tests/hidden",
+  "unchanged_paths": [],
+  "scope_out_paths": [],
+  "tests_may_change": [
+    "tests/dialects/",
+    "tests/test_tokens.py",
+    "tests/test_parser.py",
+    "tests/test_transpile.py"
+  ],
+  "tests_may_change_note": "New cases go into existing test methods in sqlglot, so every dialect test file and the tokenizer, parser and transpile tests are allowed.",
+  "traps": [],
+  "replay": {
+    "source": "tobymao/sqlglot issue 9242",
+    "fix_commits": [
+      "9951ad252d0ef17bab744b94fcb8f90ba6bbf858"
+    ],
+    "reference_note": "the fix's whole diff, tests included",
+    "hidden_tests_from": "the round-trip half of the fix's TestSnowflake::test_stage_path_tokenization; its token-type, position and line/column assertions are left out because they name the fix's own token types"
+  },
+  "naive_patches": {
+    "naive.patch": "the fix, except that a path still stops where /* starts, so @s/a/*b and @s/a/*b*/c are cut off"
+  },
+  "planted_bugs": [],
+  "not_bugs": []
+}

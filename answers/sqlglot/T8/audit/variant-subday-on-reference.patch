@@ -1,0 +1,22 @@
+diff --git a/sqlglot/optimizer/simplify.py b/sqlglot/optimizer/simplify.py
+index 45f51c530..ae5c14f87 100644
+--- a/sqlglot/optimizer/simplify.py
++++ b/sqlglot/optimizer/simplify.py
+@@ -1,7 +1,7 @@
+ from __future__ import annotations
+ 
+ import calendar
+-from datetime import date, datetime, time, timedelta
++from datetime import date, datetime, timedelta
+ import logging
+ import functools
+ import itertools
+@@ -534,8 +534,6 @@ class Interval:
+     def __radd__(self, other: object) -> object:
+         if not isinstance(other, date):
+             return NotImplemented
+-        if self.duration % timedelta(days=1) and not isinstance(other, datetime):
+-            other = datetime.combine(other, time())
+         if self.months:
+             year, month = divmod(other.month - 1 + self.months, 12)
+             year += other.year

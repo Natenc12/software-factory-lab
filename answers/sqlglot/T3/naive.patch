@@ -1,0 +1,17 @@
+diff --git a/sqlglot/optimizer/unnest_subqueries.py b/sqlglot/optimizer/unnest_subqueries.py
+index 15e785e4e..624ec432e 100644
+--- a/sqlglot/optimizer/unnest_subqueries.py
++++ b/sqlglot/optimizer/unnest_subqueries.py
+@@ -541,10 +541,11 @@ def decorrelate(select, parent_select, external_columns, next_alias_name):
+ 
+ 
+ def _is_negated(expression: exp.Expression) -> bool:
++    """Whether the IN's result is negated or compared, where FALSE and NULL differ."""
+     parent = expression.parent
+     while isinstance(parent, exp.Paren):
+         parent = parent.parent
+-    return isinstance(parent, exp.Not)
++    return isinstance(parent, (exp.Not, exp.EQ, exp.NEQ, exp.Is))
+ 
+ 
+ def _replace(expression: exp.Expr, condition: exp.ExpOrStr) -> exp.Expr:

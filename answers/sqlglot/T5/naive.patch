@@ -1,0 +1,80 @@
+diff --git a/sqlglot/expressions/dml.py b/sqlglot/expressions/dml.py
+index 729dba498..323028ff8 100644
+--- a/sqlglot/expressions/dml.py
++++ b/sqlglot/expressions/dml.py
+@@ -305,6 +305,7 @@ class Update(Expression, DML):
+         "limit": False,
+         "options": False,
+         "hint": False,
++        "alternative": False,
+     }
+ 
+     def table(
+diff --git a/sqlglot/generator.py b/sqlglot/generator.py
+index 6b430ee1e..4883fda17 100644
+--- a/sqlglot/generator.py
++++ b/sqlglot/generator.py
+@@ -2873,6 +2873,8 @@ class Generator:
+ 
+     def update_sql(self, expression: exp.Update) -> str:
+         hint = self.sql(expression, "hint")
++        alternative = self.sql(expression, "alternative")
++        alternative = f" OR {alternative}" if alternative else ""
+         this = self.sql(expression, "this")
+         join_sql, from_sql = self._update_from_joins_sql(expression)
+         set_sql = self.expressions(expression, flat=True)
+@@ -2886,7 +2888,7 @@ class Generator:
+             expression_sql = f"{returning}{from_sql}{where_sql}"
+         options = self.expressions(expression, key="options")
+         options = f" OPTION({options})" if options else ""
+-        sql = f"UPDATE{hint} {this}{join_sql} SET {set_sql}{expression_sql}{order}{limit}{options}"
++        sql = f"UPDATE{hint}{alternative} {this}{join_sql} SET {set_sql}{expression_sql}{order}{limit}{options}"
+         return self.prepend_ctes(expression, sql)
+ 
+     def values_sql(self, expression: exp.Values, values_as_table: bool = True) -> str:
+diff --git a/sqlglot/parser.py b/sqlglot/parser.py
+index 6f8f3e910..569f9390c 100644
+--- a/sqlglot/parser.py
++++ b/sqlglot/parser.py
+@@ -1700,8 +1700,11 @@ class Parser:
+         "READ": ("WRITE", "ONLY"),
+     }
+ 
++    CONFLICT_ALGORITHMS: t.ClassVar = {"ABORT", "FAIL", "IGNORE", "REPLACE", "ROLLBACK"}
++
+     CONFLICT_ACTIONS: t.ClassVar[OPTIONS_TYPE] = {
+-        **dict.fromkeys(("ABORT", "FAIL", "IGNORE", "REPLACE", "ROLLBACK", "UPDATE"), tuple()),
++        **dict.fromkeys(CONFLICT_ALGORITHMS, tuple()),
++        "UPDATE": tuple(),
+         "DO": ("NOTHING", "UPDATE"),
+     }
+ 
+@@ -1780,7 +1783,7 @@ class Parser:
+         **dict.fromkeys(("GROUP", "TIES"), tuple()),
+     }
+ 
+-    INSERT_ALTERNATIVES: t.ClassVar = {"ABORT", "FAIL", "IGNORE", "REPLACE", "ROLLBACK"}
++    INSERT_ALTERNATIVES: t.ClassVar = CONFLICT_ALGORITHMS
+ 
+     CLONE_KEYWORDS: t.ClassVar = {"CLONE", "COPY"}
+     # Time travel clause prefixes, mapped to whether they pin a timestamp or a version
+@@ -4043,11 +4046,14 @@ class Parser:
+         return this
+ 
+     def _parse_update(self) -> exp.Update:
+-        hint = self._parse_hint()
+-        kwargs: dict[str, object] = {
+-            "hint": hint,
+-            "this": self._parse_table(joins=True, alias_tokens=self.UPDATE_ALIAS_TOKENS),
+-        }
++        kwargs: dict[str, object] = {"hint": self._parse_hint()}
++        if self._match(TokenType.OR):
++            if self._match_texts(self.CONFLICT_ALGORITHMS):
++                kwargs["alternative"] = self._prev.text.upper()
++            else:
++                self.raise_error("Expected conflict resolution algorithm after UPDATE OR")
++
++        kwargs["this"] = self._parse_table(joins=True, alias_tokens=self.UPDATE_ALIAS_TOKENS)
+         while self._curr:
+             if self._match(TokenType.SET):
+                 kwargs["expressions"] = self._parse_csv(self._parse_update_assignment)

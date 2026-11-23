@@ -1,0 +1,24 @@
+diff --git a/sqlglot/parser.py b/sqlglot/parser.py
+index 815c5781f..07153c552 100644
+--- a/sqlglot/parser.py
++++ b/sqlglot/parser.py
+@@ -6038,6 +6038,7 @@ class Parser:
+         top: bool = False,
+         skip_limit_token: bool = False,
+     ) -> exp.Expr | None:
++        index = self._index
+         if skip_limit_token or self._match(TokenType.TOP if top else TokenType.LIMIT):
+             comments = self._prev_comments
+             if top:
+@@ -6051,6 +6052,11 @@ class Parser:
+                 if limit_paren:
+                     self._match_r_paren()
+ 
++                # No row count after TOP: it was a name, not a limit
++                if expression is None:
++                    self._retreat(index)
++                    return this
++
+             else:
+                 if self.dialect.SUPPORTS_LIMIT_ALL and self._match(TokenType.ALL):
+                     expression = exp.var("ALL")

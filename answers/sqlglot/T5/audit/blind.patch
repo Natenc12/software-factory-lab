@@ -1,0 +1,148 @@
+diff --git a/sqlglot/expressions/dml.py b/sqlglot/expressions/dml.py
+index 729dba498..323028ff8 100644
+--- a/sqlglot/expressions/dml.py
++++ b/sqlglot/expressions/dml.py
+@@ -305,6 +305,7 @@ class Update(Expression, DML):
+         "limit": False,
+         "options": False,
+         "hint": False,
++        "alternative": False,
+     }
+ 
+     def table(
+diff --git a/sqlglot/generator.py b/sqlglot/generator.py
+index 6b430ee1e..7fa5dd91a 100644
+--- a/sqlglot/generator.py
++++ b/sqlglot/generator.py
+@@ -332,6 +332,9 @@ class Generator:
+     # Whether MERGE ... WHEN MATCHED/NOT MATCHED THEN UPDATE/INSERT ... WHERE is supported
+     SUPPORTS_MERGE_WHERE = False
+ 
++    # Whether UPDATE OR {ABORT | FAIL | IGNORE | REPLACE | ROLLBACK} is supported
++    SUPPORTS_UPDATE_ALTERNATIVE = False
++
+     # First version supporting MERGE WITH SCHEMA EVOLUTION
+     MERGE_SCHEMA_EVOLUTION_MIN_VERSION: t.ClassVar[tuple[int, ...] | None] = None
+ 
+@@ -2871,8 +2874,25 @@ class Generator:
+ 
+         return (join_sql, "")
+ 
++    def update_alternative_sql(self, expression: exp.Update) -> str:
++        alternative = expression.args.get("alternative")
++        if not alternative:
++            return ""
++
++        import sqlglot.dialects.dialect
++
++        if (
++            not self.SUPPORTS_UPDATE_ALTERNATIVE
++            and self.dialect.__class__ != sqlglot.dialects.dialect.Dialect
++        ):
++            self.unsupported(f"UPDATE OR {alternative} is unsupported")
++            return ""
++
++        return f" OR {alternative}"
++
+     def update_sql(self, expression: exp.Update) -> str:
+         hint = self.sql(expression, "hint")
++        alternative = self.update_alternative_sql(expression)
+         this = self.sql(expression, "this")
+         join_sql, from_sql = self._update_from_joins_sql(expression)
+         set_sql = self.expressions(expression, flat=True)
+@@ -2886,7 +2906,7 @@ class Generator:
+             expression_sql = f"{returning}{from_sql}{where_sql}"
+         options = self.expressions(expression, key="options")
+         options = f" OPTION({options})" if options else ""
+-        sql = f"UPDATE{hint} {this}{join_sql} SET {set_sql}{expression_sql}{order}{limit}{options}"
++        sql = f"UPDATE{hint}{alternative} {this}{join_sql} SET {set_sql}{expression_sql}{order}{limit}{options}"
+         return self.prepend_ctes(expression, sql)
+ 
+     def values_sql(self, expression: exp.Values, values_as_table: bool = True) -> str:
+diff --git a/sqlglot/generators/sqlite.py b/sqlglot/generators/sqlite.py
+index e9f8f4a8f..ae1bece76 100644
+--- a/sqlglot/generators/sqlite.py
++++ b/sqlglot/generators/sqlite.py
+@@ -113,6 +113,7 @@ class SQLiteGenerator(generator.Generator):
+     TRY_SUPPORTED = False
+     SUPPORTS_UESCAPE = False
+     SUPPORTS_DECODE_CASE = False
++    SUPPORTS_UPDATE_ALTERNATIVE = True
+     SET_OP_PARENTHESIZED_OPERANDS = False
+ 
+     AFTER_HAVING_MODIFIER_TRANSFORMS = generator.AFTER_HAVING_MODIFIER_TRANSFORMS
+diff --git a/sqlglot/generators/teradata.py b/sqlglot/generators/teradata.py
+index 634cfd926..c0d91357c 100644
+--- a/sqlglot/generators/teradata.py
++++ b/sqlglot/generators/teradata.py
+@@ -187,6 +187,7 @@ class TeradataGenerator(generator.Generator):
+     # FROM before SET in Teradata UPDATE syntax
+     # https://docs.teradata.com/r/Enterprise_IntelliFlex_VMware/Teradata-VantageTM-SQL-Data-Manipulation-Language-17.20/Statement-Syntax/UPDATE/UPDATE-Syntax-Basic-Form-FROM-Clause
+     def update_sql(self, expression: exp.Update) -> str:
++        self.update_alternative_sql(expression)
+         this = self.sql(expression, "this")
+         from_sql = self.sql(expression, "from_")
+         set_sql = self.expressions(expression, flat=True)
+diff --git a/sqlglot/parser.py b/sqlglot/parser.py
+index 6f8f3e910..2e62d1133 100644
+--- a/sqlglot/parser.py
++++ b/sqlglot/parser.py
+@@ -4044,8 +4044,18 @@ class Parser:
+ 
+     def _parse_update(self) -> exp.Update:
+         hint = self._parse_hint()
++        alternative = None
++        if self._match(TokenType.OR):
++            # SQLite's conflict clause: UPDATE OR {ABORT | FAIL | IGNORE | REPLACE | ROLLBACK}
++            if not self._match_texts(self.INSERT_ALTERNATIVES):
++                self.raise_error(
++                    "Expected ABORT, FAIL, IGNORE, REPLACE or ROLLBACK after UPDATE OR"
++                )
++            alternative = self._prev.text.upper()
++
+         kwargs: dict[str, object] = {
+             "hint": hint,
++            "alternative": alternative,
+             "this": self._parse_table(joins=True, alias_tokens=self.UPDATE_ALIAS_TOKENS),
+         }
+         while self._curr:
+diff --git a/tests/dialects/test_sqlite.py b/tests/dialects/test_sqlite.py
+index a7386fbd3..847025a62 100644
+--- a/tests/dialects/test_sqlite.py
++++ b/tests/dialects/test_sqlite.py
+@@ -1705,6 +1705,35 @@ class TestSQLite(Validator):
+         self.validate_identity("INSERT OR REPLACE INTO foo (x, y) VALUES (1, 2)")
+         self.validate_identity("INSERT OR ROLLBACK INTO foo (x, y) VALUES (1, 2)")
+         self.validate_identity("INSERT INTO foo AS f (x, y) VALUES (1, 2)")
++
++        for action in ("ABORT", "FAIL", "IGNORE", "REPLACE", "ROLLBACK"):
++            with self.subTest(f"UPDATE OR {action}"):
++                self.validate_identity(f"UPDATE OR {action} t SET b = 'x' WHERE id = 1").assert_is(
++                    exp.Update
++                )
++        self.validate_identity(
++            "UPDATE OR REPLACE t AS u SET b = 'x' FROM s WHERE u.id = s.id RETURNING *"
++        )
++        self.validate_identity("update or ignore t set b = 'x'", "UPDATE OR IGNORE t SET b = 'x'")
++        self.validate_all(
++            "UPDATE OR IGNORE t SET b = 'x'",
++            write={
++                "": "UPDATE OR IGNORE t SET b = 'x'",
++                "sqlite": "UPDATE OR IGNORE t SET b = 'x'",
++            },
++        )
++        self.assertEqual(
++            parse_one("UPDATE OR IGNORE t SET b = 'x'").sql(), "UPDATE OR IGNORE t SET b = 'x'"
++        )
++        for dialect in ("postgres", "mysql", "teradata"):
++            with self.subTest(f"UPDATE OR IGNORE -> {dialect}"):
++                with self.assertRaises(UnsupportedError):
++                    self.parse_one("UPDATE OR IGNORE t SET b = 'x'").sql(
++                        dialect, unsupported_level=ErrorLevel.RAISE
++                    )
++        with self.assertRaises(ParseError):
++            self.parse_one("UPDATE OR t SET b = 'x'")
++        self.validate_all("UPDATE t SET b = 'x'", write={"postgres": "UPDATE t SET b = 'x'"})
+         self.validate_identity(
+             "INSERT INTO foo AS f (x, y) VALUES (1, 2) ON CONFLICT(x) DO UPDATE SET y = f.y + 1"
+         )

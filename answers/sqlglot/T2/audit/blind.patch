@@ -1,0 +1,184 @@
+diff --git a/sqlglot/dialects/snowflake.py b/sqlglot/dialects/snowflake.py
+index b7438ed2a..5808ea3c2 100644
+--- a/sqlglot/dialects/snowflake.py
++++ b/sqlglot/dialects/snowflake.py
+@@ -187,6 +187,9 @@ class Snowflake(Dialect):
+ 
+         VAR_SINGLE_TOKENS = {"$"}
+ 
++        # An unquoted stage or file:// path runs up to whitespace or one of these characters
++        UNQUOTED_PATH_TERMINATORS = ",;()'`~<>|"
++
+         COMMANDS = tokens.Tokenizer.COMMANDS - {TokenType.SHOW}
+ 
+     Generator = SnowflakeGenerator
+diff --git a/sqlglot/tokenizer_core.py b/sqlglot/tokenizer_core.py
+index cde8782c5..667ab90fb 100644
+--- a/sqlglot/tokenizer_core.py
++++ b/sqlglot/tokenizer_core.py
+@@ -571,6 +571,7 @@ class TokenizerCore:
+         "nested_comments",
+         "dash_comment_requires_boundary",
+         "comments_terminate_at_newline_only",
++        "unquoted_path_terminators",
+         "hint_start",
+         "tokens_preceding_hint",
+         "has_bit_strings",
+@@ -608,6 +609,7 @@ class TokenizerCore:
+         nested_comments: bool,
+         dash_comment_requires_boundary: bool,
+         comments_terminate_at_newline_only: bool,
++        unquoted_path_terminators: str,
+         hint_start: str,
+         tokens_preceding_hint: set[TokenType],
+         has_bit_strings: bool,
+@@ -642,6 +644,7 @@ class TokenizerCore:
+         self.nested_comments = nested_comments
+         self.dash_comment_requires_boundary = dash_comment_requires_boundary
+         self.comments_terminate_at_newline_only = comments_terminate_at_newline_only
++        self.unquoted_path_terminators = unquoted_path_terminators
+         self.hint_start = hint_start
+         self.tokens_preceding_hint = tokens_preceding_hint
+         self.has_bit_strings = has_bit_strings
+@@ -707,6 +710,7 @@ class TokenizerCore:
+     def _scan(self, check_semicolon: bool = False) -> None:
+         identifiers = self.identifiers
+         digit_chars = _DIGIT_CHARS
++        path_terminators = self.unquoted_path_terminators
+ 
+         while self.size and not self._end:
+             current = self._current
+@@ -733,12 +737,57 @@ class TokenizerCore:
+                 else:
+                     self._scan_keywords()
+ 
++                if path_terminators and self.tokens:
++                    last = self.tokens[-1]
++                    if last.end == self._current - 1 and (
++                        last.token_type == TokenType.URI_START or last.text == "@"
++                    ):
++                        self._scan_unquoted_path(path_terminators, last.text == "@")
++
+             if check_semicolon and self._peek == ";":
+                 break
+ 
+         if self.tokens and self._comments:
+             self.tokens[-1].comments.extend(self._comments)
+ 
++    def _scan_unquoted_path(self, terminators: str, stage: bool) -> None:
++        """
++        Consumes the rest of an unquoted path, e.g. the `s/a--b` in `@s/a--b`, as a single VAR token,
++        so that sequences such as `--`, `//` or `/*` in it are not read as comment starts.
++        """
++        sql = self.sql
++        size = self.size
++        start = self._current
++        end = start
++
++        if stage and end < size:
++            if sql[end] == "~":
++                # @~ is the user stage
++                end += 1
++            elif sql[end] == '"':
++                # A quoted stage name, as in @"my stage"/path
++                closing = end + 1
++                while closing < size:
++                    if sql[closing] == '"':
++                        if closing + 1 < size and sql[closing + 1] == '"':
++                            closing += 2
++                            continue
++                        break
++                    closing += 1
++                if closing < size:
++                    end = closing + 1
++
++        while end < size:
++            char = sql[end]
++            if char.isspace() or char in terminators:
++                break
++            end += 1
++
++        if end > start:
++            self._start = start
++            self._advance(end - start)
++            self._add(TokenType.VAR)
++
+     def _chars(self, size: int) -> str:
+         if size == 1:
+             return self._char
+diff --git a/sqlglot/tokens.py b/sqlglot/tokens.py
+index 7806999a1..2d03c19e8 100644
+--- a/sqlglot/tokens.py
++++ b/sqlglot/tokens.py
+@@ -68,6 +68,7 @@ class _TokenizerBase:
+     NESTED_COMMENTS: t.ClassVar[bool]
+     DASH_COMMENT_REQUIRES_BOUNDARY: t.ClassVar[bool]
+     COMMENTS_TERMINATE_AT_NEWLINE_ONLY: t.ClassVar[bool]
++    UNQUOTED_PATH_TERMINATORS: t.ClassVar[str]
+     TOKENS_PRECEDING_HINT: t.ClassVar[set[TokenType]]
+     HEREDOC_STRING_ALTERNATIVE: t.ClassVar[TokenType]
+     COMMENTS: t.ClassVar[list[str | tuple[str, str]]]
+@@ -212,6 +213,10 @@ class Tokenizer(_TokenizerBase):
+     # Whether "--"/"#" line comments are terminated only by "\n", and not also by "\r"
+     COMMENTS_TERMINATE_AT_NEWLINE_ONLY = False
+ 
++    # The characters that end an unquoted path that follows "@" or a URI_START token (e.g. a
++    # Snowflake stage path), besides whitespace. If empty, such paths get no special treatment
++    UNQUOTED_PATH_TERMINATORS = ""
++
+     HINT_START = "/*+"
+ 
+     TOKENS_PRECEDING_HINT = {TokenType.SELECT, TokenType.INSERT, TokenType.UPDATE, TokenType.DELETE}
+@@ -589,6 +594,7 @@ class Tokenizer(_TokenizerBase):
+             nested_comments=self.NESTED_COMMENTS,
+             dash_comment_requires_boundary=self.DASH_COMMENT_REQUIRES_BOUNDARY,
+             comments_terminate_at_newline_only=self.COMMENTS_TERMINATE_AT_NEWLINE_ONLY,
++            unquoted_path_terminators=self.UNQUOTED_PATH_TERMINATORS,
+             hint_start=self.HINT_START,
+             tokens_preceding_hint=self.TOKENS_PRECEDING_HINT,
+             has_bit_strings=bool(self.BIT_STRINGS),
+diff --git a/tests/dialects/test_snowflake.py b/tests/dialects/test_snowflake.py
+index 8421336ad..7955e8f62 100644
+--- a/tests/dialects/test_snowflake.py
++++ b/tests/dialects/test_snowflake.py
+@@ -122,6 +122,40 @@ class TestSnowflake(Validator):
+             },
+         )
+ 
++    def test_unquoted_paths_with_comment_markers(self):
++        # Unquoted stage and file:// paths run up to whitespace or one of , ; ( ) ' ` ~ < > |
++        for sql, expected in (
++            ("select $1 from @s/a--b", "SELECT $1 FROM @s/a--b"),
++            ("select $1 from @s/a//b", "SELECT $1 FROM @s/a//b"),
++            ("select $1 from @s/a/*b", "SELECT $1 FROM @s/a/*b"),
++            ("copy into t from @s/a--b/c", "COPY INTO t FROM @s/a--b/c"),
++            ("put file:///tmp/a--b @s/p", "PUT 'file:///tmp/a--b' @s/p"),
++            ('PUT file:///dir/a"b.csv @stg', "PUT 'file:///dir/a\"b.csv' @stg"),
++            ("SELECT $1 FROM @s/a -- note", "SELECT $1 FROM @s/a /* note */"),
++        ):
++            with self.subTest(sql=sql):
++                self.assertEqual(self.parse_one(sql).sql("snowflake"), expected)
++
++        for sql in (
++            "LIST @s/a--b",
++            "LIST @~/a--b",
++            'LIST @"my stage"/a--b',
++            "SELECT $1 FROM @s/a/*b*/c",
++            "SELECT $1 FROM @%t/a--b",
++            "SELECT $1 FROM @db.sch.stg/a--b",
++            "SELECT * FROM @s/a--b (FILE_FORMAT => 'f')",
++            "SELECT * FROM (SELECT $1 FROM @s/a--b) AS x",
++            "SELECT * FROM @s/a--b, @t/c--d",
++            "SELECT $1 FROM '@s/a--b'",
++            "LIST @s/a /* keep */",
++            "SELECT $1 FROM @s/a /* keep */ WHERE 1 = 1",
++            "COPY INTO t FROM 's3://b/p'",
++        ):
++            with self.subTest(sql=sql):
++                self.validate_identity(sql)
++
++        self.assertNotEqual(self.parse_one("LIST @s/a--b"), self.parse_one("LIST @s/a--c"))
++
+     def test_set_operation_top(self):
+         for op in ("UNION", "UNION ALL", "INTERSECT", "EXCEPT"):
+             with self.subTest(op=op):

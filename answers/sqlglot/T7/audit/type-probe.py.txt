@@ -1,0 +1,16 @@
+"""Does dropping the arguments after a constant change what a query returns? Run with a checkout on PYTHONPATH."""
+import duckdb
+from sqlglot.optimizer import optimize
+
+con = duckdb.connect()
+con.execute("CREATE TABLE t(a INT, b INT, d DOUBLE); INSERT INTO t VALUES (1, 1, 1.5), (NULL, 2, 2.5)")
+schema = {"t": {"a": "INT", "b": "INT", "d": "DOUBLE"}}
+for sql in (
+    "SELECT CAST(COALESCE(a, 0, 1.5) AS VARCHAR) AS c FROM t",
+    "SELECT typeof(COALESCE(a, 0, d)) AS c FROM t",
+    "SELECT COALESCE(a, 0, d) AS c FROM t UNION ALL SELECT 2.5",
+    "SELECT COALESCE(a, 0, b) AS c FROM t",
+):
+    opt = optimize(sql, schema=schema, dialect="duckdb").sql("duckdb")
+    want, got = con.execute(sql).fetchall(), con.execute(opt).fetchall()
+    print("SAME " if want == got and [type(v[0]) for v in want] == [type(v[0]) for v in got] else "DIFF ", sql, "\n      ->", opt, "\n      ", want, "->", got)

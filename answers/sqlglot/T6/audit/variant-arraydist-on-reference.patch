@@ -1,0 +1,12 @@
+diff --git a/sqlglot/parsers/duckdb.py b/sqlglot/parsers/duckdb.py
+index 90e4d1046..9e98968af 100644
+--- a/sqlglot/parsers/duckdb.py
++++ b/sqlglot/parsers/duckdb.py
+@@ -226,6 +226,7 @@ class DuckDBParser(parser.Parser):
+         "LIST_APPEND": exp.ArrayAppend.from_arg_list,
+         "LIST_CONCAT": parser.build_array_concat,
+         "LIST_CONTAINS": exp.ArrayContains.from_arg_list,
++        "ARRAY_COSINE_DISTANCE": exp.CosineDistance.from_arg_list,
+         "LIST_COSINE_DISTANCE": exp.CosineDistance.from_arg_list,
+         "LIST_COSINE_SIMILARITY": exp.CosineSimilarity.from_arg_list,
+         "LIST_DISTANCE": exp.EuclideanDistance.from_arg_list,
