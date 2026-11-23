@@ -2,6 +2,39 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
+## Owner decisions after gate 5 · 2026-11-23
+
+Three decisions made in conversation while stage 4 was being prepared, and where the work stands.
+
+1. **The two new practice repositories are public.** The orchestrator created `Natenc12/hono-lab` and
+   `Natenc12/sqlglot-lab` private and said so. The owner's reply: "also make those public". Done the
+   same hour, while both were still empty.
+2. **Usage limits.** The owner: "i have usage resets available on my account so dont worry about that
+   too much if it hits usage limit ill just use a reset". If a limit stops a stage, the runner marks
+   the interrupted runs as plan limit, and the orchestrator restarts it after the owner's reset.
+3. **Chief of staff: the pointed version only.** In three trial runs the `P6` lead (a Fable lead free
+   to use Opus workers) started no worker. The orchestrator proposed running a pointed version beside
+   it; the owner first agreed ("Yes, add it"), then decided: "no just do pointed own discretion is
+   just fable alone at this point". Applied: stage 4 has three rows on each codebase, `P5P` on Opus
+   5.5, `P5PF` (the same arm on Fable 5.2) and `P6P` (`P6` plus three sentences telling the lead to
+   hand the building to workers). 48 runs per codebase, 96 in all. `arms/P6` stays in the repository as
+   `P6P`'s base and is not run. That discretion equals Fable alone rests on three small trials and is
+   not tested by the stage.
+4. **Speed.** Asked whether the work could go faster, the orchestrator proposed, and the owner
+   accepted ("ok sounds good"): run both codebases' stages at the same time, eight runs at once
+   instead of four; grade four at a time with the second reading straight after each first grade; and
+   start each codebase's independent audit as soon as its tickets land, split between two auditors
+   (four tickets each). The audit and the freeze are not shortened.
+
+**Where stage 4 stands (2026-11-23):** merged on `main`: grader support for both codebases and the
+stage 4 plan and summary (pull requests 45, 50), harness support with a setup step that installs
+dependencies before the agent starts and guard and scan fixes (42, 46, 48), arms `P6` and `P6P` (41,
+47, 49). In progress, not merged: the eight Hono tickets and the eight sqlglot tickets, each by its
+own ticket author. Still to do, in order: the two split audits and their fixes; put the harness
+builder's `run_setup` and `run_env` values into each codebase's config; one real trial of each of the
+three rows on each practice repository; the freeze and its note, shown to the owner; the 96 runs;
+grading with both readings; the results page; stop at the gate.
+
 ## Gate 5 · codebases for the model comparison · picked 2026-11-22
 
 Report: `research/stage-4-codebases.md` (seven candidates cloned and tested on the owner's machine).
