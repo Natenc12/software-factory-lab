@@ -248,6 +248,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--forbid", action="append", default=[], help="extra path the run may not touch (repeatable)")
     ap.add_argument("--allow-domain", action="append", default=[], help="extra host the sandbox may reach")
     ap.add_argument(
+        "--sealed",
+        action="store_true",
+        help="no package registry in the session, per-run package caches, no reads outside the run but its toolchain",
+    )
+    ap.add_argument(
+        "--own-package",
+        action="append",
+        default=[],
+        help="the codebase's own published package name; installing or reading a copy of it is refused",
+    )
+    ap.add_argument(
         "--setup",
         action="append",
         default=[],
@@ -305,6 +316,8 @@ def main(argv: list[str] | None = None) -> int:
                 extra_forbidden=a.forbid,
                 allow_domains=a.allow_domain,
                 allow_write=a.allow_write,
+                sealed=a.sealed,
+                own_packages=a.own_package,
                 extra_env=dict(kv.split("=", 1) for kv in a.env),
             )
         except Exception as e:  # noqa: BLE001 - any setup failure is a harness fault, reported plainly
@@ -360,6 +373,8 @@ def main(argv: list[str] | None = None) -> int:
 
     manifest = read_json(hdir / "sandbox.json")
     env = clean_env(root, manifest.get("env") or {})
+    # A sealed run's session also gets its package tools' offline switches (setup, before it, has network).
+    session_env = clean_env(root, {**(manifest.get("env") or {}), **(manifest.get("session_env") or {})})
     if a.setup and "setup" not in rec:
         rec["setup"] = []
         fault = run_setup(a.setup, root, env, rec)
@@ -371,7 +386,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{a.run_id}: harness_fault ({fault})")
             return EXIT["harness_fault"]
     rec["status"], rec["reason"] = "running", None
-    return loop(a, root, rec, env)
+    return loop(a, root, rec, session_env)
 
 
 def run_setup(commands: list[str], root: Path, env: dict, rec: dict) -> str | None:

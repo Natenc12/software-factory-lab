@@ -45,6 +45,8 @@ FLAGS = {
     "allow_domain": "--allow-domain",
     "allow_write": "--allow-write",
     "setup": "--setup",
+    "sealed": "--sealed",
+    "own_package": "--own-package",
     "env": "--env",
     "max_wall_min": "--max-wall-min",
     "claude_bin": "--claude-bin",
@@ -61,6 +63,9 @@ def run_args(stage: str, spec: dict, root: str | None) -> list[str]:
     for key, flag in FLAGS.items():
         val = spec.get(key)
         if val is None:
+            continue
+        if isinstance(val, bool):
+            args += [flag] if val else []
             continue
         for v in val if isinstance(val, list) else [val]:
             if key in PATH_KEYS and not Path(str(v)).is_absolute():

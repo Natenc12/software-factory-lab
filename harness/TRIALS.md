@@ -269,3 +269,38 @@ and settings (`~/factory-runs/trial-5/p5p-hono-5`). Setup installed the dependen
 without a stop (17,500 counted tokens, $0.25, skill `check-the-ask`), and `lab pr open` pushed
 `p5p-hono-5/work` and opened hono-lab #1 (2 files: the message and its test). The scan was clean. The
 pull request was closed unmerged and its branch deleted; the sandbox was removed, keeping its records.
+
+## Trials 20–23: closing the paths to the real fixes (2026-11-23, Claude Code 2.1.330, haiku)
+
+The sqlglot audit (branch `audit/sqlglot-a`, `answers/sqlglot/AUDIT-A.md` item 4) said a run could reach
+replay tickets' real fixes. Each path was tested from inside a real sandboxed session on
+`Natenc12/sqlglot-lab` and on `Natenc12/hono-lab` (no pull request opened). A probe the setup step copied
+into the run's scratch tried each place from a program, so the guard could not see it, and printed only
+counts and statuses. Before (trials 20–21, the harness on main) and after (trials 22–23, `--sealed` with
+`--own-package`, run folders under `~/factory-runs/seal-check`):
+
+| Path | sqlglot before | sqlglot after | Hono before | Hono after |
+| --- | --- | --- | --- | --- |
+| Home folder | open | refused | open | refused |
+| Other sessions' scratch, incl. the audit folders | open | refused | open | refused |
+| Newer upstream clone in `/tmp` (with the fixes) | open | refused | open | refused |
+| Package registry | PyPI open (HTTP 200) | refused (proxy 403) | npm refused | refused |
+| Shared cache | `~/.cache/uv` open; **sqlglot 30.33.0 installed from it offline** | refused | `~/.npm`, pnpm store (hono 4.13.9, 4.13.2), `~/Library/Caches` open | refused |
+| `uv pip install … sqlglot` / `pnpm add -D hono@latest` as a command | not tried | refused by the guard | not tried | refused by the guard |
+| Suite in the session | n/a | 1,771 OK, 60 skipped | n/a | build exit 0; 6,147 passed, 108 skipped |
+
+Still readable, by design: the names of the entries of `/tmp/claude-501` itself (the sandbox's own temp
+folder) and `/usr/local/lib/node_modules`, which holds only npm. Both scans were clean, with the refused
+install as a blocked attempt.
+
+On the way: sealing all of `/tmp` broke every session, because Claude Code's sandbox sets each command's
+`TMPDIR` to `/tmp/claude-501` (neither `CLAUDE_CODE_TMPDIR` nor `CLAUDE_TMPDIR` moves it). Every command
+then reported exit 1 because its working-directory file could not be written, and pnpm failed at
+`lstat('/tmp')`. With the orchestrator's agreement, a sealed run keeps `/tmp` and `/tmp/claude-501` and is
+denied every other entry of `/tmp` and every subfolder of `/tmp/claude-501` that exists when it starts. The
+practice and upstream copies these trials left in `/tmp` were deleted afterwards.
+
+For the record of earlier stages (Script, from each run's recorded `settings.json` and `guard.json`): in
+all 277 runs of stages 1, 1-confirm, 2 and 2b the OS sandbox was on, and this repo, `~/repos` and the gh
+login (`~/.config/gh`) were in both the sandbox's read denials and the guard's forbidden places. Trial 5
+showed a program reading the gh login file refused.
