@@ -217,3 +217,12 @@ stop, no merge brief, no contract, no reviewer agent.
   ("Use check-the-ask after you read the ticket and the code it touches, and prove-each-claim before
   you write the pull request."); the arm gives it as the two lines the brief asked for, each starting
   "Use". A test checks that the two arms differ only by those two lines.
+
+## P5PA: pointed skills library plus architecture brief
+
+Built only from two existing arms, with nothing new written: `GUIDE.md` is P5P's guide word for word
+followed by P1A's "Before you plan" section word for word (the text P1A adds after P1's guide);
+`SYSTEM-MAP.md` is byte for byte P1A's; `skills/` is byte for byte P5P's. Because the guide comes
+first in the appended prompt and the map second, "the system map that follows" still points the right
+way. No departures from either source. `tests/test_arms.py` pins all three identities, and that the
+folder holds nothing else.

@@ -9,11 +9,14 @@ slices, `P1A` an architecture brief (a section plus `SYSTEM-MAP.md`, a one-page 
 arm fits only that codebase), `P5` a skills library used at the run's discretion (one sentence plus six
 skills), and `P5P` the same library with two lines saying when to use two of the skills.
 
+`P5PA` combines two of them and adds nothing new: P5P's guide followed by P1A's "Before you plan"
+section, P1A's `SYSTEM-MAP.md` and P5P's skills, all copied unchanged. Like P1A, it fits gct-lab only.
+
 What a run receives from a folder: its top-level `.md` files other than `README.md`, appended to the
 system prompt; `agents/*.md`, passed as `--agents`; and, only if the folder has one, `skills/<name>/SKILL.md`
 (see `harness/README.md`). Skills are opt-in: each is one file with `name` and `description` front
 matter. The run sees every description up front and loads a skill's body only when it calls the skill;
-it may use them at its own discretion. Only P5 and P5P have skills. Nothing else here is loaded into a run:
+it may use them at its own discretion. Only P5, P5P and P5PA have skills. Nothing else here is loaded into a run:
 
 - `CHANGES.md`: every departure from the arms' sources, with the reason.
 - `SIZES.md`: each arm's word count.

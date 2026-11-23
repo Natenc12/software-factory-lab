@@ -15,7 +15,8 @@ from tests.conftest import ROOT, run_args, scenario
 ARMS = ROOT / "arms"
 STAGE_1 = ["P0", "P1", "P1R", "P3", "P2", "P4"]
 STAGE_2 = ["P1T", "P1L", "P1A", "P5", "P5P"]
-NAMES = STAGE_1 + STAGE_2
+COMBINED = ["P5PA"]
+NAMES = STAGE_1 + STAGE_2 + COMBINED
 spec = importlib.util.spec_from_file_location("role_guard", ARMS / "P4" / "hooks" / "role_guard.py")
 rg = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(rg)
@@ -386,3 +387,34 @@ def test_p5p_is_p5_plus_the_two_pointing_lines():
     for rel in p5:
         if rel.name != "GUIDE.md":
             assert (ARMS / "P5" / rel).read_bytes() == (ARMS / "P5P" / rel).read_bytes(), rel
+
+
+# ---- P5PA: the pointed skills library combined with the architecture brief ----
+
+
+def files_under(root: Path) -> dict[Path, bytes]:
+    return {p.relative_to(root): p.read_bytes() for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+def test_p5pa_guide_is_p5p_guide_plus_p1a_section():
+    p1 = (ARMS / "P1" / "GUIDE.md").read_text()
+    section = (ARMS / "P1A" / "GUIDE.md").read_text()[len(p1) :]
+    assert section.lstrip("\n").startswith("## Before you plan")
+    assert (ARMS / "P5PA" / "GUIDE.md").read_text() == (ARMS / "P5P" / "GUIDE.md").read_text() + section
+
+
+def test_p5pa_map_equals_p1a_map():
+    assert (ARMS / "P5PA" / "SYSTEM-MAP.md").read_bytes() == (ARMS / "P1A" / "SYSTEM-MAP.md").read_bytes()
+
+
+def test_p5pa_skills_equal_p5p_skills():
+    assert files_under(ARMS / "P5PA" / "skills") == files_under(ARMS / "P5P" / "skills")
+
+
+def test_p5pa_has_nothing_else():
+    assert sorted(str(p) for p in files_under(ARMS / "P5PA") if p.parts[0] != "skills") == [
+        "GUIDE.md",
+        "SYSTEM-MAP.md",
+    ]
+    instructions, agents = sandbox.arm_files(ARMS / "P5PA")
+    assert [p.name for p in instructions] == ["GUIDE.md", "SYSTEM-MAP.md"] and not agents
