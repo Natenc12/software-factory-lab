@@ -1,0 +1,102 @@
+<main data-v="corrected">
+
+<h1>Tie-break round: skills, the brief, or both</h1>
+<p class="sub">22 November 2026. The round you approved after stage 2: a third run of the pointed skills and of the architecture brief, and two runs of the two combined, on the same eight tickets. 33 runs graded. Below the results is what to run next, which is your call.</p>
+
+<div class="strip">
+  <div class="slot"><b>The base stays</b><strong>Skills, pointed</strong>the combination did not clear the bar set before the round</div>
+  <div class="slot"><b>Three-way tie</b><strong>7.3 to 7.5 of 8</strong>brief, skills and both, against 6.0 for the plain guide</div>
+  <div class="slot"><b>Questioned the wrong request (T6)</b><strong>3 of 3</strong>with pointed skills; the brief alone 1 of 3</div>
+  <div class="slot"><b>This round</b><strong>about 7.7M</strong>tokens, runs and grading</div>
+</div>
+
+<div class="ask">
+  <h3>Gate 4: what I need from you</h3>
+  <p>The way of working is settled for now: the guide with pointed skills. What to run next is your call, and I recommend changing the order.</p>
+  <ol class="steps">
+    <li><b>Recommended: take the model question to new codebases.</b> On these eight tickets Opus with pointed skills is already at 7.3 of 8 with one correction round in 24 runs, so there is almost no room left for Fable or a chief of staff to do better here. Run Opus, Fable and your chief of staff on one or two other projects instead, which also tests whether the process travels. First step: a helper proposes candidate projects and you pick.</li>
+    <li><b>Or: run stage 3 here first, as the charter has it.</b> Fable alone and the chief of staff on these same eight tickets, 32 runs, about 10M tokens. It would show what the chief of staff does and what it costs, but by the charter's rule Opus almost certainly stays the builder whatever happens.</li>
+  </ol>
+</div>
+
+<h2>What the runs say</h2>
+<ol class="steps">
+  <li><b>All three beat the plain guide, and none beats the others.</b> Over three runs each, the brief and the pointed skills both score 7.3 of 8; the two combined score 7.5 over two runs. The plain guide is at 6.0. A gap of 0.2 is less than one run. <span class="tag s">Script</span> <span class="tag">Judge</span></li>
+  <li><b>Combining them is safe but buys almost nothing.</b> The fear from the trial run did not come true: with the map added, the agent still used check-the-ask in 16 of 16 runs. But the combination is 0.2 of a ticket ahead of skills alone, against a bar of one ticket, at 9% more cost. <span class="tag s">Script</span></li>
+  <li><b>For the wrong request, the skill is the more reliable half.</b> On T6, runs with the pointed skills questioned the request every time: 3 of 3 with skills alone, 2 of 2 combined. With the brief alone it was 1 of 3, and the plain guide 0 of 3. <span class="tag s">Script</span></li>
+  <li><b>The only ticket anything still loses is T6, and mostly after getting it right.</b> Both losses by skills runs on T6 came after the run had raised the problem and built what you really wanted: one edited an existing test the answer key does not allow, and one did that and also made a false claim. <span class="tag s">Script</span> <span class="tag">Judge</span></li>
+</ol>
+
+<h2>Scoreboard</h2>
+<p class="lead">Each mark is one run. The plain guide's runs are its earlier ones. Hover or tap a mark for the detail. Stage 2's two corrections are in place throughout.</p>
+<div class="panel">{{matrix}}</div>
+<p class="small">"Of 8" weights each ticket equally. The dash on T10 is a run the leak scan threw out wrongly; its replacement is the mark beside it. See "Flaws found".</p>
+<div class="panel chart" style="margin-top:12px"><h3>Trustworthy pull requests, of 8 tickets</h3>{{chart_trust}}</div>
+
+<h2>The round's rule</h2>
+<p class="a">Fixed before the first run: the combination replaces pointed skills as the base only if it is at least one trustworthy pull request in eight better, for no more than 30% extra cost. It came out 0.2 better at 9% more cost, so <b>pointed skills stays</b>. On the second reading the gap is 0.5, still under the bar. <span class="tag s">Script</span></p>
+<ul class="tight">
+  <li><b>Against the plain guide</b>, with three runs in, the charter's own rule now lets all three in: each improves trust by 1.3 to 1.5 tickets in eight and edges it on quality, at 7% (brief), 13% (skills) and 23% (both) more cost. The brief's exact quality tie from stage 2 did not survive a third run, which shows how little that number should be leaned on.</li>
+  <li><b>Blind judge's quality scores, 1 to 5:</b> {{quality_row}}. <span class="tag">Judge</span></li>
+</ul>
+
+<h2>Which skills were used</h2>
+<div class="panel">{{skills_table}}</div>
+<p class="small">Counts are across all runs of each, stage 2 included. The two skills the guide points to were used in nearly every run, with or without the map. The others were picked up now and then, mostly on the long tickets. <span class="tag s">Script</span></p>
+
+<h2>Cost and your attention</h2>
+<div class="charts">
+  <div class="panel chart"><h3>Tokens per run</h3>{{chart_tokens}}</div>
+  <div class="panel chart"><h3>Minutes per run</h3>{{chart_minutes}}</div>
+  <div class="panel chart"><h3>Words you read per ticket</h3>{{chart_words}}</div>
+  <div class="panel chart"><h3>Times it stopped for you, per ticket</h3>{{chart_stops}}</div>
+</div>
+
+<h2>What this means for a process you can carry anywhere</h2>
+<ul class="tight">
+  <li><b>The portable part is enough.</b> Six generic skills and two lines saying when to use two of them did as well as a map written for this codebase. Nothing in them names this project.</li>
+  <li><b>A map is optional, not harmful.</b> Where a project already has one, adding it costs about 9% and does not get in the way. It is not worth writing one just for the agent.</li>
+  <li><b>Not yet shown:</b> that any of this holds on a second codebase. That is stage 4. A project with no written decisions at all would test whether check-the-ask still finds anything to check against.</li>
+</ul>
+
+<h2>Flaws found during the round</h2>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Flaw</th><th>Effect</th><th>What was done</th></tr></thead>
+<tbody>
+<tr><td><b>The leak scan threw out a run that did nothing wrong.</b> It misread two relative paths used after a change of folder as reaching outside the run's sandbox. Both stayed inside the run's own folder.</td><td>One combined-arm run on T10 discarded. By its own records it would have been trustworthy.</td><td>The fixed rule was followed: discarded and re-run once. The replacement was also trustworthy. The scan is unchanged; the fix is for the harness builder. <span class="tag s">Script</span></td></tr>
+<tr><td><b>The "edited an existing test" trap again.</b> One combined-arm run on T6 asked first, built what you really wanted, passed the hidden tests, and lost the ticket for editing one existing test that the key does not list.</td><td>One verdict. If that edit were allowed, the combination would be at 8.0 and 0.7 ahead of skills alone: still under the bar.</td><td>Logged, not changed. Same fault as in stage 2; a proper fix alters how every ticket is graded and waits for your word.</td></tr>
+<tr><td><b>My grading loop skipped eight runs</b> and had first been pointed at the wrong folder.</td><td>No result changed. About half an hour lost.</td><td>Graded by hand with the same script.</td></tr>
+</tbody></table></div>
+
+<h2>What to run next</h2>
+<p class="q">The remaining questions are which model should build, whether a lead directing workers earns its cost, and whether any of this travels.</p>
+<div class="grid2">
+  <div class="panel">
+    <h3>Why the charter's order no longer fits</h3>
+    <p>The charter's rule says Fable builds only if it gains at least one trustworthy pull request in eight, or needs at least 30% fewer correction rounds. Opus with pointed skills now stands at 7.3 of 8, so the most Fable could gain here is 0.7, and Opus needed one correction round in 24 runs, so there is nothing to cut by 30%. On these tickets the rule cannot come out for Fable.</p>
+    <p class="small">That is a finding in itself: with a decent ticket, the short guide and two pointing lines, the cheaper model is close to the ceiling of this test.</p>
+  </div>
+  <div class="panel">
+    <h3>What I recommend</h3>
+    <p>Fold stages 3 and 4 together. Pick one or two open-source projects in a different language or size, as the charter already plans for stage 4. Write and audit eight tickets for each, then run three setups there: pointed skills on Opus, the same on Fable, and your chief of staff (a Fable lead directing Opus workers as it sees fit).</p>
+    <p class="small">Cost: about half a day of helper work to prepare each project, then 48 runs per project. I would bring you the candidate projects first, then a freeze note, as before.</p>
+  </div>
+</div>
+<ul class="tight" style="margin-top:10px">
+  <li><b>Price, stated now as the charter requires:</b> at list price Fable costs twice what Opus does per token.</li>
+  <li><b>If you would rather see the chief of staff sooner,</b> the second option runs it here in about two hours, with the limits above.</li>
+</ul>
+
+<h2>Spend</h2>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Part</th><th class="num">Counted tokens</th></tr></thead>
+<tbody>
+<tr><td>33 runs, with the stand-in owner's replies</td><td class="num">4.3M</td></tr>
+<tr><td>Grading judges</td><td class="num">3.1M</td></tr>
+<tr><td>Second reading</td><td class="num">0.2M</td></tr>
+<tr><td><b>This round</b></td><td class="num"><b>about 7.7M</b></td></tr>
+<tr><td>Earlier: setup 8.1M, stage 1 about 19.7M, confirm round 18.0M, stage 2 about 19.6M</td><td class="num">about 65.4M</td></tr>
+</tbody></table></div>
+<p class="small">Counted tokens are input, output and cache writes. <span class="tag s">Script</span> Not counted: the helper sessions and re-grading. <span class="tag n">Not checked</span></p>
+
+</main>

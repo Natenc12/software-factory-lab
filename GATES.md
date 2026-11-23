@@ -27,8 +27,16 @@ start stage 3 on pointed skills alone?" The owner's reply: "yeah". Applied:
    `P5P`'s. Otherwise `P5P` stays. The current rules decide; the second reading is reported beside
    them. `P1A`'s third run is reported and decides nothing.
 
-**Not yet decided:** the stage 3 plan on that page (P5P or its replacement on Opus and on Fable, and
-the chief-of-staff setup; 40 runs). It is put to the owner again with this round's results.
+**Result of the round** (2026-11-22, page https://claude.ai/artifact/9cB9GrBLpzS5N5LY6KM7Qy, copy
+`results/stage-2b/page/tie-break-results.html`): 33 runs graded. `P5PA` is 0.17 of a trustworthy pull
+request in eight better than `P5P` at 9% more cost, under the bar of one, so `P5P` stays the base.
+
+**Waiting for the owner:** what to run next. The orchestrator recommends folding stages 3 and 4
+together: run `P5P` on Opus, `P5P` on Fable and the chief-of-staff setup on one or two other
+codebases, because on these eight tickets Opus with `P5P` is at 7.3 of 8 with one correction round in
+24 runs and the charter's Q5 rule cannot come out for Fable here. The alternative is stage 3 as
+chartered on these tickets (32 runs). Price ratio stated before any result: at list price Fable 5.2
+costs twice what Opus 5.5 does per token. No decision recorded yet.
 
 ## Gate 3 · confirm round results and the stage 2 plan · approved 2026-11-22
 
