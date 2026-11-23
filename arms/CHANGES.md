@@ -226,3 +226,31 @@ followed by P1A's "Before you plan" section word for word (the text P1A adds aft
 first in the appended prompt and the map second, "the system map that follows" still points the right
 way. No departures from either source. `tests/test_arms.py` pins all three identities, and that the
 folder holds nothing else.
+
+## P6: chief of staff
+
+Source: `research/skill-libraries.md`, "Sketch arm P6: Chief of staff", and the orchestrator's brief.
+The only difference from P5P is the lead and its workers.
+
+- **`GUIDE.md`** is P5P's guide word for word, then one section, "Leading the work", with the
+  sketch's points in plain words: the lead answers to the owner; it may work the ticket itself or
+  start workers for whatever parts it chooses, as many as it judges useful; a worker cannot see the
+  lead's conversation, so its brief carries everything it needs; the lead owns every claim in the
+  pull request and reads the diff and re-runs the checks itself before reporting; workers never talk
+  to the owner and never open or merge the pull request. No roles, order or required steps.
+  Departure: the sketch builds on P1's guide; this arm builds on P5P's (P1 plus the pointed skills),
+  as the brief asked, because P5P is the base after stage 2b.
+- **`agents/worker.md`**: one general worker, `model: claude-opus-5-5`, no role, the builder's tools
+  (Read, Glob, Grep, Edit, Write, Bash), no hooks. Its prompt repeats the two limits that concern it
+  (stay inside the brief; never open or update the pull request or address the owner). These limits
+  are instructions, not enforced: a worker has Bash and could call `lab`. A breach would show in the
+  transcript as a subagent's `lab` call.
+- **`skills/`** is byte for byte P5P's. Workers get no `Skill` tool, so only the lead can call the
+  skills.
+- **The lead's model is not in the arm.** Fable 5.2 comes from the run plan's `--model`; P6 run on
+  Opus 5.5 would be the same arm. The sketch's two controls (P1 on Opus 5.5, P1 on Fable 5.2) are a
+  run-plan matter.
+- **Harness support:** read from the code, an arm with both `skills/` and `agents/` gets both
+  `--plugin-dir` and `--agents`, with `Task`, `Agent` and `Skill` in its tools.
+  `tests/test_arms.py::test_p6_run_gets_its_skills_and_its_worker` confirms this with the fake
+  `claude`. No real `claude -p` call has started a P6 worker or used a skill in the same run yet.

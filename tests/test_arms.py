@@ -10,13 +10,14 @@ from pathlib import Path
 import pytest
 
 from harness import run, sandbox
-from tests.conftest import ROOT, run_args, scenario
+from tests.conftest import ROOT, calls, run_args, scenario
 
 ARMS = ROOT / "arms"
 STAGE_1 = ["P0", "P1", "P1R", "P3", "P2", "P4"]
 STAGE_2 = ["P1T", "P1L", "P1A", "P5", "P5P"]
 COMBINED = ["P5PA"]
-NAMES = STAGE_1 + STAGE_2 + COMBINED
+LEAD = ["P6"]
+NAMES = STAGE_1 + STAGE_2 + COMBINED + LEAD
 spec = importlib.util.spec_from_file_location("role_guard", ARMS / "P4" / "hooks" / "role_guard.py")
 rg = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(rg)
@@ -84,7 +85,7 @@ def test_p1r_is_p1_word_for_word_plus_its_rule():
         assert later not in p1r
 
 
-@pytest.mark.parametrize("name", ["P1R", "P3", "P2", "P4"])
+@pytest.mark.parametrize("name", ["P1R", "P3", "P2", "P4", "P6"])
 def test_every_agent_is_opus_and_every_reviewer_is_read_only(name):
     _, agents = sandbox.arm_files(ARMS / name)
     assert agents
@@ -418,3 +419,50 @@ def test_p5pa_has_nothing_else():
     ]
     instructions, agents = sandbox.arm_files(ARMS / "P5PA")
     assert [p.name for p in instructions] == ["GUIDE.md", "SYSTEM-MAP.md"] and not agents
+
+
+# ---- P6: the chief of staff (P5P plus a lead brief and one general worker) ----
+
+
+def test_p6_guide_is_p5p_guide_plus_the_lead_brief():
+    p5p = (ARMS / "P5P" / "GUIDE.md").read_text()
+    guide = (ARMS / "P6" / "GUIDE.md").read_text()
+    assert guide.startswith(p5p)
+    brief = guide[len(p5p) :]
+    assert brief.count("\n## ") == 1 and "## Leading the work" in brief
+    for point in ("answer to the owner", "yourself", "cannot see your conversation", "own every claim", "re-run"):
+        assert point in brief, point
+    for fixed in ("STOP", "merge brief", "contract", "planner", "tester", "reviewer", "must start", "first,"):
+        assert fixed not in brief, f"the lead brief fixes {fixed!r}"
+
+
+def test_p6_skills_equal_p5p_skills():
+    assert files_under(ARMS / "P6" / "skills") == files_under(ARMS / "P5P" / "skills")
+
+
+def test_p6_has_one_general_worker_on_opus():
+    instructions, agents = sandbox.arm_files(ARMS / "P6")
+    assert [p.name for p in instructions] == ["GUIDE.md"]
+    assert [p.name for p in agents] == ["worker.md"]
+    name, spec = sandbox.parse_agent(agents[0])
+    assert name == "worker" and spec["model"] == "claude-opus-5-5" and "hooks" not in spec
+    assert sorted(spec["tools"]) == ["Bash", "Edit", "Glob", "Grep", "Read", "Write"]
+    assert 2 <= spec["description"].count(". ") + 1 <= 3
+
+
+def test_p6_run_gets_its_skills_and_its_worker(lab_env, practice):
+    """The harness passes an arm's skills plugin and its agents together; the lead's model comes from the run."""
+    scenario(lab_env, p6_t1_1=["finish"])
+    assert run.main(run_args(lab_env, practice, "p6-t1-1", "--arm", str(ARMS / "P6"))) == 0
+    ctl = sandbox.control_dir(lab_env["runs"] / "test" / "p6-t1-1")
+    [argv] = [c["argv"] for c in calls(lab_env) if "stream-json" in c["argv"]]
+    assert argv[argv.index("--model") + 1] == "fake-model"
+    assert argv[argv.index("--plugin-dir") + 1] == str(ctl / "plugin")
+    assert argv[argv.index("--agents") + 1] == str(ctl / "agents.json")
+    assert argv[argv.index("--tools") + 1].split(",")[:2] == ["Task", "Agent"]
+    assert "Skill" in argv[argv.index("--tools") + 1].split(",")
+    assert sorted(p.name for p in (ctl / "plugin" / "skills").iterdir()) == sorted(SKILLS)
+    agents = json.loads((ctl / "agents.json").read_text())
+    assert list(agents) == ["worker"] and agents["worker"]["model"] == "claude-opus-5-5"
+    settings = json.loads((ctl / "settings.json").read_text())
+    assert {"Task", "Agent"} <= set(settings["permissions"]["allow"])
