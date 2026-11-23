@@ -2,6 +2,16 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
+## Practice repositories back to private · 2026-11-23
+
+The owner: "can u make the 3 repos private actually and just make the software factory public. like
+the 2 codebases we downloaded and the clone of gct and also pipeline lab". Done the same minute:
+`Natenc12/hono-lab`, `Natenc12/sqlglot-lab`, `Natenc12/gct-lab` and `Natenc12/pipeline-lab` are
+private; `Natenc12/software-factory-lab` stays public (Script: `gh repo view` on each). This replaces
+"Flip repos as-is" for the practice repositories and item 1 of the entry below. Six harness trial runs
+were in flight on the two new repositories when the change was made; whether they were affected is
+recorded with the trial results.
+
 ## Owner decisions after gate 5 · 2026-11-23
 
 Three decisions made in conversation while stage 4 was being prepared, and where the work stands.
