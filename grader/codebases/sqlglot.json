@@ -18,6 +18,8 @@
     "uv venv -q -p 3.13 .venv && uv pip install -q -p .venv -e \".[dev]\"",
     "echo \"import os; _f = os.sysconf; os.sysconf = lambda n, _f=_f: -1 if n == \\\"SC_SEM_NSEMS_MAX\\\" else _f(n)\" > \"$(.venv/bin/python -c \"import sysconfig; print(sysconfig.get_path(\\\"purelib\\\"))\")/zz_sandbox_sem_limit.pth\""
   ],
+  "run_sealed": true,
+  "run_own_package": "sqlglot",
   "install": [
     "sh",
     "-c",
