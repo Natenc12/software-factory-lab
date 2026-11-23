@@ -200,6 +200,23 @@ def write_skill_plugin(arm: Path, ctl: Path) -> Path | None:
     return plugin
 
 
+def writable_folders(paths: list[str], cfg: dict) -> list[str]:
+    """Folders outside the run a codebase's toolchain must write (e.g. `~/.cargo/registry`), as real paths.
+
+    Refuses the home folder, `/`, and any forbidden or private place or a parent of one, so a codebase
+    setting cannot open up this repo, other runs, `~/.claude` or the gh login.
+    """
+    out = []
+    bad = [*cfg["forbidden"], *cfg["private"], cfg["sandbox"]]
+    for raw in paths:
+        p = os.path.realpath(os.path.expanduser(raw))
+        overlaps = any(p == b or p.startswith(b.rstrip("/") + "/") or b.startswith(p.rstrip("/") + "/") for b in bad)
+        if p in (cfg["home"], "/") or overlaps:
+            raise RuntimeError(f"allow_write {raw}: not allowed (home, a forbidden place, or a parent of one)")
+        out.append(p)
+    return out
+
+
 def guard_config(root: Path, runs_root: Path, extra_forbidden: list[str]) -> dict:
     """The guard's view of the run: its sandbox, its private folders, and places it may never touch."""
     home = os.path.realpath(os.path.expanduser("~"))
@@ -218,7 +235,12 @@ def guard_config(root: Path, runs_root: Path, extra_forbidden: list[str]) -> dic
 
 
 def settings(
-    root: Path, cfg: dict, allow_domains: list[str] = NET_ALLOW, unix_sockets: list[str] = (), skills: list[str] = ()
+    root: Path,
+    cfg: dict,
+    allow_domains: list[str] = NET_ALLOW,
+    unix_sockets: list[str] = (),
+    skills: list[str] = (),
+    allow_write: list[str] = (),
 ) -> dict:
     """The run's settings file: OS sandbox first, then permission rules and the guard hook.
 
@@ -251,7 +273,7 @@ def settings(
         # the call must match; redirects, cd and $(...) keep a call sandboxed).
         "excludedCommands": ["lab", "lab *", lab, f"{lab} *"],
         "filesystem": {
-            "allowWrite": [f"{home}/.cache/uv"],
+            "allowWrite": [f"{home}/.cache/uv", *allow_write],
             "denyWrite": list(cfg["private"]),
             "denyRead": sorted(
                 {*cfg["forbidden"], *cfg["private"], *(f"{home}/{p}" for p in (".ssh", ".aws", ".netrc", ".gnupg"))}
@@ -300,6 +322,7 @@ def create(
     extra_forbidden: list[str] = (),
     allow_domains: list[str] = (),
     extra_env: dict | None = None,
+    allow_write: list[str] = (),
 ) -> dict:
     """Build the sandbox. Raises if the folder exists; cleans up after itself if a step fails."""
     parse_run_id(run_id)
@@ -350,7 +373,8 @@ def create(
                 "PGHOST": manifest["database"]["socket"].rsplit("/", 1)[0],
             }
         # Codebase settings the run needs (for example UV_PYTHON); the database variables always win.
-        env = {**(extra_env or {}), **env}
+        # `{run}` in a value is this run's folder, so a toolchain cache can live inside the run.
+        env = {**{k: str(v).replace("{run}", str(root)) for k, v in (extra_env or {}).items()}, **env}
         write_json(hdir / "sandbox.json", manifest)
 
         ctl.mkdir(parents=True)
@@ -373,9 +397,11 @@ def create(
 
         plugin = write_skill_plugin(arm, ctl) if arm else None
         cfg = guard_config(root, runs_root, list(extra_forbidden))
+        writes = writable_folders(list(allow_write), cfg)
+        cfg["read_ok"] = sorted({*cfg["read_ok"], *writes})
         sockets = [manifest["database"]["socket"]] if db == "postgres" else []
         skills = [p.parent.name for p in skill_files(arm)] if plugin else []
-        run_settings = settings(root, cfg, [*NET_ALLOW, *allow_domains], sockets, skills=skills)
+        run_settings = settings(root, cfg, [*NET_ALLOW, *allow_domains], sockets, skills=skills, allow_write=writes)
         for folder in (ctl, hdir):  # live copies in the control folder, a record copy in harness/
             write_json(folder / "guard.json", cfg)
             write_json(folder / "settings.json", run_settings)

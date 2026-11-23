@@ -36,7 +36,7 @@ from harness.common import (
     runs_root,
     write_json,
 )
-from harness.stream import StreamState, Usage, find_page, find_stop, skills_used
+from harness.stream import StreamState, Usage, find_page, find_stop, skills_used, subagents_started
 
 HERE = Path(__file__).resolve().parent
 EXIT = {"finished": 0, "ceiling_hit": 0, "plan_limit": 75, "harness_fault": 1}
@@ -218,7 +218,10 @@ def finish_record(root: Path, rec: dict) -> None:
     if (root / "repo").exists():
         rec["practice_head_commit"] = git_head(root / "repo")
     transcript = hdir / "transcript.jsonl"
-    rec["skills_used"] = skills_used(transcript.read_text(errors="replace").splitlines()) if transcript.exists() else []
+    lines = transcript.read_text(errors="replace").splitlines() if transcript.exists() else []
+    rec["skills_used"] = skills_used(lines)
+    rec["workers"] = subagents_started(lines)
+    rec["workers_started"] = len(rec["workers"])
     rec["ended_at"] = now_iso()
 
 
@@ -243,6 +246,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--redact", action="append", help="extra term to strip from questions (repeatable)")
     ap.add_argument("--forbid", action="append", default=[], help="extra path the run may not touch (repeatable)")
     ap.add_argument("--allow-domain", action="append", default=[], help="extra host the sandbox may reach")
+    ap.add_argument(
+        "--allow-write", action="append", default=[], help="folder outside the run the sandbox may write (repeatable)"
+    )
     ap.add_argument("--env", action="append", default=[], help="KEY=VALUE set in the run's environment (repeatable)")
     ap.add_argument("--max-wall-min", type=float, default=240)
     ap.add_argument("--runs-root", help="default $FACTORY_RUNS_ROOT or ~/factory-runs")
@@ -291,6 +297,7 @@ def main(argv: list[str] | None = None) -> int:
                 gh_bin=a.gh_bin,
                 extra_forbidden=a.forbid,
                 allow_domains=a.allow_domain,
+                allow_write=a.allow_write,
                 extra_env=dict(kv.split("=", 1) for kv in a.env),
             )
         except Exception as e:  # noqa: BLE001 - any setup failure is a harness fault, reported plainly
@@ -385,13 +392,34 @@ def loop(a, root: Path, rec: dict, env: dict) -> int:
             now_tokens, now_cost = state.final_usage(), state.cost_usd
             used = now_tokens - Usage.from_dict(base.get("tokens")) if same else now_tokens
             cost = max(now_cost - base.get("cost_usd", 0.0), 0.0) if same else now_cost
+            models_now = state.model_totals()
+            models_base = base.get("models", {}) if same else {}
+            by_call = {
+                m: {
+                    "tokens": v["tokens"] - Usage.from_dict((models_base.get(m) or {}).get("tokens")),
+                    "cost_usd": max(v["cost_usd"] - (models_base.get(m) or {}).get("cost_usd", 0.0), 0.0),
+                }
+                for m, v in models_now.items()
+            }
             rec["session_base"] = {
                 "session_id": rec["session_id"],
                 "tokens": now_tokens.as_dict(),
                 "cost_usd": now_cost,
+                "models": {
+                    m: {"tokens": v["tokens"].as_dict(), "cost_usd": v["cost_usd"]} for m, v in models_now.items()
+                },
             }
         else:
             used, cost = state.live_usage(), 0.0
+            by_call = state.model_totals()
+        # Counted tokens and list-price cost per model (the lead's and any subagent's), summed over calls.
+        by_model = rec.setdefault("by_model", {})
+        for m, v in by_call.items():
+            prev = by_model.get(m) or {}
+            by_model[m] = {
+                **(Usage.from_dict(prev) + v["tokens"]).as_dict(),
+                "cost_usd": round(prev.get("cost_usd", 0.0) + v["cost_usd"], 6),
+            }
         rec["tokens"] = (before + used).as_dict()
         rec["cost_usd"] = round(rec["cost_usd"] + cost, 6)
         rec["wall_seconds"] = round(rec["wall_seconds"] + time.monotonic() - t0, 1)

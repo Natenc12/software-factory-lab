@@ -95,6 +95,27 @@ def arm_dir(arm: str, arms_root: Path) -> str | None:
     return None
 
 
+def codebase_run_extras(codebase: str) -> dict:
+    """What a codebase's config adds to every run of it, as run-plan keys.
+
+    `run_env` -> `env` (KEY=VALUE), `run_allow_domains` -> `allow_domain` (hosts the run's sandbox may
+    reach beyond PyPI), `run_allow_write` -> `allow_write` (folders outside the run, such as a
+    toolchain's cache, the sandbox may write). A codebase without them adds nothing.
+    """
+    try:
+        cfg = load_config(codebase)
+    except SystemExit:
+        return {}
+    out = {}
+    if cfg.get("run_env"):
+        out["env"] = [f"{k}={v}" for k, v in sorted(cfg["run_env"].items())]
+    if cfg.get("run_allow_domains"):
+        out["allow_domain"] = list(cfg["run_allow_domains"])
+    if cfg.get("run_allow_write"):
+        out["allow_write"] = list(cfg["run_allow_write"])
+    return out
+
+
 def plan_runs(codebase: str, tickets_root: Path, arms_root: Path, sheets: dict, best: str | None):
     problems = []
     metas = {}
@@ -107,10 +128,7 @@ def plan_runs(codebase: str, tickets_root: Path, arms_root: Path, sheets: dict, 
         if arm != "P0" and arm_dir(arm, arms_root) is None:
             problems.append(f"arm {arm}: folder {arms_root / arm} missing")
 
-    try:
-        run_env = load_config(codebase).get("run_env") or {}
-    except SystemExit:
-        run_env = {}
+    extras = codebase_run_extras(codebase)
 
     def spec_ok(t: str, spec: str) -> bool:
         meta = metas[t]
@@ -141,8 +159,7 @@ def plan_runs(codebase: str, tickets_root: Path, arms_root: Path, sheets: dict, 
         }
         if spec_arm:
             r["arm"] = spec_arm
-        if run_env:
-            r["env"] = [f"{k}={v}" for k, v in sorted(run_env.items())]
+        r.update(extras)
         return r
 
     meter = [one(arm, METER_TICKET, "S1") for arm in ARM_ORDER]
@@ -205,10 +222,7 @@ def plan_stage2(a) -> int:
     for arm in rnd["arms"]:
         if arm_dir(arm, arms_root) is None:
             problems.append(f"arm {arm}: folder {arms_root / arm} missing")
-    try:
-        run_env = load_config(a.codebase).get("run_env") or {}
-    except SystemExit:
-        run_env = {}
+    extras = codebase_run_extras(a.codebase)
     unknown = sorted(set(overrides) - set(STAGE2_TICKETS))
     if unknown:
         problems.append(f"--ticket-ceiling names tickets not on the stage 2 plan: {unknown}")
@@ -230,8 +244,7 @@ def plan_stage2(a) -> int:
             "reply_sheet": sheets.get(t),
             "redact": [arm, arm.lower()],
         }
-        if run_env:
-            r["env"] = [f"{k}={v}" for k, v in sorted(run_env.items())]
+        r.update(extras)
         if arm_dir(arm, arms_root):
             r["arm"] = arm_dir(arm, arms_root)
         return r
