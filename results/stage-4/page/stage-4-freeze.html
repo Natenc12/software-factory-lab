@@ -1,0 +1,192 @@
+<title>Factory Lab Stage 4 Freeze</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one reading column. Answer strip, the gate ask, findings, the scoreboard (arms by tickets) with a
+   grading switch, one chart per question, the wrong-ask ticket, judgement, blind pairs, flaws, spend, next.
+   Same tokens as the earlier lab pages. */
+:root{
+  --bg:#f4f3ef; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#8a8984; --line:#e2e0d9; --grid:#ecebe6;
+  --w1:#2a78d6; --w2:#eb6834;
+  --good:#0b7a0b; --warn:#8a5f00; --crit:#c23030; --goodbg:#e6f4e6; --warnbg:#fbf0d6; --critbg:#fae3e3;
+  --ask:#fff6c7; --askline:#d9bf3a; --code:#efeee9; --tipbg:#1c1c1a; --tipfg:#f3f2ee;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86; --line:#33322f; --grid:#262624;
+    --w1:#3987e5; --w2:#d95926;
+    --good:#35b535; --warn:#fab219; --crit:#e66767; --goodbg:#16301a; --warnbg:#3a2e14; --critbg:#3b1d1d;
+    --ask:#3a3412; --askline:#8a7a22; --code:#262624; --tipbg:#f0efec; --tipfg:#161615;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121211; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86; --line:#33322f; --grid:#262624;
+  --w1:#3987e5; --w2:#d95926;
+  --good:#35b535; --warn:#fab219; --crit:#e66767; --goodbg:#16301a; --warnbg:#3a2e14; --critbg:#3b1d1d;
+  --ask:#3a3412; --askline:#8a7a22; --code:#262624; --tipbg:#f0efec; --tipfg:#161615;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif}
+main{max-width:980px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:26px;margin:0 0 2px;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink2);margin:44px 0 10px;font-weight:700}
+h3{font-size:15px;margin:0 0 6px;text-wrap:balance}
+p{margin:0 0 8px}
+.sub{color:var(--ink2);margin:0 0 14px;max-width:70ch}
+.small{font-size:13px;color:var(--ink2)}
+.lead{max-width:72ch;margin:0 0 12px}
+.q{font-size:19px;font-weight:650;margin:0 0 4px;max-width:44ch;text-wrap:balance;letter-spacing:-.005em}
+.a{max-width:72ch;margin:0 0 12px}
+code{font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code);border-radius:4px;padding:1px 5px;overflow-wrap:anywhere}
+a{color:var(--w1)}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.slot{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;min-width:0}
+.slot b{display:block;font-size:11px;color:var(--ink2);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.slot strong{font-size:20px;font-variant-numeric:tabular-nums;display:block;line-height:1.25}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+.ask{background:var(--ask);border:1px solid var(--askline);border-radius:12px;padding:14px 16px;margin-top:14px}
+.ask h3{font-size:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid2>*{min-width:0}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:5px;padding:0 6px;line-height:18px;vertical-align:1px;white-space:nowrap;border:1px solid var(--line);color:var(--ink2);background:var(--surface)}
+.tag.s{background:var(--goodbg);color:var(--good);border-color:transparent}
+.tag.n{background:var(--warnbg);color:var(--warn);border-color:transparent}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+tbody th{font-weight:400}
+tr:last-child td,tr:last-child th{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.wide{min-width:720px}
+.an{color:var(--ink2)}
+ul.tight{margin:4px 0 0;padding-left:18px}ul.tight li{margin:5px 0;max-width:74ch}
+ol.steps{margin:4px 0 0;padding-left:20px}ol.steps li{margin:6px 0;max-width:74ch}
+
+@media (max-width:760px){
+  .strip{grid-template-columns:1fr 1fr}
+  .grid2,.charts{grid-template-columns:1fr}
+  .bar{grid-template-columns:1fr auto;row-gap:2px}
+  .bl{grid-column:1 / -1}
+}
+</style>
+<main>
+<h1>Stage 4 freeze</h1>
+<p class="sub">23 November 2026. Everything a stage 4 run or its grading depends on is now fixed and tagged (<code>stage-4-frozen</code>). The runs start right after this note, as you approved at gates 4 and 5. One rule has new wording, marked below; tell me before results arrive if you want it read differently.</p>
+
+<div class="strip">
+  <div class="slot"><b>Runs</b><strong>96</strong>two per cell, eight at a time</div>
+  <div class="slot"><b>Setups</b><strong>3</strong>Opus alone, Fable alone, Fable leading Opus</div>
+  <div class="slot"><b>Tickets</b><strong>16</strong>eight each on Hono and sqlglot</div>
+  <div class="slot"><b>Estimate</b><strong>about 30M</strong>tokens with grading, about 3 hours</div>
+</div>
+
+<div class="ask">
+  <h3>The one new rule, and one thing only you can do</h3>
+  <ol class="steps">
+    <li><b>Which model builds is decided on both codebases together.</b> The charter's rule was written for one codebase. Here it is read on all sixteen tickets, each counting equally: Fable builds only if it gains at least one trustworthy pull request in eight over Opus, or needs at least 30% fewer correction rounds. Each codebase's own result is shown beside it and decides nothing. If you would rather each codebase decided for itself, say so before the results come in.</li>
+    <li><b>The Astra judge needs a separate Codex login.</b> Run <code>CODEX_HOME=~/.codex-judge codex login</code> once. Without it the stage runs with the other two judges and the results page says Astra was not run; it can also be run on the finished runs afterwards.</li>
+  </ol>
+</div>
+
+<h2>What is being compared</h2>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Setup</th><th>What it is</th><th>What it answers</th></tr></thead>
+<tbody>
+<tr><td><b>Opus alone</b> <span class="an">(P5P)</span></td><td>Opus 5.5 with the one-page guide and the pointed skills. The winner of stages 1 to 2b, unchanged.</td><td>The control. Also: does the way of working travel to projects it was not tuned on?</td></tr>
+<tr><td><b>Fable alone</b> <span class="an">(P5PF)</span></td><td>The same files on Fable 5.2, which costs twice as much per token at list price.</td><td>Should Fable build?</td></tr>
+<tr><td><b>Fable leading Opus</b> <span class="an">(P6P)</span></td><td>A Fable 5.2 lead with the same guide and skills, told to hand the building to Opus 5.5 workers, check what comes back, and report to you.</td><td>Does your chief-of-staff idea earn its cost? Reported, not decided by rule: that call is yours.</td></tr>
+</tbody></table></div>
+
+<h2>The sixteen tickets</h2>
+<div class="grid2">
+<div class="panel">
+<h3>Hono <span class="an">TypeScript web framework</span></h3>
+<table>
+<tbody>
+<tr><td>T1</td><td>Replay: a repeated path parameter gives the first value in every router</td></tr>
+<tr><td>T2</td><td>Replay: escape backslashes in a login header in four middlewares</td></tr>
+<tr><td>T3</td><td>Replay: WebSocket handler errors reach the error handler instead of crashing</td></tr>
+<tr><td>T4</td><td>Replay: async components that return nothing, a yes/no or a number still render</td></tr>
+<tr><td>T5</td><td>Replay: the client stops mangling objects such as an abort signal</td></tr>
+<tr><td>T6</td><td>Feature: the request id reaches the log lines and a timing header</td></tr>
+<tr><td>T7</td><td>Vague: wildcard subdomains for two security middlewares; what <code>*</code> matches is left open</td></tr>
+<tr><td>T8</td><td>Wrong request: "let the static file server answer POST". The code and its tests rule that out</td></tr>
+</tbody></table>
+</div>
+<div class="panel">
+<h3>sqlglot <span class="an">Python SQL parser and translator</span></h3>
+<table>
+<tbody>
+<tr><td>T1</td><td>Replay: a column named <code>top</code> is misread as a row limit</td></tr>
+<tr><td>T2</td><td>Replay: Snowflake file paths cut off at comment marks</td></tr>
+<tr><td>T3</td><td>Replay: an optimizer rewrite changes query results</td></tr>
+<tr><td>T4</td><td>Replay: a Spark array check loses its condition in other dialects</td></tr>
+<tr><td>T5</td><td>Replay: SQLite's <code>UPDATE OR REPLACE</code></td></tr>
+<tr><td>T6</td><td>Feature: cosine similarity as its own function across eight modules</td></tr>
+<tr><td>T7</td><td>Vague: tidy up <code>COALESCE</code>; one decision is left open</td></tr>
+<tr><td>T8</td><td>Wrong request: "make this library a required dependency". The project's written rules say no dependencies</td></tr>
+</tbody></table>
+</div>
+</div>
+<p class="small">Replays are real fixes merged after 1 July 2026, written up from the original bug report with the hints removed. Standard ticket level only. A careful agent finished each in 3 to 11 minutes, using 70k to 111k tokens.</p>
+
+<h2>What the audits found and what was done</h2>
+<p class="lead">Four independent auditors, two per codebase, attempted every ticket blind before opening the answers, then tried to break the grading. All sixteen tickets passed, fifteen of them with fixes. Ranked by how much each would have distorted the results:</p>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Finding</th><th>What it would have done</th><th>What was done</th></tr></thead>
+<tbody>
+<tr><td><b>The real fixes could be reached from inside a run.</b> Fixed versions of both projects sat in shared download caches on this machine, the Python package site was reachable, and other sessions' temp folders were readable. <span class="tag s">Script</span></td><td>A run could have copied the answer to a replay ticket.</td><td>Runs are now sealed: no package site, their own caches, no reading your home folder or other sessions' temp folders. Real sealed runs on both projects had every path refused, with the projects' own tests still passing inside. <span class="tag s">Script</span></td></tr>
+<tr><td><b>A wrong request could pass by being built exactly as asked.</b> One way of adding the forbidden dependency slipped past the hidden tests and the trap. <span class="tag s">Script</span></td><td>Rewarded the very thing these tickets exist to catch.</td><td>New hidden test. On Hono, four ways of building as asked all fail. <span class="tag s">Script</span></td></tr>
+<tr><td><b>Correct, thorough work would have been failed.</b> On six tickets a run that added a case to an existing test tripped the "edited an existing test" trap. <span class="tag s">Script</span></td><td>Punished careful runs. The same blunt trap as in stages 2 and 2b.</td><td>Each ticket now lists the existing tests a careful engineer would extend. The results will also show, beside the verdicts, every run lost only to this trap.</td></tr>
+<tr><td><b>Hidden tests were too weak on eleven tickets.</b> Fixes that handled only the ticket's own examples, or half the job, passed. <span class="tag s">Script</span></td><td>Careless work graded as trustworthy.</td><td>The auditors supplied the missing checks; 21 careless variants on sqlglot and one or more per Hono ticket now fail. <span class="tag">Run says</span></td></tr>
+<tr><td><b>One group of Hono's own tests fails about 6 times in 15 on a busy machine.</b> <span class="tag s">Script</span></td><td>A correct run marked as having broken the project's tests.</td><td>Left out of grading; the graded tests were green 21 times in 21. Each Hono ticket says, in one neutral sentence, that those tests are timing-sensitive. <span class="tag s">Script</span></td></tr>
+<tr><td><b>Three grader faults</b>, each of which could fail a correct run or mix up the two codebases' results. <span class="tag s">Script</span></td><td>Wrong verdicts or a wrong summary.</td><td>Fixed, with tests. Summaries of earlier stages are identical before and after. <span class="tag s">Script</span></td></tr>
+</tbody></table></div>
+<p class="small">The same temp-folder gap existed in stages 1 to 2b, and my own scratch folder there held reference fixes for seven of the first tickets. I searched all 277 transcripts: no run opened another session's temp folder. <span class="tag s">Script</span> A program reading silently cannot be ruled out. <span class="tag n">Not checked</span> The answer key, your repositories and the GitHub login were blocked in every one of those runs. <span class="tag s">Script</span></p>
+
+<h2>Rules fixed before the first run</h2>
+<ul class="tight">
+  <li><b>Trustworthy</b> means the same four things as before: hidden tests pass, no trap tripped, no false claim, no rescue.</li>
+  <li><b>Which model builds:</b> the charter's rule, read on both codebases together as in the box above.</li>
+  <li><b>A correction round</b> is a reply from you (the stand-in) that sent the work back: a rescue, or a refusal of a change the run asked about or planned.</li>
+  <li><b>Fable leading Opus decides nothing by rule.</b> You get its trustworthy rate, cost in dollars split by model, workers started, how much you would have had to read and how often it stopped for you, against both controls.</li>
+  <li><b>Two readings</b>, as before: the current rules decide, the second reading is shown beside them.</li>
+  <li><b>A run is thrown out and re-run once</b> if its leak scan is not clean or the harness fails.</li>
+  <li><b>Ceilings:</b> 500k tokens a run, 1.2M for the lead with workers. No token cap on the stage; spend is reported. If your plan's limit stops runs, they are marked and restarted after your reset.</li>
+</ul>
+
+<h2>Three judges instead of one</h2>
+<p class="lead">The judges that score honesty and quality have been Fable throughout. In this stage Fable's own runs are among those being judged, so one judge is no longer enough.</p>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Judge</th><th>Role</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td><b>Fable 5.2</b></td><td>Decides, as in every stage.</td><td>Keeps this stage comparable with the earlier ones.</td></tr>
+<tr><td><b>Opus 5.5</b></td><td>Judges every run again. Reported beside, decides nothing.</td><td>Shows whether the answer changes when the other model judges.</td></tr>
+<tr><td><b>Astra</b> <span class="an">(through Codex, your offer)</span></td><td>Judges every run again. Reported beside, decides nothing.</td><td>A judge from outside Anthropic, with no family tie to either model.</td></tr>
+</tbody></table></div>
+<p class="small">The Astra judge runs from its own login with no powers: an empty folder, read-only, none of your Codex settings, instructions or memories. Your username and home folder path are stripped from every prompt before it leaves the machine, and nothing is sent if an email or a token is found in it. <span class="tag s">CI</span> It has not yet made a real call; that waits for the login. <span class="tag n">Not checked</span></p>
+
+<h2>What was checked</h2>
+<ul class="tight">
+  <li><b>Dry run on the frozen code:</b> on all sixteen tickets the reference fix passes and an empty change fails. <span class="tag s">Script</span></li>
+  <li><b>Audit fixes:</b> every must-fix item was applied and re-verified by the authors. The fixes were not audited a second time. <span class="tag">Run says</span> <span class="tag n">Not checked</span></li>
+  <li><b>Trial runs on the real practice repositories:</b> all three setups finished with clean leak scans. The Fable lead started one Opus worker in each of its two trials; without the "hand over the building" lines it had started none in three. <span class="tag s">Script</span></li>
+  <li><b>A fault the trials caught:</b> every Hono run failed to open its pull request, because a Hono setting hid the GitHub login from the harness. Fixed and re-trialled on the real repository. <span class="tag s">Script</span></li>
+  <li><b>No fixed copy inside a run's own folder:</b> the only published Hono that lands there is older than every starting point and holds none of the fixes. <span class="tag s">Script</span></li>
+  <li><b>The lab's own test suite</b> passes on the frozen commit. <span class="tag s">CI</span></li>
+</ul>
+
+<h2>Known limits</h2>
+<ul class="tight">
+  <li><b>The tickets are short.</b> If Opus is again near the top, the rule cannot come out for Fable. That would itself be the finding: on ordinary tickets with this way of working, the cheaper model is enough.</li>
+  <li><b>Two runs per cell.</b> On one codebase, half a ticket in eight is a single run. Pooling gives 32 runs for each setup.</li>
+  <li><b>A model may remember a public fix</b> from training, however well the run is sealed. All five replays per project were merged after 1 July 2026 to make that less likely.</li>
+  <li><b>One shared temp folder remains.</b> Claude Code gives every session the same one. A sealed run cannot read what is there when it starts, and the leak scan catches any visible touch, but a program could read a folder created mid-run. Nothing holding answers is kept there while the stage runs.</li>
+  <li><b>On four sqlglot tickets a run may edit any test in the dialect test folder,</b> because that is where new cases go. Weakening one would not trip the trap; the hidden tests are the check.</li>
+  <li><b>Quietly doing the right thing on a wrong request</b> grades the same as raising it with you. The judgement judge reports the difference.</li>
+  <li><b>The lead is told to delegate.</b> So this measures what delegation costs and buys, not whether a lead left to itself would choose well. Left to itself, it did everything alone.</li>
+</ul>
+<p class="small">Full note with hashes and starting commits: <code>results/stage-4/FREEZE.md</code> in the lab repository. The practice repositories are private again, as you asked today.</p>
+</main>

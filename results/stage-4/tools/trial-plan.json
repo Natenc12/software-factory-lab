@@ -1,0 +1,132 @@
+{
+ "stage": "trial-4",
+ "budget_tokens": 4000000,
+ "parallel": 6,
+ "defaults": {
+  "effort": "medium",
+  "judge_model": "claude-opus-5-5"
+ },
+ "runs": [
+  {
+   "run_id": "p5p-hono-1",
+   "arm": "arms/P5P",
+   "model": "claude-opus-5-5",
+   "ceiling": 300000,
+   "repo": "Natenc12/hono-lab",
+   "base": "main",
+   "db": "none",
+   "env": [
+    "CI=1",
+    "PNPM_HOME={run}/scratch/pnpm-home",
+    "XDG_CACHE_HOME={run}/scratch/xdg-cache",
+    "XDG_CONFIG_HOME={run}/scratch/xdg-config",
+    "XDG_DATA_HOME={run}/scratch/xdg-data",
+    "XDG_STATE_HOME={run}/scratch/xdg-state"
+   ],
+   "setup": [
+    "pnpm install --frozen-lockfile"
+   ],
+   "ticket": "results/stage-4/tools/trial-ticket-hono.md"
+  },
+  {
+   "run_id": "p5pf-hono-1",
+   "arm": "arms/P5P",
+   "model": "claude-fable-5-2",
+   "ceiling": 300000,
+   "repo": "Natenc12/hono-lab",
+   "base": "main",
+   "db": "none",
+   "env": [
+    "CI=1",
+    "PNPM_HOME={run}/scratch/pnpm-home",
+    "XDG_CACHE_HOME={run}/scratch/xdg-cache",
+    "XDG_CONFIG_HOME={run}/scratch/xdg-config",
+    "XDG_DATA_HOME={run}/scratch/xdg-data",
+    "XDG_STATE_HOME={run}/scratch/xdg-state"
+   ],
+   "setup": [
+    "pnpm install --frozen-lockfile"
+   ],
+   "ticket": "results/stage-4/tools/trial-ticket-hono.md"
+  },
+  {
+   "run_id": "p6p-hono-1",
+   "arm": "arms/P6P",
+   "model": "claude-fable-5-2",
+   "ceiling": 600000,
+   "repo": "Natenc12/hono-lab",
+   "base": "main",
+   "db": "none",
+   "env": [
+    "CI=1",
+    "PNPM_HOME={run}/scratch/pnpm-home",
+    "XDG_CACHE_HOME={run}/scratch/xdg-cache",
+    "XDG_CONFIG_HOME={run}/scratch/xdg-config",
+    "XDG_DATA_HOME={run}/scratch/xdg-data",
+    "XDG_STATE_HOME={run}/scratch/xdg-state"
+   ],
+   "setup": [
+    "pnpm install --frozen-lockfile"
+   ],
+   "ticket": "results/stage-4/tools/trial-ticket-hono.md"
+  },
+  {
+   "run_id": "p5p-sqlglot-1",
+   "arm": "arms/P5P",
+   "model": "claude-opus-5-5",
+   "ceiling": 300000,
+   "repo": "Natenc12/sqlglot-lab",
+   "base": "main",
+   "db": "none",
+   "env": [
+    "SKIP_INTEGRATION=1",
+    "UV_PYTHON=3.13",
+    "SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0"
+   ],
+   "setup": [
+    "uv venv -q -p 3.13 .venv && uv pip install -q -p .venv -e \".[dev]\"",
+    "echo \"import os; _f = os.sysconf; os.sysconf = lambda n, _f=_f: -1 if n == \\\"SC_SEM_NSEMS_MAX\\\" else _f(n)\" > \"$(.venv/bin/python -c \"import sysconfig; print(sysconfig.get_path(\\\"purelib\\\"))\")/zz_sandbox_sem_limit.pth\""
+   ],
+   "ticket": "results/stage-4/tools/trial-ticket-sqlglot.md"
+  },
+  {
+   "run_id": "p5pf-sqlglot-1",
+   "arm": "arms/P5P",
+   "model": "claude-fable-5-2",
+   "ceiling": 300000,
+   "repo": "Natenc12/sqlglot-lab",
+   "base": "main",
+   "db": "none",
+   "env": [
+    "SKIP_INTEGRATION=1",
+    "UV_PYTHON=3.13",
+    "SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0"
+   ],
+   "setup": [
+    "uv venv -q -p 3.13 .venv && uv pip install -q -p .venv -e \".[dev]\"",
+    "echo \"import os; _f = os.sysconf; os.sysconf = lambda n, _f=_f: -1 if n == \\\"SC_SEM_NSEMS_MAX\\\" else _f(n)\" > \"$(.venv/bin/python -c \"import sysconfig; print(sysconfig.get_path(\\\"purelib\\\"))\")/zz_sandbox_sem_limit.pth\""
+   ],
+   "ticket": "results/stage-4/tools/trial-ticket-sqlglot.md"
+  },
+  {
+   "run_id": "p6p-sqlglot-1",
+   "arm": "arms/P6P",
+   "model": "claude-fable-5-2",
+   "ceiling": 600000,
+   "repo": "Natenc12/sqlglot-lab",
+   "base": "main",
+   "db": "none",
+   "env": [
+    "SKIP_INTEGRATION=1",
+    "UV_PYTHON=3.13",
+    "SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0"
+   ],
+   "setup": [
+    "uv venv -q -p 3.13 .venv && uv pip install -q -p .venv -e \".[dev]\"",
+    "echo \"import os; _f = os.sysconf; os.sysconf = lambda n, _f=_f: -1 if n == \\\"SC_SEM_NSEMS_MAX\\\" else _f(n)\" > \"$(.venv/bin/python -c \"import sysconfig; print(sysconfig.get_path(\\\"purelib\\\"))\")/zz_sandbox_sem_limit.pth\""
+   ],
+   "ticket": "results/stage-4/tools/trial-ticket-sqlglot.md"
+  }
+ ],
+ "note": "Harness trials on the real practice repos before stage 4. Made-up two-line tickets, not experiment tickets. Pull requests are closed unmerged afterwards."
+}
