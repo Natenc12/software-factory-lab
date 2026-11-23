@@ -1,0 +1,11 @@
+--- a/answers/sqlglot/T5/hidden/test_hidden_t5.py	2026-11-23 12:55:14
++++ b/answers/sqlglot/T5/hidden/test_hidden_t5.py	2026-11-23 13:21:35
+@@ -23,7 +23,7 @@
+         self.assertEqual(transpile(sql, read="sqlite", write="")[0], sql)
+ 
+     def test_dialects_without_update_or_report_it(self):
+-        for dialect in ("postgres", "mysql", "teradata"):
++        for dialect in ("postgres", "mysql", "teradata", "snowflake", "bigquery", "tsql"):
+             with self.subTest(dialect=dialect):
+                 with self.assertRaises(UnsupportedError):
+                     transpile(

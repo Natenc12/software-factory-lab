@@ -1,0 +1,15 @@
+diff --git a/tests/dialects/test_clickhouse.py b/tests/dialects/test_clickhouse.py
+index 6305ef91f..2c3e792d9 100644
+--- a/tests/dialects/test_clickhouse.py
++++ b/tests/dialects/test_clickhouse.py
+@@ -996,6 +996,10 @@ class TestClickhouse(Validator):
+         self.validate_identity("cityHash64(x, y, z)")
+ 
+         self.validate_identity("cosineDistance(x, y)")
++        self.validate_all(
++            "SELECT (LENGTH(arrayFilter(x -> x > 2, arr)) <> 0) FROM t",
++            read={"spark": "SELECT EXISTS(arr, x -> x > 2) FROM t"},
++        )
+         self.validate_identity("L2Distance(x, y)")
+         self.validate_identity("tuple(1 = 1, 'foo' = 'foo')")
+ 

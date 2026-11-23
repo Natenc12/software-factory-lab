@@ -1,0 +1,235 @@
+diff --git a/sqlglot/dialects/dialect.py b/sqlglot/dialects/dialect.py
+index fe74c7ee0..0e17bb163 100644
+--- a/sqlglot/dialects/dialect.py
++++ b/sqlglot/dialects/dialect.py
+@@ -2740,6 +2740,12 @@ def filter_array_using_unnest(
+     return self.sql(exp.Array(expressions=[filtered]))
+ 
+ 
++def cosine_similarity_to_distance_sql(self: Generator, expression: exp.CosineSimilarity) -> str:
++    """Cosine similarity for dialects that only have a cosine distance: (1 - distance)."""
++    distance = exp.CosineDistance(this=expression.this, expression=expression.expression)
++    return self.sql(exp.paren(exp.Literal.number(1) - distance, copy=False))
++
++
+ def array_compact_sql(self: Generator, expression: exp.ArrayCompact) -> str:
+     lambda_id = exp.to_identifier("_u")
+     cond = exp.Is(this=lambda_id, expression=exp.null()).not_()
+diff --git a/sqlglot/expressions/math.py b/sqlglot/expressions/math.py
+index 0c60cfcf9..2048f764f 100644
+--- a/sqlglot/expressions/math.py
++++ b/sqlglot/expressions/math.py
+@@ -99,6 +99,12 @@ class CosineDistance(Expression, Func):
+     arg_types = {"this": True, "expression": True}
+ 
+ 
++class CosineSimilarity(Expression, Func):
++    """Cosine similarity of two vectors, i.e. 1 - CosineDistance."""
++
++    arg_types = {"this": True, "expression": True}
++
++
+ class DotProduct(Expression, Func):
+     arg_types = {"this": True, "expression": True}
+ 
+diff --git a/sqlglot/generators/bigquery.py b/sqlglot/generators/bigquery.py
+index 09f169be0..bbfea7bcc 100644
+--- a/sqlglot/generators/bigquery.py
++++ b/sqlglot/generators/bigquery.py
+@@ -10,6 +10,7 @@ from sqlglot import exp, generator, transforms
+ from sqlglot.dialects.dialect import (
+     arg_max_or_min_no_count,
+     array_sort_order,
++    cosine_similarity_to_distance_sql,
+     date_add_interval_sql,
+     datestrtodate_sql,
+     filter_array_using_unnest,
+@@ -466,6 +467,7 @@ class BigQueryGenerator(generator.Generator):
+             else f"COLLATE {self.sql(e, 'this')}"
+         ),
+         exp.Commit: lambda *_: "COMMIT TRANSACTION",
++        exp.CosineSimilarity: cosine_similarity_to_distance_sql,
+         exp.CountIf: rename_func("COUNTIF"),
+         exp.Create: _create_sql,
+         exp.CTE: transforms.preprocess([_pushdown_cte_column_names]),
+diff --git a/sqlglot/generators/clickhouse.py b/sqlglot/generators/clickhouse.py
+index 80ac43ce0..82d37aa56 100644
+--- a/sqlglot/generators/clickhouse.py
++++ b/sqlglot/generators/clickhouse.py
+@@ -7,6 +7,7 @@ from sqlglot import exp, generator
+ from sqlglot.dialects.dialect import (
+     arg_max_or_min_no_count,
+     array_sort_order,
++    cosine_similarity_to_distance_sql,
+     inline_array_sql,
+     jarowinkler_similarity,
+     json_extract_segments,
+@@ -322,6 +323,7 @@ class ClickHouseGenerator(generator.Generator):
+         exp.CurrentSchemas: rename_func("CURRENT_SCHEMAS"),
+         exp.CountIf: rename_func("countIf"),
+         exp.CosineDistance: rename_func("cosineDistance"),
++        exp.CosineSimilarity: cosine_similarity_to_distance_sql,
+         exp.CompressColumnConstraint: lambda self, e: (
+             f"CODEC({self.expressions(e, key='this', flat=True)})"
+         ),
+diff --git a/sqlglot/generators/duckdb.py b/sqlglot/generators/duckdb.py
+index 7f2992bb2..ad2e6b8b1 100644
+--- a/sqlglot/generators/duckdb.py
++++ b/sqlglot/generators/duckdb.py
+@@ -1702,6 +1702,7 @@ class DuckDBGenerator(generator.Generator):
+         exp.CommentColumnConstraint: no_comment_column_constraint_sql,
+         exp.Corr: lambda self, e: self._corr_sql(e),
+         exp.CosineDistance: rename_func("LIST_COSINE_DISTANCE"),
++        exp.CosineSimilarity: rename_func("LIST_COSINE_SIMILARITY"),
+         exp.CurrentTime: lambda *_: "CURRENT_TIME",
+         exp.CurrentSchemas: lambda self, e: self.func(
+             "current_schemas", e.this if e.this else exp.true()
+diff --git a/sqlglot/generators/snowflake.py b/sqlglot/generators/snowflake.py
+index c224f5ffb..f51c2458e 100644
+--- a/sqlglot/generators/snowflake.py
++++ b/sqlglot/generators/snowflake.py
+@@ -62,6 +62,12 @@ def _build_date_time_add(expr_type: type[E]) -> t.Callable[[list], E]:
+     return _builder
+ 
+ 
++def _cosine_distance_sql(self: SnowflakeGenerator, expression: exp.CosineDistance) -> str:
++    # Snowflake only has a cosine similarity, and distance = 1 - similarity
++    similarity = exp.CosineSimilarity(this=expression.this, expression=expression.expression)
++    return self.sql(exp.paren(exp.Literal.number(1) - similarity, copy=False))
++
++
+ def _regexpilike_sql(self: SnowflakeGenerator, expression: exp.RegexpILike) -> str:
+     flag = expression.text("flag")
+ 
+@@ -483,7 +489,8 @@ class SnowflakeGenerator(generator.Generator):
+             "DATE_PART", map_date_part(e.this, self.dialect), e.expression
+         ),
+         exp.Filter: no_filter_sql,
+-        exp.CosineDistance: rename_func("VECTOR_COSINE_SIMILARITY"),
++        exp.CosineDistance: _cosine_distance_sql,
++        exp.CosineSimilarity: rename_func("VECTOR_COSINE_SIMILARITY"),
+         exp.EuclideanDistance: rename_func("VECTOR_L2_DISTANCE"),
+         exp.HandlerProperty: lambda self, e: f"HANDLER = {self.sql(e, 'this')}",
+         exp.FileFormatProperty: lambda self, e: (
+diff --git a/sqlglot/parsers/duckdb.py b/sqlglot/parsers/duckdb.py
+index 915226adf..90e4d1046 100644
+--- a/sqlglot/parsers/duckdb.py
++++ b/sqlglot/parsers/duckdb.py
+@@ -227,6 +227,7 @@ class DuckDBParser(parser.Parser):
+         "LIST_CONCAT": parser.build_array_concat,
+         "LIST_CONTAINS": exp.ArrayContains.from_arg_list,
+         "LIST_COSINE_DISTANCE": exp.CosineDistance.from_arg_list,
++        "LIST_COSINE_SIMILARITY": exp.CosineSimilarity.from_arg_list,
+         "LIST_DISTANCE": exp.EuclideanDistance.from_arg_list,
+         "LIST_FILTER": exp.ArrayFilter.from_arg_list,
+         "LIST_HAS": exp.ArrayContains.from_arg_list,
+diff --git a/sqlglot/parsers/snowflake.py b/sqlglot/parsers/snowflake.py
+index 1b69dec6b..b594d8809 100644
+--- a/sqlglot/parsers/snowflake.py
++++ b/sqlglot/parsers/snowflake.py
+@@ -728,7 +728,7 @@ class SnowflakeParser(parser.Parser):
+         ),
+         "TO_VARCHAR": build_timetostr_or_tochar,
+         "TO_JSON": exp.JSONFormat.from_arg_list,
+-        "VECTOR_COSINE_SIMILARITY": exp.CosineDistance.from_arg_list,
++        "VECTOR_COSINE_SIMILARITY": exp.CosineSimilarity.from_arg_list,
+         "VECTOR_INNER_PRODUCT": exp.DotProduct.from_arg_list,
+         "VECTOR_L1_DISTANCE": exp.ManhattanDistance.from_arg_list,
+         "VECTOR_L2_DISTANCE": exp.EuclideanDistance.from_arg_list,
+diff --git a/sqlglot/typing/bigquery.py b/sqlglot/typing/bigquery.py
+index b81723e69..38f4b1a7c 100644
+--- a/sqlglot/typing/bigquery.py
++++ b/sqlglot/typing/bigquery.py
+@@ -341,6 +341,7 @@ EXPRESSION_METADATA = {
+             exp.Atan2,
+             exp.Corr,
+             exp.CosineDistance,
++            exp.CosineSimilarity,
+             exp.Coth,
+             exp.Csc,
+             exp.Csch,
+diff --git a/sqlglot/typing/snowflake.py b/sqlglot/typing/snowflake.py
+index 789884296..f07d846ca 100644
+--- a/sqlglot/typing/snowflake.py
++++ b/sqlglot/typing/snowflake.py
+@@ -384,6 +384,7 @@ EXPRESSION_METADATA = {
+             exp.ApproxPercentileEstimate,
+             exp.ApproximateSimilarity,
+             exp.CosineDistance,
++            exp.CosineSimilarity,
+             exp.DotProduct,
+             exp.EuclideanDistance,
+             exp.ManhattanDistance,
+diff --git a/tests/dialects/test_snowflake.py b/tests/dialects/test_snowflake.py
+index 132d00e6b..1762b9b39 100644
+--- a/tests/dialects/test_snowflake.py
++++ b/tests/dialects/test_snowflake.py
+@@ -169,6 +169,56 @@ class TestSnowflake(Validator):
+                 self.validate_identity(source, expected)
+                 self.validate_identity(expected)
+ 
++    def test_cosine_similarity(self):
++        self.validate_identity("SELECT VECTOR_COSINE_SIMILARITY(a, b) FROM t").selects[0].assert_is(
++            exp.CosineSimilarity
++        )
++        self.validate_all(
++            "SELECT VECTOR_COSINE_SIMILARITY(a, b) FROM t",
++            read={
++                "duckdb": "SELECT LIST_COSINE_SIMILARITY(a, b) FROM t",
++                "": "SELECT COSINE_SIMILARITY(a, b) FROM t",
++            },
++            write={
++                "snowflake": "SELECT VECTOR_COSINE_SIMILARITY(a, b) FROM t",
++                "duckdb": "SELECT LIST_COSINE_SIMILARITY(a, b) FROM t",
++                "bigquery": "SELECT (1 - COSINE_DISTANCE(a, b)) FROM t",
++                "clickhouse": "SELECT (1 - cosineDistance(a, b)) FROM t",
++                "": "SELECT COSINE_SIMILARITY(a, b) FROM t",
++            },
++        )
++        self.validate_all(
++            "SELECT VECTOR_COSINE_SIMILARITY(a, b) * 2 FROM t",
++            write={"bigquery": "SELECT (1 - COSINE_DISTANCE(a, b)) * 2 FROM t"},
++        )
++        self.validate_all(
++            "SELECT (1 - VECTOR_COSINE_SIMILARITY(a, b)) FROM t",
++            read={
++                "bigquery": "SELECT COSINE_DISTANCE(a, b) FROM t",
++                "clickhouse": "SELECT cosineDistance(a, b) FROM t",
++                "duckdb": "SELECT LIST_COSINE_DISTANCE(a, b) FROM t",
++            },
++        )
++        self.validate_all(
++            "SELECT (1 - VECTOR_COSINE_SIMILARITY(a, b)) * 2 FROM t",
++            read={"bigquery": "SELECT COSINE_DISTANCE(a, b) * 2 FROM t"},
++        )
++        self.assertEqual(
++            parse_one("SELECT COSINE_DISTANCE(a, b) FROM t", read="bigquery").sql("duckdb"),
++            "SELECT LIST_COSINE_DISTANCE(a, b) FROM t",
++        )
++        self.assertEqual(
++            parse_one("SELECT ARRAY_COSINE_SIMILARITY(a, b) FROM t", read="duckdb").sql("duckdb"),
++            "SELECT ARRAY_COSINE_SIMILARITY(a, b) FROM t",
++        )
++
++        import duckdb
++
++        sql = parse_one(
++            "SELECT VECTOR_COSINE_SIMILARITY([1.0, 0.0], [1.0, 1.0])", read="snowflake"
++        ).sql("duckdb")
++        self.assertAlmostEqual(duckdb.sql(sql).fetchall()[0][0], 0.7071, places=4)
++
+     def test_snowflake(self):
+         ast = parse_one("BLA(x) FILTER (WHERE x = 5)")
+         self.assertEqual(
+diff --git a/tests/fixtures/identity.sql b/tests/fixtures/identity.sql
+index 94f79f2a5..efcb25652 100644
+--- a/tests/fixtures/identity.sql
++++ b/tests/fixtures/identity.sql
+@@ -933,6 +933,7 @@ SELECT SIN(x)
+ SELECT SINH(x)
+ SELECT TANH(x)
+ SELECT COSINE_DISTANCE(v1, v2)
++SELECT COSINE_SIMILARITY(v1, v2)
+ SELECT EUCLIDEAN_DISTANCE(v1, v2)
+ FOO(values.c)
+ case.*

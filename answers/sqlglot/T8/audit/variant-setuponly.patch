@@ -1,0 +1,54 @@
+diff --git a/README.md b/README.md
+index fad330535..77431d4cf 100644
+--- a/README.md
++++ b/README.md
+@@ -597,7 +597,7 @@ to:
+ CAST('2021-02-01' AS DATE)
+ ```
+ 
+-Without dateutil, the optimizer leaves this arithmetic unevaluated.
++dateutil is installed with SQLGlot.
+ 
+ ## Supported Dialects
+ 
+diff --git a/setup.py b/setup.py
+index 49649dfa3..e48736f40 100644
+--- a/setup.py
++++ b/setup.py
+@@ -4,6 +4,7 @@ from setuptools_scm import get_version
+ version = get_version(local_scheme="no-local-version")
+ 
+ setup(
++    install_requires=["python-dateutil"],
+     extras_require={
+         "dev": [
+             "duckdb>=0.6",
+diff --git a/sqlglot/optimizer/simplify.py b/sqlglot/optimizer/simplify.py
+index 23e4a4599..42ea0c797 100644
+--- a/sqlglot/optimizer/simplify.py
++++ b/sqlglot/optimizer/simplify.py
+@@ -10,6 +10,7 @@ from collections import deque, defaultdict
+ from functools import reduce, wraps
+ 
+ import sqlglot
++from dateutil.relativedelta import relativedelta
+ from sqlglot import Dialect, exp
+ from sqlglot.helper import first, merge_ranges, to_int, while_changing
+ from sqlglot.optimizer.annotate_types import TypeAnnotator
+@@ -19,7 +20,6 @@ from sqlglot.schema import ensure_schema
+ 
+ 
+ if t.TYPE_CHECKING:
+-    from dateutil.relativedelta import relativedelta
+     from sqlglot.dialects.dialect import DialectType
+     from typing_extensions import TypeIs
+ 
+@@ -517,8 +517,6 @@ def date_literal(date: object, target_type=None) -> exp.Expr:
+ 
+ 
+ def interval(unit: str, n: int = 1) -> relativedelta:
+-    from dateutil.relativedelta import relativedelta
+-
+     if unit == "year":
+         return relativedelta(years=1 * n)
+     if unit == "quarter":
