@@ -2,6 +2,35 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
+## Gate 5 · codebases for the model comparison · picked 2026-11-22
+
+Report: `research/stage-4-codebases.md` (seven candidates cloned and tested on the owner's machine).
+The orchestrator asked: "Which do you want: Hono and sqlglot (my recommendation), Hono only, or a
+different pick from the report?" The owner's reply: "Hono and sqlglot". Applied:
+
+1. **Two codebases:** Hono (TypeScript web framework, about the size of the owner's app, almost
+   nothing written down beyond tests) and sqlglot (Python SQL parser, about three times the size,
+   with a written rules file). Reserve: urfave/cli (Go).
+2. **Practice copies:** `Natenc12/hono-lab` and `Natenc12/sqlglot-lab`, created empty and private by
+   the orchestrator; each gets a fixed upstream commit with the upstream CI workflows removed.
+   sqlglot's `CLAUDE.md` is removed from the copy so no agent-instruction file loads into a run on
+   its own; its `AGENTS.md` stays as an ordinary project document, minus the line that tells agents
+   to tag their commits.
+3. **Eight tickets per codebase, standard level only:** five replays of real fixes merged after
+   1 July 2026 and not written by an AI agent, one feature across several modules, one vague request
+   and one request that conflicts with something the project decided or pins in tests. Each set is
+   audited independently before use.
+4. **Three setups, two runs of every cell:** `P5P` on Opus 5.5, `P5P` on Fable 5.2, and `P6` (a
+   Fable lead with the same guide and skills that may start Opus workers). 48 runs per codebase, 96
+   in all.
+5. **Rules unchanged:** trustworthy as before; the charter's Q5 rule decides the builder model (Fable
+   only if it gains at least one trustworthy pull request in eight or needs at least 30% fewer
+   correction rounds; list price ratio 2 to 1, stated at gate 4). `P6` is reported against both
+   controls with cost split by model.
+
+Before any run: grader and harness support for the two codebases, the tickets and their audits, a
+trial run per setup on each codebase, a freeze with its note shown to the owner.
+
 ## Gate 4 · stage 2 results · a short round approved first · 2026-11-22
 
 Page: https://claude.ai/artifact/VfgFrkDdVNx9mLcxwZkFkd (copy: `results/stage-2/page/stage-2-results.html`)
