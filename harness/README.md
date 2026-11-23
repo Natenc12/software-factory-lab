@@ -129,6 +129,10 @@ The same for every language:
   other than PyPI (a Python build from GitHub, model weights, npm) needs `run_allow_domains` or `--allow-domain`; uv's own
   Python downloads come from GitHub and will fail, so the Python a repo needs must already be installed.
 - Postgres over TCP is blocked; runs must use the socket URL the harness sets.
+- The guard and the scan read a heredoc body (`cat <<'EOF' > file ... EOF`) and code given to an
+  interpreter (`python3 -c "..."`, `node -e "..."`) as data: only their absolute and `~` paths are
+  checked. They are read as commands only when a shell runs them (`bash <<EOF`, `cat <<EOF | sh`,
+  `bash -c "..."`, `find ... -exec sh -c "..."`).
 - The leak scan also flags GitHub tokens in any tool output and `gh auth` or git credential calls made
   from inside a program.
 - Live counts use the usage on each streamed message, which under-counts output until the call ends;

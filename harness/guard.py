@@ -114,6 +114,63 @@ def _segments(cmd: str) -> list[list[str]]:
     return segs
 
 
+HEREDOC_RE = re.compile(r"<<(-?)[ \t]*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2")
+# Commands that run what a heredoc feeds them as shell commands.
+SHELL_FED = {"bash", "sh", "zsh", "dash", "ksh", "fish", "eval", "source", "."}
+
+
+def _receiver(text: str, last: bool) -> str | None:
+    """The command word of the last (or first) simple command in a piece of a command line."""
+    parts = [p for p in re.split(r"\|\||&&|[;|&(]", text) if p.strip()]
+    if not parts:
+        return None
+    try:
+        words = shlex.split(parts[-1] if last else parts[0])
+    except ValueError:
+        words = (parts[-1] if last else parts[0]).split()
+    while words and (re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[0]) or os.path.basename(words[0]) in WRAPPERS):
+        words.pop(0)
+        while words and words[0].startswith("-"):
+            words.pop(0)
+    return os.path.basename(words[0]) if words else None
+
+
+def _feeds_shell(line: str, m: re.Match) -> bool:
+    """Whether the heredoc opened by `m` on `line` is run as shell commands."""
+    if _receiver(line[: m.start()], last=True) in SHELL_FED:
+        return True
+    after = line[m.end() :]
+    for piece in after.split("|")[1:]:  # `cat <<EOF | sh`
+        if _receiver(piece, last=False) in SHELL_FED:
+            return True
+    return False
+
+
+def split_heredocs(cmd: str) -> tuple[str, list[str], list[str]]:
+    """(the command without heredoc bodies, bodies that are data, bodies fed to a shell).
+
+    A body is data unless its command is a shell (`bash <<EOF`, `cat <<EOF | sh`): writing a Python or
+    TypeScript file through `cat <<'EOF' > f` is not running its lines.
+    """
+    lines, out, data, fed, i = cmd.split("\n"), [], [], [], 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        i += 1
+        for m in HEREDOC_RE.finditer(line):
+            if m.start() and line[m.start() - 1] == "<":
+                continue  # `<<<` is a here-string, not a heredoc
+            body = []
+            while i < len(lines):
+                cur = lines[i]
+                i += 1
+                if (cur.lstrip("\t") if m.group(1) else cur) == m.group(3):
+                    break
+                body.append(cur)
+            (fed if _feeds_shell(line, m) else data).append("\n".join(body))
+    return "\n".join(out), data, fed
+
+
 def _git_sub(args: list[str]) -> str | None:
     skip = False
     for a in args:
@@ -153,6 +210,15 @@ def bash_reason(
     added to `unresolved` instead of being judged. When a `cd` target can't be known (a variable, `cd -`),
     the live guard keeps the last known folder and the scan stops resolving relative paths.
     """
+    text, data, fed = split_heredocs(cmd)
+    # A heredoc body that is only data is checked for paths that reach outside the run, and nothing
+    # else: its relative paths are relative to the file being written, not to the shell.
+    for body in data:
+        for p in sorted(set(EMBEDDED_PATH.findall(body))):
+            r = path_reason(p, cwd or "/", cfg)
+            if r:
+                return f"in a heredoc: {r}"
+    cmd = "\n".join([text, *fed])
     low = cmd.lower()
     for word in cfg.get("forbidden_words", []):
         if word.lower() in low:
@@ -178,8 +244,12 @@ def bash_reason(
                 return f"`git {sub}` is blocked in this lab; `lab pr update` pushes your branch"
         if name == "cd" and len(words) == 1:
             words = ["cd", "~"]
+        # A quoted string is read as more commands only when a shell in this segment runs it (`bash -c`,
+        # `find ... -exec sh -c`, `timeout 5 bash -c`). Code for Python or Node (`python3 -c "..."`) is data:
+        # its paths are still checked below.
+        shell_here = any(os.path.basename(w) in SHELLS for w in words)
         for tok in words[1:] if "/" not in words[0] else words:
-            if depth < 3 and (" " in tok or (name in SHELLS and tok not in ("-c", "-lc", "-l"))):
+            if depth < 3 and shell_here and (" " in tok or (name in SHELLS and tok not in ("-c", "-lc", "-l"))):
                 r = bash_reason(tok, cwd, cfg, depth + 1, unresolved, scan)
                 if r:
                     return r
@@ -230,7 +300,7 @@ def final_cwd(cmd: str, cwd: str | None, cfg: dict) -> str | None:
 
     A `cd` inside parentheses or `$(...)` runs in a subshell and does not carry over.
     """
-    top = _top_level(cmd)
+    top = _top_level(split_heredocs(cmd)[0])
     for seg in _segments(top):
         words = list(seg)
         while words and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[0]):
