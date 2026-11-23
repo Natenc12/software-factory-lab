@@ -177,3 +177,25 @@ folder; the guard refused the write. So the control folder stayed shut even to a
 must name the run's folders in words, never by relative path.** Run 3 used the reworded body and wrote
 the note where intended. No `SKILL.md` appeared in any checkout or diff: the skills live only in
 `.control/<run-id>/plugin/`, and the run's `arm/` copy leaves `skills/` out.
+
+## Trials 10–11: a lead and a worker on two models (2026-11-22, Claude Code 2.1.330)
+
+Arm: a scratch copy of `tests/fixtures/arm-with-skills-and-agents` (a short lead brief, the two
+fixture skills, one `worker` agent with `model: claude-haiku-5-5` and no tool list). Lead:
+`claude-sonnet-5-5`. Codebase: a local bare copy of pipeline-lab `main`, fake `gh`. About 47k counted
+tokens, $0.12 at list price, for both runs.
+
+| | Run 1: two independent pieces, delegating invited | Run 2: one tiny task |
+| --- | --- | --- |
+| `workers_started` | 1: `{"type": "worker", "gist": "Write release note"}` | 0 |
+| `skills_used` | `["release-note"]`, called by the worker | `[]` |
+| `by_model` (counted tokens, cost) | Sonnet 18,690, $0.087; Haiku 21,332, $0.0046 | Sonnet 7,169, $0.034 |
+| Run total counted (what the ceiling uses) | 40,022 = the two models together | 7,169 |
+| Diff against base | `README.md` only, committed by the lead | `README.md` only |
+| Scan | clean, 1 blocked attempt | clean |
+
+In run 1 the lead started the worker in the background and committed the README line while the worker
+called `release-note` and wrote `scratch/RELEASE.md`. The worker ran inside the same OS sandbox and
+guard. Its one refused call was `cat` of the skill file, at the path Claude Code gave as the skill's
+base directory (inside the control folder); it already had the skill's text from the Skill call. No
+`SKILL.md` reached the checkout.
