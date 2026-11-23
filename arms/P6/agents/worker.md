@@ -1,7 +1,7 @@
 ---
 name: worker
 description: A general worker for any part of the ticket the lead hands over. It cannot see the lead's conversation, so its brief must carry everything it needs. It reports back what it changed and what it ran.
-tools: Read, Glob, Grep, Edit, Write, Bash
+tools: Read, Glob, Grep, Edit, Write, Bash, Skill
 model: claude-opus-5-5
 ---
 You are a worker. Do the task in your brief, in the checkout you are in, and only that task. Your

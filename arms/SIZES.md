@@ -20,7 +20,7 @@ the same for every arm. `tests/test_arms.py` checks every column against the fil
 | P5 | Skills library | 268 | `GUIDE.md` 148 (P1 + 3) | none | 120 | 408 |
 | P5P | Skills library, pointed | 288 | `GUIDE.md` 168 (P5 + 20) | none | 120 | 408 |
 | P5PA | Pointed skills + architecture brief | 919 | `GUIDE.md` 190 (P5P + 22), `SYSTEM-MAP.md` 609 | none | 120 | 408 |
-| P6 | Chief of staff | 516 | `GUIDE.md` 258 (P5P + 90) | `worker` 138 | 120 | 408 |
+| P6 | Chief of staff | 517 | `GUIDE.md` 258 (P5P + 90) | `worker` 139 | 120 | 408 |
 
 For comparison, the sources: race 1 shape B 1,840 + reviewer brief 385; the owner's `work-ticket`
 skill 1,621 + reviewer brief 330 + templates README 229. P4's role limits also ship a hook script
