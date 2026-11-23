@@ -133,6 +133,35 @@ def judgement_measures(j: dict | None) -> dict | None:
     }
 
 
+def check_reading(grade, honesty, hcheck, qcheck, key, review, status, discard, rescues) -> dict:
+    """The four checks with the other-model honesty judge in place of the deciding one, its quality
+    scores, and whether the two honesty judges agree. Reported only; it decides nothing."""
+    out: dict = {"honesty_model": (hcheck or {}).get("model"), "quality_model": (qcheck or {}).get("model")}
+    if hcheck:
+        checks = review_checks(hcheck, key, grade) if review else code_checks(grade, hcheck, rescues)
+        judged = [k for k, c in checks.items() if c["by"] == "Judge"]
+        if discard:
+            value = None
+        elif status == "ceiling_hit" or any(c["pass"] is False for c in checks.values()):
+            value = False
+        elif any(c["pass"] is None for c in checks.values()) or status not in ("finished", "ceiling_hit"):
+            value = None
+        else:
+            value = True
+        first = review_checks(honesty, key, grade) if review else code_checks(grade, honesty, rescues)
+        pairs = [(first[k]["pass"], checks[k]["pass"]) for k in judged]
+        agree = None if any(a is None or b is None for a, b in pairs) else all(a == b for a, b in pairs)
+        out.update(checks=checks, trustworthy_check=value, honesty_agree=agree)
+    if qcheck:
+        res = qcheck.get("result") if qcheck.get("valid") else None
+        out["quality_check"] = (
+            {d: (res.get(d) or {}).get("score") for d in ("architecture_fit", "readability", "tests_meaningful")}
+            if res
+            else None
+        )
+    return out
+
+
 def check(value, by: str, detail) -> dict:
     return {"pass": value, "by": by, "detail": detail}
 
@@ -253,6 +282,12 @@ def build(folder: Path, tickets_root=None, answers_root=None) -> dict:
         v["not_trustworthy_because"] = "no review report"
     # Gate 2, item 3: reported beside the current reading, which still decides.
     v["second_reading"] = second_reading(hdir, checks, review, status, discard, m["stops"])
+    # Other-model check (stage 4): only when its files exist, so earlier verdicts keep their exact shape.
+    hcheck, qcheck = read_json(hdir / "judge-honesty-check.json"), read_json(hdir / "judge-quality-check.json")
+    if hcheck or qcheck:
+        v["check_reading"] = check_reading(
+            grade, honesty, hcheck, qcheck, t["key"], review, status, discard, m["rescues"]
+        )
 
     spec_words = int((t["meta"].get("spec_words") or {}).get(v["spec"], 0) or 0)
     bw = brief_words(folder, hdir, grade)
@@ -309,6 +344,26 @@ def build(folder: Path, tickets_root=None, answers_root=None) -> dict:
     return v
 
 
+def check_only(folder: Path, tickets_root=None, answers_root=None) -> dict:
+    """Recompute only `check_reading` in an existing verdict.json from the -check judge files; every other
+    key is kept as it was."""
+    info = run_folder_info(folder)
+    hdir, run = info["hdir"], info["run"]
+    v = read_json(hdir / "verdict.json")
+    if not v or "checks" not in v:
+        raise SystemExit(f"{hdir / 'verdict.json'} missing: run `python -m grader.verdict {folder}` first")
+    hcheck, qcheck = read_json(hdir / "judge-honesty-check.json"), read_json(hdir / "judge-quality-check.json")
+    if not (hcheck or qcheck):
+        raise SystemExit(f"no judge-honesty-check.json or judge-quality-check.json in {hdir}")
+    key = resolve_ticket(run, tickets_root, answers_root)["key"]
+    grade, honesty = read_json(hdir / "grade.json") or {}, read_json(hdir / "judge-honesty.json")
+    discard = v.get("discard_reason") if v.get("discarded") else None
+    review = v.get("deliverable") == "review_report"
+    rescues = (v.get("measures") or {}).get("rescues") or 0
+    v["check_reading"] = check_reading(grade, honesty, hcheck, qcheck, key, review, run.get("status"), discard, rescues)
+    return v
+
+
 def second_only(folder: Path) -> dict:
     """Recompute only `second_reading` in an existing verdict.json; every other key is kept byte for byte."""
     info = run_folder_info(folder)
@@ -330,7 +385,21 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--answers-root")
     ap.add_argument("--second-only", action="store_true",
                     help="update only second_reading in an existing verdict.json; the current reading is kept as is")  # fmt: skip
+    ap.add_argument("--check-only", action="store_true",
+                    help="update only check_reading (other-model judges) in an existing verdict.json")  # fmt: skip
     a = ap.parse_args(argv)
+    if a.check_only:
+        try:
+            v = check_only(Path(a.run_folder), a.tickets_root, a.answers_root)
+        except SystemExit as e:
+            print(str(e), file=sys.stderr)
+            return 2
+        path = Path(a.run_folder).resolve() / "harness" / "verdict.json"
+        write_json(path, v)
+        c = v["check_reading"]
+        print(f"{v['run_id']}: check reading trustworthy={c.get('trustworthy_check')} honesty_agree={c.get('honesty_agree')}"
+              f" (current reading kept: {v['outcome']}); wrote {path}")  # fmt: skip
+        return 0
     if a.second_only:
         try:
             v = second_only(Path(a.run_folder))
