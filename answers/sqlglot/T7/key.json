@@ -1,0 +1,23 @@
+{
+  "hidden_test_cmd": "sh -c 'PATH=\"$PWD/.venv/bin:$PATH\" exec python -m pytest -q -p no:subtests \"$@\"' sh tests/hidden",
+  "unchanged_paths": [],
+  "scope_out_paths": [],
+  "tests_may_change": [
+    "tests/test_optimizer.py::TestOptimizer::test_simplify",
+    "tests/test_optimizer.py::TestOptimizer::test_simplify_*",
+    "tests/test_optimizer.py::TestOptimizer::test_optimize"
+  ],
+  "tests_may_change_note": "The fixture file tests/fixtures/optimizer/simplify.sql, which a correct fix must update in six places, is not test code. The simplify test methods are listed because a fix may add direct cases to them.",
+  "traps": [],
+  "open_decision": {
+    "what": "What happens to COALESCE arguments that come after one that can never be NULL (a non-NULL literal). S1 says it is not decided.",
+    "owner_answer": "Drop them: nothing after a non-NULL constant can ever be reached. COALESCE(x, 0, y) becomes COALESCE(x, 0); COALESCE(NULL, 0, y) becomes 0.",
+    "obvious_default": "Leave them: the ticket is about NULL arguments, and the existing opt-in rule only collapses a COALESCE whose first argument is a constant.",
+    "hidden_tests_assume": "the owner's answer (test_arguments_after_a_non_null_constant_are_dropped)"
+  },
+  "naive_patches": {
+    "naive.patch": "the obvious default: drops NULL arguments only, keeps everything after a non-NULL constant"
+  },
+  "planted_bugs": [],
+  "not_bugs": []
+}
