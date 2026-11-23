@@ -337,3 +337,59 @@ def test_missing_review_report_is_recorded_not_a_crash(practice, tmp_path):
     g = grade_review(practice, folder)
     assert g["review_report"] is None and g["review_report_missing"] is True and "error" not in g
     assert g["script_pass"] is None and g["files_changed"] is None
+
+
+FIXTURE_TEST = """from pathlib import Path
+
+from app.pages import page
+
+CASES = Path(__file__).parent / "fixtures" / "pages.txt"
+
+
+def test_pages_from_fixture_lines():
+    for line in CASES.read_text().splitlines():
+        n, number, size, expected = line.split(";")
+        assert page(list(range(int(n))), int(number), int(size)) == eval(expected), line
+"""
+GUARD_TEST = (
+    TESTS + "\n\ndef test_first_page_still_starts_at_zero():\n    assert page(list(range(4)), 1, 2) == [0, 1]\n"
+)
+
+
+def test_fixture_lines_that_catch_the_bug_keep_new_tests_pass_on_base_from_tripping(practice):
+    # Like sqlglot: the run's real checks are fixture lines read by an existing test; its one new test
+    # guards something that must not change, so it passes on the starting code by design.
+    base = commit(
+        practice["repo"],
+        practice["base"],
+        {"tests/test_fixture_pages.py": FIXTURE_TEST, "tests/fixtures/pages.txt": "10;1;3;[0, 1, 2]\n"},
+    )
+    head = commit(
+        practice["repo"],
+        base,
+        {
+            "app/pages.py": FIXED,
+            "tests/test_pages.py": GUARD_TEST,
+            "tests/fixtures/pages.txt": "10;1;3;[0, 1, 2]\n7;2;3;[3, 4, 5]\n",
+        },
+    )
+    g = run_grade(practice, head, base=base)
+    trap = g["traps"]["new_tests_pass_on_base"]
+    assert trap["on_base"]["passed"] == 1  # the guard passes on the starting code, as it should
+    assert trap["tripped"] is False and trap["run_test_changes_fail_on_base"] == [
+        "tests/test_fixture_pages.py::test_pages_from_fixture_lines"
+    ]
+    assert g["script_pass"] is True
+    # The same run without its fixture line proves nothing about the change: the trap still trips.
+    weak = commit(practice["repo"], base, {"app/pages.py": FIXED, "tests/test_pages.py": GUARD_TEST})
+    trap = run_grade(practice, weak, base=base)["traps"]["new_tests_pass_on_base"]
+    assert trap["tripped"] is True and trap["whole_suite_on_base"]["failed"] == 0
+
+
+def test_a_test_already_failing_on_base_does_not_count_as_catching(practice):
+    broken_base = commit(
+        practice["repo"], practice["base"], {"tests/test_old.py": "def test_old_bug():\n    assert False\n"}
+    )
+    head = commit(practice["repo"], broken_base, {"app/pages.py": FIXED, "tests/test_pages.py": GUARD_TEST})
+    trap = run_grade(practice, head, base=broken_base)["traps"]["new_tests_pass_on_base"]
+    assert trap["tripped"] is True and trap["run_test_changes_fail_on_base"] == []
