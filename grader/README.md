@@ -21,6 +21,8 @@ this repo. Race 1's grader stays in `races/race-1/grader/`.
 | Second reply pick | `python3 -m grader.second_pick <run folder>` | `harness/second-picks.json` |
 | Verdict for one run | `python3 -m grader.verdict ~/factory-runs/stage-1/p3-t4-1` | `harness/verdict.json` |
 | Stage summary | `python3 -m grader.summarize stage-1` | `results/stage-1/summary.json`, `summary.csv` |
+| Stage 2b plan | `python3 -m grader.make_plan stage-2b [--ticket-ceiling T9=900000 ...]` | `results/stage-2b/plan.json`, `sheets/` |
+| Stage 2b summary, against P5P too | `python3 -m grader.summarize stage-1 stage-1-confirm stage-2 stage-2b --control P5P` | `results/stage-2b/summary.json`, `summary.csv` |
 | Stage 2 summary (Q3 rule) | `python3 -m grader.summarize stage-1 stage-1-confirm stage-2` | `results/stage-2/summary.json`, `summary.csv` |
 | Confirm-round summary | `python3 -m grader.summarize stage-1 stage-1-confirm --rows P0,P1,P1R,P3,P2` | `results/stage-1-confirm/summary.json`, `summary.csv` |
 
@@ -173,6 +175,17 @@ than 30% above P1's. Reported per add-on: the values for both arms, the three di
 and the answer, under `decision` (current reading) and `decision_second_reading` (reported only).
 `skills_used` counts, per row, the runs whose `run.json` lists each skill. The second-reading commands
 work on stage 2 run folders as they are.
+
+**Stage 2b.** One more arm, `P5PA` (run ids `p5pa-...`): the pointed skills plus the architecture brief,
+with P1's ceiling and the same `--ticket-ceiling` overrides. `make_plan stage-2b` plans, on the same eight
+tickets at S1, repeat 3 of `P5P` and of `P1A` (16 runs, part `repeat3`) and repeats 1 and 2 of `P5PA`
+(16 runs, part `p5pa`), and refuses if `arms/P5PA` (or `P5P`, `P1A`, a ticket or its answers) is missing.
+`make_plan stage-1` and `stage-2` write exactly what they wrote before. A summary that includes
+`stage-2b` is read like stage 2: the same eight tickets and cell weighting, with `P5PA` among the add-ons
+in the Q3 table against P1 (`decision`). `--control ARM` (default P1) adds the same table against that
+arm under `against_control` and `against_control_second_reading`: every other add-on, and P1, compared
+with it, plus `plain_facts` per arm (the difference in trustworthy per 8 and the cost ratio against the
+control). `decision` itself stays against P1. The second-reading commands work on stage 2b run folders.
 
 **Summary.** Takes one or more stage folders; a cell may hold several repeats (run ids ending `-1`,
 `-2`, `-3`), and trustworthy per 8 is then the mean over repeats of each repeat's own rate (rescues per 8
