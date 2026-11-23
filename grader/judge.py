@@ -20,6 +20,10 @@ Second reading (gate 2): `--kind honesty --pass 2` runs the honesty judge again 
 judge-honesty-2.json (pass 1's file is untouched), and `--kind claim-severity` marks every false claim
 either pass found as material or a slip (grader/second_reading.py, grader/briefs/claim-severity.md).
 
+Other-model check (stage 4, where Fable's own runs are judged by Fable): `--kind honesty --check` and
+`--kind quality --check` run the same judge on claude-opus-5-5 (or `--model`) into
+judge-honesty-check.json and judge-quality-check.json; the deciding files are untouched.
+
 Output: harness/judge-<kind>.json (the validated answer, model, tokens, cost), and the exact prompt in
 harness/judge-<kind>.prompt.txt for audit. The answer must be JSON of the brief's shape; an invalid
 answer gets one retry that names what was wrong. Exit code 0 valid, 1 invalid after the retry, 2 usage.
@@ -413,6 +417,7 @@ def judge_run(
     tickets_root=None,
     answers_root=None,
     pass_no: int = 1,
+    check: bool = False,
 ) -> dict:
     info = run_folder_info(folder)
     hdir, run = info["hdir"], info["run"]
@@ -448,10 +453,11 @@ def judge_run(
         brief = (BRIEFS / f"{check_kind}.md").read_text(encoding="utf-8").replace("{behaviour_tags}", tags_block())
         body = review_inputs(info, grade, t["key"], terms) if review else honesty_inputs(info, grade, terms)
     prompt = brief + "\n\n" + body + "\n"
-    suffix = f"-{pass_no}" if pass_no > 1 else ""
-    (hdir / f"judge-{kind}{suffix}.prompt.txt").write_text(prompt, encoding="utf-8")
+    (hdir / f"judge-{kind}{file_suffix(pass_no, check)}.prompt.txt").write_text(prompt, encoding="utf-8")
     if kind == "honesty":
         out["pass"] = pass_no
+    if check:
+        out["check"] = True
     out["brief"] = check_kind
     out["prompt_sha256"] = hashlib.sha256(prompt.encode()).hexdigest()
     out["prompt_chars"] = len(prompt)
@@ -461,13 +467,23 @@ def judge_run(
     return out
 
 
+CHECK_MODEL = "claude-opus-5-5"
+
+
+def file_suffix(pass_no: int = 1, check: bool = False) -> str:
+    """judge-<kind>.json (deciding), judge-honesty-2.json (second pass), judge-<kind>-check.json (other model)."""
+    return "-check" if check else (f"-{pass_no}" if pass_no > 1 else "")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m grader.judge", description=__doc__.split("\n\n")[0])
     ap.add_argument("run_folder")
     ap.add_argument("--kind", required=True, choices=("quality", "honesty", "judgement", "claim-severity"))
     ap.add_argument("--pass", dest="pass_no", type=int, choices=(1, 2), default=1,
                     help="honesty only: 2 runs the same judge again into judge-honesty-2.json")  # fmt: skip
-    ap.add_argument("--model", default=os.environ.get("GRADER_JUDGE_MODEL", DEFAULT_MODEL))
+    ap.add_argument("--check", action="store_true",
+                    help=f"other-model check (quality or honesty): writes judge-<kind>-check.json, model {CHECK_MODEL} unless --model")  # fmt: skip
+    ap.add_argument("--model", default=None, help=f"default {DEFAULT_MODEL} ($GRADER_JUDGE_MODEL)")
     ap.add_argument("--claude", default=os.environ.get("GRADER_CLAUDE", "claude"))
     ap.add_argument("--redact", action="append", default=[], help="extra term to remove from the judge's input")
     ap.add_argument("--tickets-root")
@@ -476,15 +492,17 @@ def main(argv: list[str] | None = None) -> int:
     claude = shutil.which(a.claude) or a.claude
     if a.pass_no != 1 and a.kind != "honesty":
         ap.error("--pass 2 is for --kind honesty only")
+    if a.check and (a.kind not in ("quality", "honesty") or a.pass_no != 1):
+        ap.error("--check is for --kind quality or honesty, without --pass 2")
+    a.model = a.model or (CHECK_MODEL if a.check else os.environ.get("GRADER_JUDGE_MODEL", DEFAULT_MODEL))
     try:
         out = judge_run(
-            Path(a.run_folder), a.kind, a.model, claude, a.redact, a.tickets_root, a.answers_root, a.pass_no
+            Path(a.run_folder), a.kind, a.model, claude, a.redact, a.tickets_root, a.answers_root, a.pass_no, a.check
         )
     except SystemExit as e:
         print(str(e), file=sys.stderr)
         return 2
-    suffix = f"-{a.pass_no}" if a.pass_no > 1 else ""
-    path = Path(a.run_folder).resolve() / "harness" / f"judge-{a.kind}{suffix}.json"
+    path = Path(a.run_folder).resolve() / "harness" / f"judge-{a.kind}{file_suffix(a.pass_no, a.check)}.json"
     write_json(path, out)
     status = "not applicable" if not out.get("applicable") else ("valid" if out.get("valid") else "INVALID")
     print(f"{out['run_id']}: {a.kind} judge {status}; wrote {path}")
