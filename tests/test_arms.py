@@ -16,7 +16,7 @@ ARMS = ROOT / "arms"
 STAGE_1 = ["P0", "P1", "P1R", "P3", "P2", "P4"]
 STAGE_2 = ["P1T", "P1L", "P1A", "P5", "P5P"]
 COMBINED = ["P5PA"]
-LEAD = ["P6"]
+LEAD = ["P6", "P6P"]
 NAMES = STAGE_1 + STAGE_2 + COMBINED + LEAD
 spec = importlib.util.spec_from_file_location("role_guard", ARMS / "P4" / "hooks" / "role_guard.py")
 rg = importlib.util.module_from_spec(spec)
@@ -85,7 +85,7 @@ def test_p1r_is_p1_word_for_word_plus_its_rule():
         assert later not in p1r
 
 
-@pytest.mark.parametrize("name", ["P1R", "P3", "P2", "P4", "P6"])
+@pytest.mark.parametrize("name", ["P1R", "P3", "P2", "P4", "P6", "P6P"])
 def test_every_agent_is_opus_and_every_reviewer_is_read_only(name):
     _, agents = sandbox.arm_files(ARMS / name)
     assert agents
@@ -466,3 +466,29 @@ def test_p6_run_gets_its_skills_and_its_worker(lab_env, practice):
     assert list(agents) == ["worker"] and agents["worker"]["model"] == "claude-opus-5-5"
     settings = json.loads((ctl / "settings.json").read_text())
     assert {"Task", "Agent"} <= set(settings["permissions"]["allow"])
+
+
+# ---- P6P: the chief of staff, pointed (P6 plus three sentences telling the lead to delegate) ----
+
+HAND_OVER = (
+    "\nHand the building to workers. You plan the work, give each worker its brief, check what comes back by\n"
+    "reading the diff and re-running the checks yourself, and report to the owner. Do not write the code\n"
+    "yourself unless a worker has failed at the same task twice.\n"
+)
+
+
+def test_p6p_guide_is_p6_guide_plus_only_the_hand_over():
+    p6 = (ARMS / "P6" / "GUIDE.md").read_text()
+    assert (ARMS / "P6P" / "GUIDE.md").read_text() == p6 + HAND_OVER
+    assert p6.rstrip().splitlines()[-1].startswith("report.") and "## Leading the work" in p6
+    assert HAND_OVER.count(". ") + 1 == 3
+
+
+def test_p6p_worker_and_skills_equal_p6s():
+    p6, p6p = files_under(ARMS / "P6"), files_under(ARMS / "P6P")
+    assert sorted(p6) == sorted(p6p)
+    for rel in p6:
+        if rel != Path("GUIDE.md"):
+            assert p6p[rel] == p6[rel], rel
+    _, spec = sandbox.parse_agent(ARMS / "P6P" / "agents" / "worker.md")
+    assert "Skill" in spec["tools"]
