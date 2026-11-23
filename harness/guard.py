@@ -52,6 +52,21 @@ def resolve(token: str, cwd: str, home: str) -> str:
     return _real(os.path.normpath(t))
 
 
+SHARED_TEMP_REASON = "touches another session's folder in Claude Code's shared temp folder"
+
+
+def shared_temp_reason(real: str, cfg: dict) -> str | None:
+    """A sealed run may use files directly in /tmp/claude-<uid> (the sandbox's own temp files) and its own
+    session folder there, but nothing under any other session's folder."""
+    st = cfg.get("shared_temp")
+    if not st or not _under(real, st) or real == st or _under(real, cfg.get("own_temp", "\0")):
+        return None
+    rest = real[len(st) + 1 :]
+    if "/" in rest or os.path.isdir(real):
+        return SHARED_TEMP_REASON
+    return None
+
+
 def path_reason(token: str, cwd: str, cfg: dict, write: bool = False) -> str | None:
     """Why this path is off limits for the run, or None if it is fine."""
     home = cfg["home"]
@@ -61,6 +76,12 @@ def path_reason(token: str, cwd: str, cfg: dict, write: bool = False) -> str | N
             return f"{token}: the harness records folder is off limits"
     if _under(p, cfg["sandbox"]):
         return None
+    r = shared_temp_reason(p, cfg)
+    if r:
+        return f"{token}: {r}"
+    for denied in cfg.get("temp_denied", []):
+        if _under(p, denied):
+            return f"{token}: a shared temp folder is off limits"
     for bad in cfg.get("forbidden", []):
         if _under(p, bad):
             return f"{token}: forbidden place ({bad})"

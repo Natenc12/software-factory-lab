@@ -38,8 +38,30 @@ NET_ALLOW = ["pypi.org", "files.pythonhosted.org"]
 # A sealed run (opt-in per codebase) reaches no package registry and reads nothing of the machine's but its
 # own run folder and the toolchain it needs. These are the toolchain folders it may read.
 SEALED_READ = (".local/bin", ".local/lib/node_modules/pnpm", ".local/share/uv/python")
-# Shared temp folders: other sessions' scratch, audit folders and clones live there.
-SHARED_TEMP = ("/private/tmp", "/tmp", "/private/var/folders", "/var/folders")
+# The user's temp folders (macOS keeps them under /var/folders); a sealed run may not read them.
+USER_TEMP = ("/private/var/folders", "/var/folders")
+
+
+def run_slug(root: Path) -> str:
+    """The folder name Claude Code gives a session started in this run's checkout."""
+    return re.sub(r"[^A-Za-z0-9]", "-", str(Path(root) / "repo"))
+
+
+def shared_temp(tmp_root: str | None = None) -> tuple[str, list[str]]:
+    """(Claude Code's shared temp folder, the temp entries a sealed run is denied).
+
+    Claude Code's sandbox makes every command's TMPDIR /tmp/claude-<uid>, and that folder also holds every
+    session's scratch (audit folders, clones). So /tmp and /tmp/claude-<uid> stay readable, and a sealed run
+    is denied every other entry of /tmp and every subfolder of /tmp/claude-<uid> that exists at its start.
+    """
+    tmp = os.path.realpath(tmp_root or "/tmp")
+    mine = os.path.join(tmp, f"claude-{os.getuid()}")
+    denied = [os.path.join(tmp, e) for e in sorted(os.listdir(tmp)) if os.path.join(tmp, e) != mine]
+    if os.path.isdir(mine):
+        denied += [os.path.join(mine, e) for e in sorted(os.listdir(mine)) if os.path.isdir(os.path.join(mine, e))]
+    return mine, denied
+
+
 # Per-run package caches (setup fills them with network; the session reads them offline).
 SEALED_CACHES = {
     "UV_CACHE_DIR": "{run}/scratch/uv-cache",
@@ -312,8 +334,8 @@ def settings(
                     *cfg["forbidden"],
                     *cfg["private"],
                     *(f"{home}/{p}" for p in (".ssh", ".aws", ".netrc", ".gnupg")),
-                    # Sealed: the whole home folder and the shared temp folders; the narrower allowRead wins.
-                    *([home, *SHARED_TEMP] if sealed else []),
+                    # Sealed: the whole home folder and the shared temp entries; the narrower allowRead wins.
+                    *([home, *USER_TEMP, *cfg.get("temp_denied", [])] if sealed else []),
                 }
             ),
             "allowRead": [str(root), *allow_read],
@@ -444,10 +466,15 @@ def create(
         writes = writable_folders(list(allow_write), cfg)
         reads = []
         if sealed:
-            # The guard agrees with the sandbox: home only for the toolchain, no shared temp folders.
+            # The guard agrees with the sandbox: home only for the toolchain, no shared temp entries, and no
+            # path under another session's folder in Claude Code's shared temp folder, even one made later.
             reads = [os.path.realpath(os.path.join(cfg["home"], p)) for p in SEALED_READ]
             cfg["read_ok"] = reads
-            cfg["forbidden"] = sorted({*cfg["forbidden"], *(os.path.realpath(t) for t in SHARED_TEMP), *SHARED_TEMP})
+            mine, denied = shared_temp()
+            cfg["temp_denied"] = [d for d in denied if not str(root).startswith(d.rstrip("/") + "/")]
+            cfg["shared_temp"] = mine
+            cfg["own_temp"] = os.path.join(mine, run_slug(root))
+            cfg["forbidden"] = sorted({*cfg["forbidden"], *USER_TEMP, *(os.path.realpath(t) for t in USER_TEMP)})
             cfg["write_ok"] = ["/dev/null"]
         cfg["read_ok"] = sorted({*cfg["read_ok"], *writes})
         cfg["own_packages"] = sorted(set(own_packages))
