@@ -22,7 +22,9 @@ either pass found as material or a slip (grader/second_reading.py, grader/briefs
 
 Other-model check (stage 4, where Fable's own runs are judged by Fable): `--kind honesty --check` and
 `--kind quality --check` run the same judge on claude-opus-5-5 (or `--model`) into
-judge-honesty-check.json and judge-quality-check.json; the deciding files are untouched.
+judge-honesty-check.json and judge-quality-check.json; the deciding files are untouched. `--check astra`
+sends the same prompt through Codex (gpt-6-astra) from a separate judge home into
+judge-<kind>-check-astra.json (grader/codex_judge.py says how the call is locked down and scrubbed).
 
 Output: harness/judge-<kind>.json (the validated answer, model, tokens, cost), and the exact prompt in
 harness/judge-<kind>.prompt.txt for audit. The answer must be JSON of the brief's shape; an invalid
@@ -417,7 +419,7 @@ def judge_run(
     tickets_root=None,
     answers_root=None,
     pass_no: int = 1,
-    check: bool = False,
+    check: bool | str = False,
 ) -> dict:
     info = run_folder_info(folder)
     hdir, run = info["hdir"], info["run"]
@@ -453,6 +455,11 @@ def judge_run(
         brief = (BRIEFS / f"{check_kind}.md").read_text(encoding="utf-8").replace("{behaviour_tags}", tags_block())
         body = review_inputs(info, grade, t["key"], terms) if review else honesty_inputs(info, grade, terms)
     prompt = brief + "\n\n" + body + "\n"
+    if check == "astra":
+        from grader.codex_judge import judge_with_codex
+
+        codex = shutil.which(os.environ.get("GRADER_CODEX", "codex")) or os.environ.get("GRADER_CODEX", "codex")
+        return {**judge_with_codex(hdir, kind, check_kind, prompt, t["key"], run["run_id"], codex), "time": now_iso()}
     (hdir / f"judge-{kind}{file_suffix(pass_no, check)}.prompt.txt").write_text(prompt, encoding="utf-8")
     if kind == "honesty":
         out["pass"] = pass_no
@@ -470,8 +477,11 @@ def judge_run(
 CHECK_MODEL = "claude-opus-5-5"
 
 
-def file_suffix(pass_no: int = 1, check: bool = False) -> str:
-    """judge-<kind>.json (deciding), judge-honesty-2.json (second pass), judge-<kind>-check.json (other model)."""
+def file_suffix(pass_no: int = 1, check: bool | str = False) -> str:
+    """judge-<kind>.json (deciding), judge-honesty-2.json (second pass), judge-<kind>-check.json (Opus
+    check), judge-<kind>-check-astra.json (Codex check)."""
+    if check == "astra":
+        return "-check-astra"
     return "-check" if check else (f"-{pass_no}" if pass_no > 1 else "")
 
 
@@ -481,8 +491,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--kind", required=True, choices=("quality", "honesty", "judgement", "claim-severity"))
     ap.add_argument("--pass", dest="pass_no", type=int, choices=(1, 2), default=1,
                     help="honesty only: 2 runs the same judge again into judge-honesty-2.json")  # fmt: skip
-    ap.add_argument("--check", action="store_true",
-                    help=f"other-model check (quality or honesty): writes judge-<kind>-check.json, model {CHECK_MODEL} unless --model")  # fmt: skip
+    ap.add_argument("--check", nargs="?", const="opus", choices=("opus", "astra"), default=None,
+                    help=f"other-model check (quality or honesty): `--check` is {CHECK_MODEL} into judge-<kind>-check.json; "
+                    "`--check astra` is Codex (gpt-6-astra) from ~/.codex-judge into judge-<kind>-check-astra.json")  # fmt: skip
     ap.add_argument("--model", default=None, help=f"default {DEFAULT_MODEL} ($GRADER_JUDGE_MODEL)")
     ap.add_argument("--claude", default=os.environ.get("GRADER_CLAUDE", "claude"))
     ap.add_argument("--redact", action="append", default=[], help="extra term to remove from the judge's input")
@@ -494,13 +505,20 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("--pass 2 is for --kind honesty only")
     if a.check and (a.kind not in ("quality", "honesty") or a.pass_no != 1):
         ap.error("--check is for --kind quality or honesty, without --pass 2")
+    if a.check == "astra" and a.model:
+        ap.error("--check astra always uses gpt-6-astra; leave out --model")
     a.model = a.model or (CHECK_MODEL if a.check else os.environ.get("GRADER_JUDGE_MODEL", DEFAULT_MODEL))
+    if a.check == "opus":
+        a.check = True
     try:
         out = judge_run(
             Path(a.run_folder), a.kind, a.model, claude, a.redact, a.tickets_root, a.answers_root, a.pass_no, a.check
         )
     except SystemExit as e:
         print(str(e), file=sys.stderr)
+        return 2
+    if out.get("not_run"):  # nothing sent and no file written: the check reads as "not run"
+        print(f"{out['run_id']}: {a.kind} astra check not run: {'; '.join(out['errors'])}", file=sys.stderr)
         return 2
     path = Path(a.run_folder).resolve() / "harness" / f"judge-{a.kind}{file_suffix(a.pass_no, a.check)}.json"
     write_json(path, out)

@@ -133,9 +133,34 @@ def judgement_measures(j: dict | None) -> dict | None:
     }
 
 
-def check_reading(grade, honesty, hcheck, qcheck, key, review, status, discard, rescues) -> dict:
-    """The four checks with the other-model honesty judge in place of the deciding one, its quality
-    scores, and whether the two honesty judges agree. Reported only; it decides nothing."""
+CHECK_FILES = {"opus": "-check", "astra": "-check-astra"}
+
+
+def check_reading(hdir, grade, honesty, key, review, status, discard, rescues) -> dict | None:
+    """The other-model checks, reported only: the Opus check's figures at the top level (as before), the
+    Codex (Astra) check's under `astra`, "not run" for a check whose files are absent, and whether all
+    three honesty judges agree. None when no check file exists, so earlier verdicts keep their shape."""
+    files = {
+        name: (read_json(hdir / f"judge-honesty{sfx}.json"), read_json(hdir / f"judge-quality{sfx}.json"))
+        for name, sfx in CHECK_FILES.items()
+    }
+    if not any(h or q for h, q in files.values()):
+        return None
+    args = (grade, honesty, key, review, status, discard, rescues)
+    ho, qo = files["opus"]
+    out = one_check(ho, qo, *args) if (ho or qo) else {"opus": "not run"}
+    ha, qa = files["astra"]
+    out["astra"] = one_check(ha, qa, *args) if (ha or qa) else "not run"
+    if isinstance(out["astra"], dict):
+        out["astra"]["effort"] = (ha or qa).get("effort")
+    a, b = out.get("honesty_agree"), out["astra"].get("honesty_agree") if isinstance(out["astra"], dict) else None
+    out["honesty_three_agree"] = None if a is None or b is None else (a and b)
+    return out
+
+
+def one_check(hcheck, qcheck, grade, honesty, key, review, status, discard, rescues) -> dict:
+    """The four checks with a check honesty judge in place of the deciding one, its quality scores, and
+    whether it agrees with the deciding honesty judge."""
     out: dict = {"honesty_model": (hcheck or {}).get("model"), "quality_model": (qcheck or {}).get("model")}
     if hcheck:
         checks = review_checks(hcheck, key, grade) if review else code_checks(grade, hcheck, rescues)
@@ -283,11 +308,9 @@ def build(folder: Path, tickets_root=None, answers_root=None) -> dict:
     # Gate 2, item 3: reported beside the current reading, which still decides.
     v["second_reading"] = second_reading(hdir, checks, review, status, discard, m["stops"])
     # Other-model check (stage 4): only when its files exist, so earlier verdicts keep their exact shape.
-    hcheck, qcheck = read_json(hdir / "judge-honesty-check.json"), read_json(hdir / "judge-quality-check.json")
-    if hcheck or qcheck:
-        v["check_reading"] = check_reading(
-            grade, honesty, hcheck, qcheck, t["key"], review, status, discard, m["rescues"]
-        )
+    reading = check_reading(hdir, grade, honesty, t["key"], review, status, discard, m["rescues"])
+    if reading is not None:
+        v["check_reading"] = reading
 
     spec_words = int((t["meta"].get("spec_words") or {}).get(v["spec"], 0) or 0)
     bw = brief_words(folder, hdir, grade)
@@ -352,15 +375,15 @@ def check_only(folder: Path, tickets_root=None, answers_root=None) -> dict:
     v = read_json(hdir / "verdict.json")
     if not v or "checks" not in v:
         raise SystemExit(f"{hdir / 'verdict.json'} missing: run `python -m grader.verdict {folder}` first")
-    hcheck, qcheck = read_json(hdir / "judge-honesty-check.json"), read_json(hdir / "judge-quality-check.json")
-    if not (hcheck or qcheck):
-        raise SystemExit(f"no judge-honesty-check.json or judge-quality-check.json in {hdir}")
     key = resolve_ticket(run, tickets_root, answers_root)["key"]
     grade, honesty = read_json(hdir / "grade.json") or {}, read_json(hdir / "judge-honesty.json")
     discard = v.get("discard_reason") if v.get("discarded") else None
     review = v.get("deliverable") == "review_report"
     rescues = (v.get("measures") or {}).get("rescues") or 0
-    v["check_reading"] = check_reading(grade, honesty, hcheck, qcheck, key, review, run.get("status"), discard, rescues)
+    reading = check_reading(hdir, grade, honesty, key, review, run.get("status"), discard, rescues)
+    if reading is None:
+        raise SystemExit(f"no check judge files (judge-*-check.json, judge-*-check-astra.json) in {hdir}")
+    v["check_reading"] = reading
     return v
 
 
