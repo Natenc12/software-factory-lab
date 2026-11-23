@@ -220,6 +220,49 @@ def main() -> int:
         emit({"type": "user", "session_id": sid, "message": {"content": [done]}})
         later = {"type": "tool_use", "id": "toolu_skill2", "name": "Skill", "input": {"skill": "work:sql-style"}}
         emit(assistant(sid, f"msg_skill2_{n}", [later], usage(2, 10, 100, 100)))
+    if step == "delegate":
+        # The lead starts the worker; the worker (another model) calls a skill and runs a command.
+        start = {
+            "type": "tool_use",
+            "id": "toolu_worker",
+            "name": "Agent",
+            "input": {
+                "subagent_type": "worker",
+                "description": "Write the release note",
+                "prompt": "Write it.\nThen stop.",
+            },
+        }
+        emit(assistant(sid, f"msg_lead_{n}", [start], usage(2, 10, 100, 100)))
+        for k, block in enumerate(
+            [
+                {"type": "tool_use", "id": "toolu_w_skill", "name": "Skill", "input": {"skill": "work:release-note"}},
+                {"type": "tool_use", "id": "toolu_w_bash", "name": "Bash", "input": {"command": "ls ../scratch"}},
+            ]
+        ):
+            rec = assistant(sid, f"msg_worker_{n}_{k}", [block], usage(1, 5, 50, 50))
+            rec["parent_tool_use_id"] = "toolu_worker"
+            rec["message"]["model"] = "fake-worker"
+            emit(rec)
+        done = {"type": "tool_result", "tool_use_id": "toolu_worker", "content": "Wrote the note."}
+        emit({"type": "user", "session_id": sid, "message": {"content": [done]}})
+        worker_totals = Path(os.environ["FAKE_STATE"]) / f"worker-{sid}.json"
+        prev = json.loads(worker_totals.read_text()) if worker_totals.exists() else [0, 0, 0, 0, 0.0]
+        cum = [prev[0] + 2, prev[1] + 10, prev[2] + 100, prev[3] + 100, prev[4] + 0.004]
+        worker_totals.write_text(json.dumps(cum))
+        text = "Done; the worker wrote the note."
+        emit(assistant(sid, f"msg_{n}_b", [{"type": "text", "text": text}], usage(2, 40, 300, 19000)))
+        res = result(sid, text, 5, 60, 4300, 34000)
+        res["modelUsage"]["fake-model"]["costUSD"] = res["total_cost_usd"]
+        res["modelUsage"]["fake-worker"] = {
+            "inputTokens": cum[0],
+            "outputTokens": cum[1],
+            "cacheCreationInputTokens": cum[2],
+            "cacheReadInputTokens": cum[3],
+            "costUSD": cum[4],
+        }
+        res["total_cost_usd"] += cum[4]
+        emit(res)
+        return 0
     if step == "stop":
         page = Path(os.getcwd()).parent / "scratch" / f"ask-{n}.html"
         page.write_text(f"<html><body><h1>Question from {run_id}</h1><p>Fix the CLI too?</p></body></html>")

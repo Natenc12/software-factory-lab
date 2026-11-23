@@ -92,3 +92,54 @@ def test_skill_folders_hold_one_file_with_front_matter(tmp_path):
     with pytest.raises(RuntimeError, match="front matter"):
         sandbox.parse_skill(arm / "skills" / "a" / "SKILL.md")
     assert sandbox.skill_files(tmp_path / "no-such-arm") == [] and sandbox.skill_files(None) == []
+
+
+def test_arm_with_skills_only_pins_its_command_line(lab_env, practice):
+    scenario(lab_env, p1_t1_1=["finish"])
+    assert run.main(run_args(lab_env, practice, "p1-t1-1", "--arm", str(FIXTURE))) == 0
+    root = lab_env["runs"] / "test" / "p1-t1-1"
+    ctl = sandbox.control_dir(root)
+    rec = read_json(root / "harness" / "run.json")
+    [c] = session_calls(lab_env)
+    expected = ["-p", "--output-format", "stream-json", "--verbose", "--model", "fake-model"]
+    expected += ["--setting-sources", "", "--settings", str(ctl / "settings.json")]
+    expected += [
+        "--plugin-dir",
+        str(ctl / "plugin"),
+        "--strict-mcp-config",
+        "--no-chrome",
+        "--permission-mode",
+        "dontAsk",
+    ]
+    expected += ["--tools", TOOLS_TODAY + ",Skill", "--disallowedTools", "WebFetch,WebSearch", "--add-dir", str(root)]
+    expected += ["--append-system-prompt", "<arm prompt>", "--session-id", rec["session_id"]]
+    assert strip_prompt(c["argv"]) == expected
+    assert rec["workers_started"] == 0 and rec["workers"] == []
+
+
+BOTH = Path(__file__).parent / "fixtures" / "arm-with-skills-and-agents"
+
+
+def test_lead_and_worker_on_two_models_share_skills_sandbox_and_ceiling(lab_env, practice):
+    scenario(lab_env, p6_t1_1=["delegate", "finish"])
+    assert run.main(run_args(lab_env, practice, "p6-t1-1", "--arm", str(BOTH))) == 0
+    root = lab_env["runs"] / "test" / "p6-t1-1"
+    ctl = sandbox.control_dir(root)
+    argv = session_calls(lab_env)[0]["argv"]
+    assert argv[argv.index("--plugin-dir") + 1] == str(ctl / "plugin")
+    assert argv[argv.index("--agents") + 1] == str(ctl / "agents.json")
+    assert argv[argv.index("--tools") + 1].endswith(",Skill")
+    worker = json.loads((ctl / "agents.json").read_text())["worker"]
+    assert worker["model"] == "fake-worker" and "tools" not in worker, "no tool list: the worker inherits Skill"
+    assert not list((root / "repo").rglob("SKILL.md")) and not (root / "arm" / "skills").exists()
+    rec = read_json(root / "harness" / "run.json")
+    assert rec["status"] == "finished"
+    assert rec["workers_started"] == 1
+    assert rec["workers"] == [{"type": "worker", "gist": "Write the release note"}]
+    assert rec["skills_used"] == ["release-note"]  # called by the worker
+    by = rec["by_model"]
+    assert sorted(by) == ["fake-model", "fake-worker"]
+    assert by["fake-worker"]["counted"] == 2 + 10 + 100 and by["fake-worker"]["cost_usd"] == 0.004
+    # The ceiling and the totals count every model together.
+    assert rec["tokens"]["counted"] == by["fake-model"]["counted"] + by["fake-worker"]["counted"]
+    assert round(rec["cost_usd"], 6) == round(by["fake-model"]["cost_usd"] + by["fake-worker"]["cost_usd"], 6)

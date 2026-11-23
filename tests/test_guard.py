@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -122,3 +123,90 @@ def test_hook_prints_a_deny_decision(cfg, tmp_path):
     out = subprocess.run([sys.executable, hook, str(path)], input=json.dumps(data), capture_output=True, text=True)
     assert out.stdout.strip() == "" and out.returncode == 0
     assert len((tmp_path / "guard.log").read_text().splitlines()) == 2
+
+
+# ---- working directory: `cd` within a command (guard and scan) and across commands (scan) ----
+
+
+def test_guard_follows_cd_within_a_command(cfg):
+    box = cfg["sandbox"]
+    import os as _os
+
+    for d in ("repo/src/gct/api", "repo/tests/gct/api", "scratch/review"):
+        _os.makedirs(f"{box}/{d}", exist_ok=True)
+    ok = [
+        "cd src/gct && ls ../../tests/gct/api",
+        "cd src/gct/api; cat ../../../tests/gct/api/conftest.py",
+        f"cd {box}/scratch/review && ../../repo/.venv/bin/python -c 'print(1)'",
+        "cd ../scratch && cd review && ls ../../repo",
+    ]
+    for cmd in ok:
+        assert deny(cfg, "Bash", {"command": cmd}) is None, cmd
+    bad = [
+        "cd src && cat ../../../p2-t1-1/repo/app.py",
+        "cd .. && cd .. && ls p2-t1-1",
+        "cd src/gct && ls ../../../harness",
+        "cd / && cat Users/someone/x",
+    ]
+    for cmd in bad:
+        assert deny(cfg, "Bash", {"command": cmd}), cmd
+    # A `cd` the guard cannot follow keeps the last folder it knows, as before.
+    assert deny(cfg, "Bash", {"command": "cd $D && cat ../../p2-t1-1/x"})
+
+
+def _scan_folder(tmp_path, cfg, commands):
+    """A run folder whose transcript runs `commands` as Bash calls; each item is (cmd, is_error, result, shell)."""
+    from harness.scan import scan
+
+    hdir = Path(cfg["sandbox"]) / "harness"
+    (hdir / "guard.json").write_text(json.dumps(cfg))
+    lines = []
+    for i, (cmd, err, out, shell) in enumerate(commands):
+        call = {"type": "tool_use", "id": f"t{i}", "name": "Bash", "input": {"command": cmd}}
+        lines.append({"type": "assistant", "parent_tool_use_id": shell, "message": {"id": f"m{i}", "content": [call]}})
+        res = {"type": "tool_result", "tool_use_id": f"t{i}", "content": out, "is_error": err}
+        lines.append({"type": "user", "parent_tool_use_id": shell, "message": {"content": [res]}})
+    (hdir / "transcript.jsonl").write_text("\n".join(json.dumps(x) for x in lines) + "\n")
+    return scan(Path(cfg["sandbox"]))
+
+
+def test_scan_follows_cd_across_commands_and_shells(cfg, tmp_path):
+    box = cfg["sandbox"]
+    import os as _os
+
+    _os.makedirs(f"{box}/scratch/review", exist_ok=True)
+    _os.makedirs(f"{box}/repo/src/gct", exist_ok=True)
+    report = _scan_folder(
+        tmp_path,
+        cfg,
+        [
+            ("cd src/gct && ls ../../tests/gct/api", False, "", None),  # the stage 2b case, within a command
+            (f"cd {box}/scratch/review", False, "", None),
+            ("../../repo/.venv/bin/python -m pytest -q", True, "1 failed", None),  # carried from the last call
+            ("cat ../TICKET.md", False, "", "toolu_agent"),  # a subagent's shell starts in the checkout
+        ],
+    )
+    assert report["clean"] is True, report["offences"]
+    assert report["offences"] == [] and report["could_not_resolve"] == []
+
+
+def test_scan_still_catches_real_escapes_and_lists_unknowns(cfg, tmp_path):
+    box = cfg["sandbox"]
+    report = _scan_folder(
+        tmp_path,
+        cfg,
+        [
+            ("cd src && cat ../../../p2-t1-1/repo/app.py", False, "x = 1", None),
+            ("cd $WORK && cat ../../notes.txt", False, "", None),
+            ("cat ../../notes.txt", False, "", None),  # still unknown: the last cd could not be followed
+            (f"cd {box}/repo", False, "", None),
+            ("cat ../../p2-t1-1/repo/app.py", False, "x = 1", None),  # known again, and outside
+            ("echo hi", False, f"Shell cwd was reset to {box}/scratch", None),
+            ("cat ../TICKET.md", False, "", None),
+        ],
+    )
+    assert report["clean"] is False
+    assert [o["line"] for o in report["offences"]] == [1, 9]
+    assert all("forbidden place" in o["reason"] for o in report["offences"])
+    unknown = [u["input"]["command"] for u in report["could_not_resolve"]]
+    assert unknown == ["cd $WORK && cat ../../notes.txt", "cat ../../notes.txt"]

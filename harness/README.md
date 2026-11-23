@@ -50,12 +50,54 @@ flags, the clean room and resume.
 5. **Ceiling and records** (`stream.py`): usage is read live from the stream; the run is stopped when
    counted tokens (input + output + cache write) pass its ceiling. `run.json` holds the status
    (`finished`, `ceiling_hit`, `harness_fault`, `plan_limit`), the four token counts, CLI-reported cost,
-   wall time, turns, stops, session id, branch, PR number and both commits.
+   wall time, turns, stops, session id, branch, PR number and both commits. It also holds `by_model` (counted
+   tokens and list-price cost per model, the lead's and any subagent's; the ceiling counts them all
+   together), `workers_started` and `workers` (each subagent the lead started, with its type and a
+   one-line gist of its task), and `skills_used`.
+
+## Codebases in other languages
+
+**Settable today, per codebase or per run.** In `grader/codebases/<name>.json`:
+
+- `run_allow_domains`: hosts the run's sandbox may reach on top of `pypi.org` and `files.pythonhosted.org`.
+- `run_allow_write`: folders outside the run the sandbox may write, such as a toolchain's shared cache.
+- `run_env`: environment variables. `{run}` in a value becomes the run's folder, for example
+  `"GOMODCACHE": "{run}/scratch/gomod"` to keep a cache inside the run.
+
+`grader.make_plan` copies these into every run as `allow_domain`, `allow_write` and `env`. A plan can
+also set them per run; `harness.stage` passes them to `harness.run` as `--allow-domain`,
+`--allow-write` and `--env`. `tests/test_codebase_sandbox.py` checks the path from config to the run's
+settings. A write folder may not be home, `/`, this repo, `~/repos`, `~/.claude`, the gh login, other
+runs, or a parent of any of these.
+
+**What a non-Python codebase would need** (from the docs and the sandbox rules, not tried):
+
+| Need | TypeScript (npm or pnpm) | Go | Rust |
+| --- | --- | --- | --- |
+| Hosts | `registry.npmjs.org` | `proxy.golang.org`, `sum.golang.org` | `index.crates.io`, `static.crates.io`, `crates.io` |
+| Cache it writes outside the run | `~/.npm` (or `npm_config_cache={run}/scratch/npm`); the pnpm store | `GOMODCACHE` (`~/go/pkg/mod`) and `GOCACHE` (`~/Library/Caches/go-build` on macOS) | `~/.cargo/registry` and `~/.cargo/git` (or `CARGO_HOME={run}/scratch/cargo`) |
+| Toolchain | `node` on the harness's `PATH` | `go` on `PATH`; `GOTOOLCHAIN=local` so it never downloads a newer Go | `cargo` and `rustc` on `PATH` (`~/.cargo/bin`); toolchain already installed, since rustup downloads from `static.rust-lang.org` |
+
+The same for every language:
+
+- **The toolchain must be on the harness's own `PATH`.** A run's environment starts from it. Don't set
+  `PATH` with `env`: that replaces the run's own `lab` folder at the front.
+- **Nothing hosted on GitHub can be reached.** Dependencies fetched from git (npm git URLs, cargo `git =`
+  dependencies, Go modules not on the proxy) and install scripts that download release binaries
+  (esbuild, Playwright, prebuilt native modules) will fail. Vendor them, or pick a codebase without them.
+- **Postgres or SQLite only.** The run database is one of those two. Another service would need its own
+  socket in `allowUnixSockets`.
+- **The grader's config holds commands, not Python.** `install`, `lint`, `test`, `hidden_test_cmd` and
+  `migrate` are plain commands, so they work for any language; `hidden_dir` and `test_dirs` must point
+  at that codebase's test layout.
+- **The guard reads command text.** Paths under `~/.cargo`, `~/.rustup`, `~/.cache` and any
+  `run_allow_write` folder are allowed in commands; other home folders such as `~/go` and `~/.npm` are
+  refused unless listed in `run_allow_write`.
 
 ## Known limits
 
 - The sandbox is checked on macOS (trials 3–5 in `TRIALS.md`). A repo that downloads from somewhere
-  other than PyPI (a Python build from GitHub, model weights, npm) needs `--allow-domain`; uv's own
+  other than PyPI (a Python build from GitHub, model weights, npm) needs `run_allow_domains` or `--allow-domain`; uv's own
   Python downloads come from GitHub and will fail, so the Python a repo needs must already be installed.
 - Postgres over TCP is blocked; runs must use the socket URL the harness sets.
 - The leak scan also flags GitHub tokens in any tool output and `gh auth` or git credential calls made

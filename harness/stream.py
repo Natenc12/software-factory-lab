@@ -86,6 +86,7 @@ class StreamState:
         self.result: dict | None = None
         self.limit_info: dict | None = None
         self.tool_uses: list[dict] = []
+        self.msg_model: dict[str, str] = {}
         self.turns = 0
         self.bad_lines = 0
 
@@ -110,6 +111,8 @@ class StreamState:
             msg = rec.get("message") or {}
             mid = msg.get("id") or f"noid-{len(self.messages)}"
             usage = Usage.from_api(msg.get("usage"))
+            if msg.get("model"):
+                self.msg_model[mid] = msg["model"]
             old = self.messages.get(mid)
             # Streaming repeats a message's usage; keep the largest figure seen for each field.
             self.messages[mid] = usage if old is None else Usage(*map(max, old.as_tuple(), usage.as_tuple()))
@@ -142,6 +145,20 @@ class StreamState:
             if final.counted or final.cache_read:
                 return final
         return live
+
+    def model_totals(self) -> dict[str, dict]:
+        """Per model: {"tokens": Usage, "cost_usd": float}. From the last result's `modelUsage` (session
+        running totals, list-price cost) when there is one, else from the messages seen so far (no cost)."""
+        if self.result and self.result.get("modelUsage"):
+            return {
+                m: {"tokens": Usage.from_model_usage({m: v}), "cost_usd": float(v.get("costUSD") or 0.0)}
+                for m, v in self.result["modelUsage"].items()
+            }
+        out: dict[str, dict] = {}
+        for mid, u in self.messages.items():
+            m = self.msg_model.get(mid, "unknown")
+            out.setdefault(m, {"tokens": Usage(), "cost_usd": 0.0})["tokens"] += u
+        return out
 
     @property
     def cost_usd(self) -> float:
@@ -192,6 +209,34 @@ def skills_used(transcript_lines) -> list[str]:
             raw = str(inp.get("skill") or inp.get("command") or inp.get("name") or "?").lstrip("/").split()[0]
             names.append(raw.split(":", 1)[-1])
     return names
+
+
+def subagents_started(transcript_lines) -> list[dict]:
+    """The subagents the lead started (Agent or Task calls outside any subagent), in order, each with its
+    type and a one-line gist of the task: the call's short description, else the prompt's first line."""
+    out, seen = [], set()
+    for line in transcript_lines:
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict) or rec.get("type") != "assistant" or rec.get("parent_tool_use_id"):
+            continue
+        for block in (rec.get("message") or {}).get("content") or []:
+            if (
+                not isinstance(block, dict)
+                or block.get("type") != "tool_use"
+                or block.get("name") not in ("Agent", "Task")
+            ):
+                continue
+            if block.get("id") in seen:
+                continue
+            seen.add(block.get("id"))
+            inp = block.get("input") or {}
+            prompt_line = next((ln.strip() for ln in str(inp.get("prompt") or "").splitlines() if ln.strip()), "")
+            gist = str(inp.get("description") or prompt_line)[:160]
+            out.append({"type": inp.get("subagent_type") or "general-purpose", "gist": gist})
+    return out
 
 
 def find_stop(text: str) -> str | None:
