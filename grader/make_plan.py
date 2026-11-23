@@ -113,7 +113,9 @@ def codebase_run_extras(codebase: str) -> dict:
     reach beyond PyPI), `run_allow_write` -> `allow_write` (folders outside the run, such as a
     toolchain's cache, the sandbox may write), `run_setup` -> `setup` (shell commands the harness runs in
     the checkout before the session, with network, such as installing dependencies). A codebase without
-    them adds nothing.
+    them adds nothing. `run_sealed: true` -> `sealed` (no registry in the session, per-run caches, no reads
+    outside the run but its toolchain); `run_own_package` -> `own_package` (the codebase's published package,
+    which a run may not install or read a copy of).
     """
     try:
         cfg = load_config(codebase)
@@ -128,6 +130,11 @@ def codebase_run_extras(codebase: str) -> dict:
         out["allow_write"] = list(cfg["run_allow_write"])
     if cfg.get("run_setup"):
         out["setup"] = list(cfg["run_setup"])
+    if cfg.get("run_sealed"):
+        out["sealed"] = True
+    if cfg.get("run_own_package"):
+        own = cfg["run_own_package"]
+        out["own_package"] = [own] if isinstance(own, str) else list(own)
     return out
 
 

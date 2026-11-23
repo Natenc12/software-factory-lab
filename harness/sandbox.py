@@ -35,6 +35,28 @@ SHA_RE = re.compile(r"^[0-9a-f]{7,40}$")
 NET_ALLOW = ["pypi.org", "files.pythonhosted.org"]
 
 
+# A sealed run (opt-in per codebase) reaches no package registry and reads nothing of the machine's but its
+# own run folder and the toolchain it needs. These are the toolchain folders it may read.
+SEALED_READ = (".local/bin", ".local/lib/node_modules/pnpm", ".local/share/uv/python")
+# Shared temp folders: other sessions' scratch, audit folders and clones live there.
+SHARED_TEMP = ("/private/tmp", "/tmp", "/private/var/folders", "/var/folders")
+# Per-run package caches (setup fills them with network; the session reads them offline).
+SEALED_CACHES = {
+    "UV_CACHE_DIR": "{run}/scratch/uv-cache",
+    "PIP_CACHE_DIR": "{run}/scratch/pip-cache",
+    "npm_config_cache": "{run}/scratch/npm-cache",
+}
+# For the session only, after setup: package tools stay offline.
+# CLAUDE_CODE_TMPDIR: Claude Code's own temp files (its shell's working-directory file) go inside the run;
+# its default, /tmp/claude-<uid>, is a shared folder a sealed run may not read.
+SEALED_SESSION = {
+    "UV_OFFLINE": "1",
+    "PIP_NO_INDEX": "1",
+    "npm_config_offline": "true",
+    "CLAUDE_CODE_TMPDIR": "{run}/scratch/tmp",
+}
+
+
 def control_dir(root: Path) -> Path:
     return Path(root).parent / ".control" / Path(root).name
 
@@ -249,6 +271,8 @@ def settings(
     unix_sockets: list[str] = (),
     skills: list[str] = (),
     allow_write: list[str] = (),
+    sealed: bool = False,
+    allow_read: list[str] = (),
 ) -> dict:
     """The run's settings file: OS sandbox first, then permission rules and the guard hook.
 
@@ -281,12 +305,18 @@ def settings(
         # the call must match; redirects, cd and $(...) keep a call sandboxed).
         "excludedCommands": ["lab", "lab *", lab, f"{lab} *"],
         "filesystem": {
-            "allowWrite": [f"{home}/.cache/uv", *allow_write],
+            "allowWrite": [*([] if sealed else [f"{home}/.cache/uv"]), *allow_write],
             "denyWrite": list(cfg["private"]),
             "denyRead": sorted(
-                {*cfg["forbidden"], *cfg["private"], *(f"{home}/{p}" for p in (".ssh", ".aws", ".netrc", ".gnupg"))}
+                {
+                    *cfg["forbidden"],
+                    *cfg["private"],
+                    *(f"{home}/{p}" for p in (".ssh", ".aws", ".netrc", ".gnupg")),
+                    # Sealed: the whole home folder and the shared temp folders; the narrower allowRead wins.
+                    *([home, *SHARED_TEMP] if sealed else []),
+                }
             ),
-            "allowRead": [str(root)],
+            "allowRead": [str(root), *allow_read],
         },
         # allowLocalBinding: a project's own tests may start a server on localhost and talk to it.
         "network": {
@@ -331,6 +361,8 @@ def create(
     allow_domains: list[str] = (),
     extra_env: dict | None = None,
     allow_write: list[str] = (),
+    sealed: bool = False,
+    own_packages: list[str] = (),
 ) -> dict:
     """Build the sandbox. Raises if the folder exists; cleans up after itself if a step fails."""
     parse_run_id(run_id)
@@ -382,6 +414,10 @@ def create(
             }
         # Codebase settings the run needs (for example UV_PYTHON); the database variables always win.
         # `{run}` in a value is this run's folder, so a toolchain cache can live inside the run.
+        if sealed:
+            extra_env = {**SEALED_CACHES, **(extra_env or {})}
+            manifest["session_env"] = {k: v.replace("{run}", str(root)) for k, v in SEALED_SESSION.items()}
+            manifest["sealed"] = True
         env = {**{k: str(v).replace("{run}", str(root)) for k, v in (extra_env or {}).items()}, **env}
         write_json(hdir / "sandbox.json", manifest)
 
@@ -406,10 +442,21 @@ def create(
         plugin = write_skill_plugin(arm, ctl) if arm else None
         cfg = guard_config(root, runs_root, list(extra_forbidden))
         writes = writable_folders(list(allow_write), cfg)
+        reads = []
+        if sealed:
+            # The guard agrees with the sandbox: home only for the toolchain, no shared temp folders.
+            reads = [os.path.realpath(os.path.join(cfg["home"], p)) for p in SEALED_READ]
+            cfg["read_ok"] = reads
+            cfg["forbidden"] = sorted({*cfg["forbidden"], *(os.path.realpath(t) for t in SHARED_TEMP), *SHARED_TEMP})
+            cfg["write_ok"] = ["/dev/null"]
         cfg["read_ok"] = sorted({*cfg["read_ok"], *writes})
+        cfg["own_packages"] = sorted(set(own_packages))
         sockets = [manifest["database"]["socket"]] if db == "postgres" else []
         skills = [p.parent.name for p in skill_files(arm)] if plugin else []
-        run_settings = settings(root, cfg, [*NET_ALLOW, *allow_domains], sockets, skills=skills, allow_write=writes)
+        domains = [*([] if sealed else NET_ALLOW), *allow_domains]
+        run_settings = settings(
+            root, cfg, domains, sockets, skills=skills, allow_write=writes, sealed=sealed, allow_read=[*reads, *sockets]
+        )
         for folder in (ctl, hdir):  # live copies in the control folder, a record copy in harness/
             write_json(folder / "guard.json", cfg)
             write_json(folder / "settings.json", run_settings)

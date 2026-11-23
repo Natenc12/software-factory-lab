@@ -311,7 +311,51 @@ def final_cwd(cmd: str, cwd: str | None, cfg: dict) -> str | None:
     return cwd
 
 
+FETCH_TOOL = r"(?:pip3?|pipx|uv(?:\s+pip|\s+tool)?|python3?\s+-m\s+pip|npm|pnpm|yarn|bun|deno)"
+FETCH_VERB = r"(?:install|i|add|download|view|info|pack|dlx|fetch|index|run\s+--with)"
+
+
+def own_package_reason(tool: str, inp: dict, cwd: str | None, cfg: dict) -> str | None:
+    """Refuse fetching the codebase's own published package, or reading a copy of it outside the run.
+
+    A published release (PyPI, npm) or a cached build may hold the very fix a replay ticket asks for.
+    """
+    pkgs = cfg.get("own_packages") or []
+    if not pkgs:
+        return None
+    text = str(inp.get("command") or "") if tool == "Bash" else json.dumps(inp)
+    paths = [str(inp[k]) for k in PATH_KEYS if inp.get(k)] + EMBEDDED_PATH.findall(text)
+    for pkg in pkgs:
+        p = re.escape(pkg)
+        fetch = re.compile(
+            rf"\b{FETCH_TOOL}\s+(?:[-\w.=]+\s+)*?{FETCH_VERB}\b[^\n;&|]*?(?<![\w./@-]){p}(?![\w-])", re.I
+        )
+        runner = re.compile(rf"\b(?:uvx|npx|pnpx|bunx|pipx\s+run)\s+(?:-\S+\s+)*{p}(?![\w-])", re.I)
+        if fetch.search(text) or runner.search(text):
+            return f"fetches the codebase's own package {pkg!r}; work from the checkout"
+        for raw in paths:
+            if cwd is None and _is_relative(raw):
+                continue
+            real = resolve(raw, cwd or "/", cfg["home"])
+            if _under(real, cfg["sandbox"]):
+                continue
+            parts = [x.lower() for x in real.split("/") if x]
+            if any(
+                x == pkg.lower() or x.startswith((f"{pkg.lower()}-", f"{pkg.lower()}@", f"{pkg.lower()}."))
+                for x in parts
+            ):
+                return f"{raw}: a copy of the codebase's own package outside the run"
+    return None
+
+
 def check(
+    tool: str, inp: dict, cwd: str | None, cfg: dict, unresolved: list | None = None, scan: bool = False
+) -> str | None:
+    """Return why a tool call must be refused, or None to let it through."""
+    return _check(tool, inp, cwd, cfg, unresolved, scan) or own_package_reason(tool, inp or {}, cwd, cfg)
+
+
+def _check(
     tool: str, inp: dict, cwd: str | None, cfg: dict, unresolved: list | None = None, scan: bool = False
 ) -> str | None:
     """Return why a tool call must be refused, or None to let it through.
