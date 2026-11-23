@@ -2,6 +2,25 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
+## Gate 4 · stage 2 results and the stage 3 plan · waiting for the owner · 2026-11-22
+
+Page: https://claude.ai/artifact/VfgFrkDdVNx9mLcxwZkFkd (copy: `results/stage-2/page/stage-2-results.html`)
+
+Stage 2 ran in full: 88 runs graded, none discarded. By the charter's Q3 rule only `P5P` (the guide
+with the skills library, pointed) goes in. The orchestrator's stage 3 plan, none of it started:
+
+1. Carry `P5P` forward as the way of working.
+2. Three setups on the same eight tickets: `P5P` on Opus 5.5 (a third run per ticket, 8 runs), `P5P` on
+   Fable 5.2 (16 runs), and the owner's chief-of-staff setup, a Fable lead with the same guide and
+   skills that may start Opus workers at its own discretion (16 runs). 40 runs, about 12M counted
+   tokens with grading.
+3. The charter's third model arm ("Fable plans and reviews while Opus builds") is folded into the
+   chief-of-staff setup unless the owner wants it kept separate.
+4. Price ratio stated before any result, as the charter requires: at list price Fable 5.2 costs twice
+   what Opus 5.5 does per token. The Q5 rule is unchanged.
+
+No decision recorded yet.
+
 ## Gate 3 · confirm round results and the stage 2 plan · approved 2026-11-22
 
 Page: https://claude.ai/artifact/WVNSzAwaZtwbsDA3qDTgQX (copy: `results/stage-1-confirm/page/confirm-results.html`)
