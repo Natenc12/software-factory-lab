@@ -99,6 +99,33 @@ registry, so no package downloads or install scripts run where the agent works.
   and doesn't need it. One test runs a bare `python`, so it needs `.venv/bin` on `PATH`
   (`PATH="$PWD/.venv/bin:$PATH" python -m unittest`).
 
+**Sealed runs (opt-in per codebase).** `"run_sealed": true` in `grader/codebases/<name>.json` (plan key
+`sealed`, `harness.run --sealed`) seals a run's session; `"run_own_package": "<name>"` (plan key
+`own_package`, `--own-package`) names the codebase's published package. A codebase without them (gct,
+pipeline-lab) runs exactly as before. A sealed session:
+
+- reaches no package registry (only `run_allow_domains`); `run_setup` installs before it, with network;
+- has its own package caches (`UV_CACHE_DIR`, `PIP_CACHE_DIR`, `npm_config_cache` under `scratch/`), and
+  `UV_OFFLINE`, `PIP_NO_INDEX`, `npm_config_offline` in the session only;
+- may read nothing in the home folder but its run and the toolchain it needs (`~/.local/bin`, pnpm under
+  `~/.local/lib/node_modules/pnpm`, uv's Pythons under `~/.local/share/uv/python`), nothing under the user's
+  temp folders (`/var/folders`), no entry of `/tmp` other than Claude Code's own `/tmp/claude-<uid>`, and no
+  subfolder of that one which exists when the run starts. Claude Code's sandbox makes every command's
+  `TMPDIR` `/tmp/claude-<uid>`, so that folder itself must stay usable;
+- may not install, fetch or look up its own package (`pip`/`uv pip install sqlglot`, `pnpm add hono`,
+  `npm view hono`, `uvx`, `npx`), nor read a copy of it anywhere outside its run; the guard refuses, and the
+  leak scan marks a run that got through as not clean.
+
+The guard also refuses any path under another session's folder in `/tmp/claude-<uid>`, including one made
+after the run started, and the leak scan marks a sealed run that touched one as not clean even when it was
+refused. A folder another session creates there after the run starts is the one place a program (not a
+plain command) could still read; keep practice, upstream and answer copies out of `/tmp` during a stage.
+
+**Grading while runs are going.** The grader makes its temporary checkouts (with the hidden tests) with
+Python's `tempfile`, in the grading shell's `TMPDIR` (on this Mac `/var/folders/…/T`, which a sealed run
+cannot read). To keep them out of reach of every run, sealed or not, grade with
+`TMPDIR=~/factory-runs/.grading-tmp`: every run is denied the runs folder except its own run.
+
 **What a non-Python codebase would need** (from the docs and the sandbox rules, not tried):
 
 | Need | TypeScript (npm or pnpm) | Go | Rust |
