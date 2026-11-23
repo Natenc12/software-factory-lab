@@ -45,6 +45,8 @@ describe('cors() with a wildcard origin', () => {
     )
 
     for (const refused of [
+      'https://app.examplexcom',
+      'https://app.example-com',
       'https://example.com',
       'https://.example.com',
       'https://a..example.com',
@@ -57,6 +59,11 @@ describe('cors() with a wildcard origin', () => {
     ]) {
       expect(await allowOrigin(app, refused), refused).toBeNull()
     }
+
+    // a `*` anywhere else is not a pattern: compared exactly, as today (audit A)
+    expect(await allowOrigin(corsApp('https://app.*.com'), 'https://app.example.com')).toBeNull()
+    expect(await allowOrigin(corsApp('https://example.*'), 'https://example.com')).toBeNull()
+    expect(await allowOrigin(corsApp(['https://app.*.com']), 'https://app.example.com')).toBeNull()
   })
 
   it('matches the port given in the pattern, and mixes with exact origins in a list', async () => {
@@ -105,6 +112,7 @@ describe('csrf() with a wildcard origin', () => {
     expect(await post(app, 'https://acme.eu.example.com')).toBe(200)
 
     for (const refused of [
+      'https://app.examplexcom',
       'https://example.com',
       'http://app.example.com',
       'https://app.example.com:8443',
@@ -112,6 +120,9 @@ describe('csrf() with a wildcard origin', () => {
     ]) {
       expect(await post(app, refused), refused).toBe(403)
     }
+
+    // a `*` anywhere else is not a pattern (audit A)
+    expect(await post(csrfApp('https://app.*.com'), 'https://app.example.com')).toBe(403)
   })
 
   it('mixes with exact origins in a list', async () => {

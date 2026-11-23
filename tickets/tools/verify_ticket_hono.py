@@ -256,7 +256,8 @@ class Verifier:
         res = self.vitest(tree, [HIDDEN_DIR], "ref-hidden")
         secs = round(time.time() - t0, 1)
         hid = res["outcomes"]
-        not_passing = sorted(k for k, v in hid.items() if v != "passed")
+        # A test the starting skip lists skip (T1's router guard) is fine, as in the grader.
+        not_passing = sorted(k for k, v in hid.items() if v not in ("passed", "skipped"))
         self.step(
             "reference: every hidden test passes",
             bool(hid) and not not_passing and res["exit"] == 0,

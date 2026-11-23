@@ -9,17 +9,20 @@
   "unchanged_paths": [],
   "scope_out_paths": [
     "adapters/",
-    "src/router/smart-router/router.ts"
+    "src/router/smart-router/router.ts",
+    "src/router/pattern-router/router.ts"
   ],
   "tests_may_change": [
-    "src/router/common.case.test.ts",
-    "src/router/*/router.test.ts",
-    "src/router/reg-exp-router/prepared-router.test.ts"
+    "src/router/common.case.test.ts::Common > Duplicate param name > self",
+    "src/router/trie-router/node.test.ts::Duplicate param name > self"
   ],
-  "tests_may_change_note": "A new shared router case goes in common.case.test.ts, and every file that calls runTest() passes it a skip list as data (each router's router.test.ts, and reg-exp-router/prepared-router.test.ts); a router that cannot take a new case gets it added to that list. The upstream fix edited PatternRouter's list; the blind fix also edited RegExpRouter's and PreparedRegExpRouter's.",
+  "tests_may_change_note": "The two existing 'self' cases a careful fix may fold into a table (audit A). Skip-list edits in runTest() calls are outside named cases and never trip the trap, so no file-wide entry is needed; a run that silences a broken shared case through a skip list fails the hidden guard t1-routers.test.ts instead.",
   "traps": [],
   "naive_patches": {
     "naive.patch": "Keeps the first value only on the plain-segment path of TrieRouter's search, not on the path for a parameter with a pattern: `/:id/:id{[0-9]+}` still returns the second value."
   },
-  "hidden_tests_note": "The upstream fix's own tests, moved into one file: TrieRouter node and router cases that fail on the base, and the app-level SmartRouter fallback case. The shared cases that already pass on RegExpRouter and LinearRouter are left out, because every hidden test must fail on the base."
+  "hidden_tests_note": "The upstream fix's own tests that fail on the base (TrieRouter node and router cases, the app-level SmartRouter fallback), plus 'self after another parameter' (audit A: /:a/:id/:id), in t1.test.ts. t1-routers.test.ts is a guard that passes on the base: every router runs a frozen copy of the starting shared cases (t1-common-cases.ts) with the starting skip lists, so silencing a broken case through a skip list fails it.",
+  "hidden_tests_may_pass_on_base": [
+    "src/hidden/t1-routers.test.ts"
+  ]
 }

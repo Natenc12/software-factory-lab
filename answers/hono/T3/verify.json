@@ -4,14 +4,14 @@
   "repo": "Natenc12/hono-lab",
   "base_ref": "base/T3",
   "base_sha": "ae300f52d9588ffe6dfd5ebfec0b725c4ff3961d",
-  "started": "2026-11-23T14:53:57+00:00",
-  "finished": "2026-11-23T14:55:23+00:00",
+  "started": "2026-11-23T20:54:44+00:00",
+  "finished": "2026-11-23T20:56:03+00:00",
   "ok": true,
   "steps": [
     {
       "name": "base: type check and existing tests pass",
       "ok": true,
-      "note": "{'passed': 4967, 'skipped': 102} in 12.8s",
+      "note": "{'passed': 4953, 'skipped': 102} in 13.2s",
       "typecheck": {
         "exit": 0,
         "tail": ""
@@ -28,10 +28,12 @@
     {
       "name": "base: every hidden test fails",
       "ok": true,
-      "note": "{'failed': 2}",
+      "note": "{'failed': 4}",
       "outcomes": {
-        "src/hidden/t3.test.ts::Bun websocket handler: onError Should pass an error thrown by a handler to onError": "failed",
-        "src/hidden/t3.test.ts::Bun websocket handler: onError Should pass a rejection of an async handler to onError": "failed"
+        "src/hidden/t3.test.ts::Bun websocket handler: onError, hono/bun (src/adapter/bun) Should pass an error thrown by a handler to onError": "failed",
+        "src/hidden/t3.test.ts::Bun websocket handler: onError, hono/bun (src/adapter/bun) Should pass a rejection of an async handler to onError": "failed",
+        "src/hidden/t3.test.ts::Bun websocket handler: onError, @hono/bun (adapters/bun) Should pass an error thrown by a handler to onError": "failed",
+        "src/hidden/t3.test.ts::Bun websocket handler: onError, @hono/bun (adapters/bun) Should pass a rejection of an async handler to onError": "failed"
       },
       "not_failing": []
     },
@@ -53,19 +55,19 @@
         {
           "cmd": "run lint",
           "exit": 0,
-          "tail": "o-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/preact.ts:5:81: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2084:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+          "tail": "rent type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/preact.ts:5:81: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/validator/validator.ts:28:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/validator/validator.ts:28:72: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/middleware/jwt/index.test.ts:742:45: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2084:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
         },
         {
           "cmd": "run format",
           "exit": 0,
-          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 247ms on 430 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 246ms on 430 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
         }
       ]
     },
     {
       "name": "reference: type check and existing tests pass",
       "ok": true,
-      "note": "{'passed': 4970, 'skipped': 102} in 16.1s",
+      "note": "{'passed': 4956, 'skipped': 102} in 11.7s",
       "typecheck": {
         "exit": 0,
         "tail": ""
@@ -76,10 +78,12 @@
     {
       "name": "reference: every hidden test passes",
       "ok": true,
-      "note": "2 hidden",
+      "note": "4 hidden",
       "outcomes": {
-        "src/hidden/t3.test.ts::Bun websocket handler: onError Should pass an error thrown by a handler to onError": "passed",
-        "src/hidden/t3.test.ts::Bun websocket handler: onError Should pass a rejection of an async handler to onError": "passed"
+        "src/hidden/t3.test.ts::Bun websocket handler: onError, hono/bun (src/adapter/bun) Should pass an error thrown by a handler to onError": "passed",
+        "src/hidden/t3.test.ts::Bun websocket handler: onError, hono/bun (src/adapter/bun) Should pass a rejection of an async handler to onError": "passed",
+        "src/hidden/t3.test.ts::Bun websocket handler: onError, @hono/bun (adapters/bun) Should pass an error thrown by a handler to onError": "passed",
+        "src/hidden/t3.test.ts::Bun websocket handler: onError, @hono/bun (adapters/bun) Should pass a rejection of an async handler to onError": "passed"
       },
       "not_passing": []
     },
@@ -100,12 +104,12 @@
         {
           "cmd": "run lint",
           "exit": 0,
-          "tail": "no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/react.ts:5:93: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2084:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+          "tail": "ipt(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:29: warning eslint(no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2084:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
         },
         {
           "cmd": "run format",
           "exit": 0,
-          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 247ms on 431 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 223ms on 431 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
         },
         {
           "cmd": "exec vp lint src/hidden/t3.test.ts",
@@ -115,14 +119,14 @@
         {
           "cmd": "exec vp fmt --check src/hidden/t3.test.ts",
           "exit": 0,
-          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 106ms on 1 files using 8 threads.\n"
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 107ms on 1 files using 8 threads.\n"
         }
       ]
     },
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "1.5s"
+      "note": "1.0s"
     },
     {
       "name": "naive.patch: type check and existing tests still pass (a competent fix)",
@@ -137,9 +141,11 @@
       "name": "naive.patch: at least one hidden test fails",
       "ok": true,
       "failing": [
-        "src/hidden/t3.test.ts::Bun websocket handler: onError Should pass a rejection of an async handler to onError"
+        "src/hidden/t3.test.ts::Bun websocket handler: onError, @hono/bun (adapters/bun) Should pass a rejection of an async handler to onError",
+        "src/hidden/t3.test.ts::Bun websocket handler: onError, @hono/bun (adapters/bun) Should pass an error thrown by a handler to onError",
+        "src/hidden/t3.test.ts::Bun websocket handler: onError, hono/bun (src/adapter/bun) Should pass a rejection of an async handler to onError"
       ],
-      "note": "1/2 hidden fail"
+      "note": "3/4 hidden fail"
     }
   ]
 }

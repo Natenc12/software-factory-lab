@@ -5,6 +5,21 @@ import { TrieRouter } from '../router/trie-router'
 import { Node } from '../router/trie-router/node'
 
 describe('TrieRouter node: duplicate param name keeps the first value', () => {
+  it('self after another parameter', () => {
+    const node = new Node()
+    node.insert('get', '/:a/:id/:id', 'foo')
+    const [res] = node.search('get', '/1/2/3')
+    expect(res.length).toBe(1)
+    expect(res[0][1]['a']).toBe('1')
+    expect(res[0][1]['id']).toBe('2')
+
+    const tail = new Node()
+    tail.insert('get', '/:a/:id/:id/x', 'bar')
+    const [res2] = tail.search('get', '/1/2/3/x')
+    expect(res2.length).toBe(1)
+    expect(res2[0][1]['id']).toBe('2')
+  })
+
   it('self with trailing static', () => {
     const node = new Node()
     node.insert('get', '/:id/:id/x', 'foo')

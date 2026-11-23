@@ -4,14 +4,14 @@
   "repo": "Natenc12/hono-lab",
   "base_ref": "base/T6",
   "base_sha": "e4a792524930039d99162e3b3f46ce623410b444",
-  "started": "2026-11-23T17:16:03+00:00",
-  "finished": "2026-11-23T17:18:14+00:00",
+  "started": "2026-11-23T20:38:13+00:00",
+  "finished": "2026-11-23T20:39:57+00:00",
   "ok": true,
   "steps": [
     {
       "name": "base: type check and existing tests pass",
       "ok": true,
-      "note": "{'passed': 5032, 'skipped': 102} in 15.5s",
+      "note": "{'passed': 5018, 'skipped': 102} in 12.6s",
       "typecheck": {
         "exit": 0,
         "tail": ""
@@ -63,14 +63,14 @@
         {
           "cmd": "run format",
           "exit": 0,
-          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 246ms on 432 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 218ms on 432 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
         }
       ]
     },
     {
       "name": "reference: type check and existing tests pass",
       "ok": true,
-      "note": "{'passed': 5034, 'skipped': 102} in 14.5s",
+      "note": "{'passed': 5020, 'skipped': 102} in 11.5s",
       "typecheck": {
         "exit": 0,
         "tail": ""
@@ -109,12 +109,12 @@
         {
           "cmd": "run lint",
           "exit": 0,
-          "tail": "no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/react.ts:5:93: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2101:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
+          "tail": "ipt(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:29: warning eslint(no-unused-vars): Parameter 'jsx' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:34: warning eslint(no-unused-vars): Parameter 'Fragment' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.\nbenchmarks/jsx/src/page.tsx:4:53: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nbenchmarks/jsx/src/page.tsx:4:68: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/client/client.test.ts:2101:64: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\nsrc/request.test.ts:130:35: warning typescript(no-explicit-any): Unexpected `any`. Specify a different type. help: Use `unknown` instead, this will force you to explicitly, and safely, assert the type is correct.\n$ vp lint src runtime-tests build perf-measures benchmarks adapters\n"
         },
         {
           "cmd": "run format",
           "exit": 0,
-          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 406ms on 433 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 217ms on 433 files using 8 threads.\n$ vp fmt --check \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\" \"adapters/**/*.{js,ts,tsx}\"\n"
         },
         {
           "cmd": "exec vp lint src/hidden/t6.test.ts",
@@ -124,14 +124,14 @@
         {
           "cmd": "exec vp fmt --check src/hidden/t6.test.ts",
           "exit": 0,
-          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 119ms on 1 files using 8 threads.\n"
+          "tail": "Checking formatting...\n\nAll matched files use the correct format.\nFinished in 108ms on 1 files using 8 threads.\n"
         }
       ]
     },
     {
       "name": "hidden tests run in under about 2 minutes",
       "ok": true,
-      "note": "2.3s"
+      "note": "1.0s"
     },
     {
       "name": "naive-logger.patch: type check and existing tests still pass (a competent fix)",

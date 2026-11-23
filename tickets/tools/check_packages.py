@@ -13,8 +13,8 @@ covered by `key.json`'s `tests_may_change` (a `path` or `path::name` pattern).
 
 For hono (TypeScript, standard level S1 only, eight tickets: five replays, a feature, a vague request
 and a wrong request) the same checks apply with Hono's layout: hidden tests are `*.test.ts(x)`, and an
-existing test is an `it(...)` / `test(...)` block (or a `runTest(...)` call, whose skip list is data) in
-a `*.test.ts(x)` file, compared as text with whitespace collapsed.
+existing test is an `it(...)` / `test(...)` block in a `*.test.ts(x)` file, compared as text with
+whitespace collapsed; as in the grader, a `runTest(...)` call and its skip list are data, not a test.
 
 Exits 1 and lists every problem it finds.
 """
@@ -135,16 +135,12 @@ def _matching_close(src: str, start: int) -> int:
 
 
 def _ts_blocks(src: str) -> dict[str, str]:
-    """`title` (or `runTest#n`) -> the call's text with whitespace collapsed. Titles repeat; later ones get #n."""
+    """`title` -> the `it`/`test` call's text with whitespace collapsed. Titles repeat; later ones get #n."""
     out: dict[str, str] = {}
-    for m in re.finditer(r"\b(it|test)(\.each\([\s\S]*?\)\s*)?\(\s*(['\"`])((?:\\.|(?!\3).)*)\3|\brunTest\s*\(", src):
-        start = (
-            src.index("(", m.end() - 1)
-            if m.group(0).startswith("runTest")
-            else src.index("(", m.start() + len(m.group(1)) + len(m.group(2) or ""))
-        )
+    for m in re.finditer(r"\b(it|test)(\.each\([\s\S]*?\)\s*)?\(\s*(['\"`])((?:\\.|(?!\3).)*)\3", src):
+        start = src.index("(", m.start() + len(m.group(1)) + len(m.group(2) or ""))
         i = _matching_close(src, start)
-        name = m.group(4) if m.group(1) else "runTest"
+        name = m.group(4)
         key, n = name, 1
         while key in out:
             n += 1
@@ -270,7 +266,13 @@ def check_tests_may_change(codebase: str, lab: Path) -> list[str]:
         patch = ROOT / "answers" / codebase / tid / "reference.patch"
         for name in touched_existing_tests(lab, meta["base_ref"], patch):
             path = name.split("::")[0]
-            if not any(name == a or fnmatch.fnmatch(path, a) for a in allowed):
+            title = name.split("::", 1)[1].split("#")[0] if "::" in name else ""
+            if not any(
+                name == a
+                or fnmatch.fnmatch(path, a)
+                or (a.startswith(path + "::") and (a.endswith(" > " + title) or fnmatch.fnmatch(name, a)))
+                for a in allowed
+            ):
                 problems.append(f"{tid}: reference.patch changes {name}, not in tests_may_change")
     return problems
 

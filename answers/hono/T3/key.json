@@ -10,7 +10,8 @@
   "scope_out_paths": [
     "src/adapter/deno/",
     "src/adapter/cloudflare-workers/",
-    "src/helper/websocket/"
+    "adapters/deno/",
+    "adapters/cloudflare-workers/"
   ],
   "tests_may_change": [],
   "tests_may_change_note": "None: the existing Bun adapter tests use handlers that do not throw, and new cases are new tests.",
@@ -18,9 +19,10 @@
   "naive_patches": {
     "naive.patch": "Wraps each handler call in try/catch and forwards to onError, but ignores the promise an async handler returns, so a rejection never reaches onError."
   },
-  "hidden_tests_note": "The upstream fix's own onError tests, with two changes: the upstream 'rethrow when onError is not set' test passes on the base, so its check is folded into the end of the first test; and the async test waits for setTimeout(0) instead of one microtask (`await Promise.resolve()`), so a correct fix that takes more promise steps still passes. The adapters/bun copy is in scope but not graded: its tests need Bun and are outside the root suite. The issue's own 'Recommended Fix' (adding a Bun `error` hook to the handler object) is removed from the ticket; a fix built only that way would not satisfy the ticket's Decisions and fails all three hidden tests.",
+  "hidden_tests_note": "The upstream fix's own onError tests, run over both copies (hono/bun in src/adapter/bun and the @hono/bun package in adapters/bun, loaded by path at run time; it needs no Bun, only the build), so a run that leaves the in-scope package copy alone fails half. Changes from upstream: the 'rethrow when onError is not set' check is folded into the first test (it passes on the base); the async test waits for setTimeout(0) instead of one microtask; and it also checks async onOpen and onClose (audit A).",
   "issue_hints_removed": [
     "the issue's diagnosis that Bun only catches exceptions when the handler object has an error method",
     "the issue's Recommended Fix code"
-  ]
+  ],
+  "scope_out_note": "src/helper/websocket/ was dropped (audit A): the ticket does not put the shared helper out of scope, and widening onError's event type there so apps can read `error` is reasonable."
 }
