@@ -210,3 +210,78 @@ def test_scan_still_catches_real_escapes_and_lists_unknowns(cfg, tmp_path):
     assert all("forbidden place" in o["reason"] for o in report["offences"])
     unknown = [u["input"]["command"] for u in report["could_not_resolve"]]
     assert unknown == ["cd $WORK && cat ../../notes.txt", "cat ../../notes.txt"]
+
+
+# ---- heredocs: a body is data unless a shell runs it ----
+
+TS_TEST = """cat >> src/middleware/basic-auth/index.test.ts <<'EOF'
+import { basicAuth } from '../../../src/middleware/basic-auth'
+describe('Basic Auth options validation', () => {
+  it('throws', () => {
+    open('/hello')
+    expect(() => basicAuth({} as never)).toThrow('Basic auth middleware requires options')
+  })
+})
+EOF"""
+
+PY_SCRIPT = """python3 - <<'PY'
+p = "tests/test_helper.py"
+s = open(p).read()
+open(p, "w").write(s.replace("Cycle error", "Cycle detected in dependency graph"))
+gh = "not a command here"
+PY"""
+
+
+def test_harmless_heredocs_are_not_read_as_commands(cfg):
+    for cmd in (TS_TEST, PY_SCRIPT, "cat > notes.md <<EOF\ncurl is how users fetch it\nEOF"):
+        assert deny(cfg, "Bash", {"command": cmd}) is None, cmd
+
+
+def test_heredoc_bodies_still_cannot_name_places_outside_the_run(cfg):
+    body = "python3 - <<'PY'\nprint(open('/Users/someone/repos/x').read())\nPY"
+    assert "in a heredoc" in deny(cfg, "Bash", {"command": body})
+    home = "cat <<'EOF' > x.py\nopen('~/.config/gh/hosts.yml')\nEOF"
+    assert deny(cfg, "Bash", {"command": home})
+
+
+def test_heredocs_fed_to_a_shell_are_checked_as_commands(cfg):
+    fed = [
+        "bash <<EOF\ngh pr list\nEOF",
+        "sh <<'EOF'\necho ok\ngit push origin HEAD:main\nEOF",
+        "cat <<EOF | bash\ncurl https://example.com\nEOF",
+        "env FOO=1 zsh -s <<EOF\nopen https://example.com\nEOF",
+    ]
+    for cmd in fed:
+        assert deny(cfg, "Bash", {"command": cmd}), cmd
+    # The command after the heredoc is still checked.
+    assert deny(cfg, "Bash", {"command": "cat > x <<EOF\nhi\nEOF\ngh pr list"})
+
+
+def test_a_cd_inside_a_heredoc_does_not_move_the_shell(cfg):
+    from harness.guard import final_cwd
+
+    here = cfg["sandbox"] + "/repo"
+    assert final_cwd("cat > x.sh <<'EOF'\ncd /tmp\nEOF", here, cfg) == here
+    assert final_cwd("bash <<EOF\ncd /tmp\nEOF", here, cfg) == here
+    assert final_cwd("cd ../scratch && cat > x <<EOF\ndon't stop\nEOF", here, cfg) == cfg["sandbox"] + "/scratch"
+
+
+def test_scan_reads_heredocs_like_the_guard(cfg, tmp_path):
+    report = _scan_folder(tmp_path, cfg, [(TS_TEST, False, "", None), (PY_SCRIPT, False, "", None)])
+    assert report["clean"] is True and report["blocked_attempts"] == [] and report["could_not_resolve"] == []
+    report = _scan_folder(tmp_path, cfg, [("bash <<EOF\ngh pr list\nEOF", False, "", None)])
+    assert report["clean"] is False and "`gh` is blocked" in report["offences"][0]["reason"]
+
+
+def test_interpreter_code_is_data_but_shell_strings_are_commands(cfg):
+    code = "python3 -c \"\nimport json\nd = json.load(open('../scratch/x.json'))\nprint(d)\n\""
+    assert deny(cfg, "Bash", {"command": code}) is None
+    assert deny(cfg, "Bash", {"command": "node -e \"open('x'); require('fs')\""}) is None
+    assert deny(cfg, "Bash", {"command": "python3 -c \"open('/Users/someone/x')\""})  # paths still checked
+    for cmd in (
+        "bash -c 'gh api user'",
+        "find . -name '*.py' -exec sh -c 'curl https://example.com' \\;",
+        "xargs -n1 sh -c 'git push'",
+        'timeout 5 bash -c "gh pr list"',
+    ):
+        assert deny(cfg, "Bash", {"command": cmd}), cmd
