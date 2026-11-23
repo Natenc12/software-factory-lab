@@ -1,0 +1,134 @@
+{
+  "ticket": "T5",
+  "codebase": "sqlglot",
+  "repo": "Natenc12/sqlglot-lab",
+  "base_ref": "base/T5",
+  "base_sha": "06e1c2b684446a4d0ec6ad3a0dbbeadd8ca8cecf",
+  "s3_base_ref": null,
+  "s3_sha": null,
+  "started": "2026-11-23T15:09:46+00:00",
+  "finished": "2026-11-23T15:12:27+00:00",
+  "databases_dropped": [],
+  "ok": true,
+  "steps": [
+    {
+      "name": "base: existing tests pass",
+      "ok": true,
+      "note": "26964 passed, 60 skipped in 50.27s",
+      "counts": {
+        "passed": 1603,
+        "skipped": 60
+      },
+      "seconds": 51.0,
+      "log_tail": ""
+    },
+    {
+      "name": "hidden tests exist",
+      "ok": true,
+      "files": [
+        "tests/hidden/test_hidden_t5.py"
+      ]
+    },
+    {
+      "name": "base: every hidden test fails",
+      "ok": true,
+      "note": "11 failed, 1 passed in 1.76s",
+      "outcomes": {
+        "tests.hidden.test_hidden_t5.TestHiddenT5::test_dialects_without_update_or_report_it": "failed",
+        "tests.hidden.test_hidden_t5.TestHiddenT5::test_update_or_in_the_default_dialect": "failed",
+        "tests.hidden.test_hidden_t5.TestHiddenT5::test_update_or_round_trips_in_sqlite": "failed",
+        "tests.hidden.test_hidden_t5.TestHiddenT5::test_update_or_without_an_action_is_an_error": "failed"
+      },
+      "not_failing": [],
+      "seconds": 2.1
+    },
+    {
+      "name": "reference: leaves unchanged_paths alone",
+      "ok": true,
+      "touched": [],
+      "changed": [
+        "sqlglot/dialects/dialect.py",
+        "sqlglot/dialects/sqlite.py",
+        "sqlglot/expressions/dml.py",
+        "sqlglot/generator.py",
+        "sqlglot/generators/teradata.py",
+        "sqlglot/parser.py",
+        "tests/dialects/test_sqlite.py"
+      ]
+    },
+    {
+      "name": "reference: every hidden test passes",
+      "ok": true,
+      "note": "4 hidden, 4 collected",
+      "outcomes": {
+        "tests.hidden.test_hidden_t5.TestHiddenT5::test_dialects_without_update_or_report_it": "passed",
+        "tests.hidden.test_hidden_t5.TestHiddenT5::test_update_or_in_the_default_dialect": "passed",
+        "tests.hidden.test_hidden_t5.TestHiddenT5::test_update_or_round_trips_in_sqlite": "passed",
+        "tests.hidden.test_hidden_t5.TestHiddenT5::test_update_or_without_an_action_is_an_error": "passed"
+      },
+      "not_passing": []
+    },
+    {
+      "name": "reference: existing tests pass",
+      "ok": true,
+      "note": "26987 passed, 60 skipped in 45.63s",
+      "counts": {
+        "passed": 1608,
+        "skipped": 60
+      },
+      "failing": [],
+      "seconds": 46.4,
+      "log_tail": ""
+    },
+    {
+      "name": "base and reference ran the same hidden tests",
+      "ok": true,
+      "missing_on_base": [],
+      "base_collection_errors": []
+    },
+    {
+      "name": "reference: lint and format clean (tree and hidden tests)",
+      "ok": true,
+      "runs": [
+        {
+          "cmd": ".venv/bin/ruff check",
+          "exit": 0,
+          "tail": "All checks passed!\n"
+        },
+        {
+          "cmd": ".venv/bin/ruff format --check",
+          "exit": 0,
+          "tail": "258 files already formatted\n"
+        },
+        {
+          "cmd": ".venv/bin/ruff check tests/hidden/test_hidden_t5.py",
+          "exit": 0,
+          "tail": "All checks passed!\n"
+        },
+        {
+          "cmd": ".venv/bin/ruff format --check tests/hidden/test_hidden_t5.py",
+          "exit": 0,
+          "tail": "1 file already formatted\n"
+        }
+      ]
+    },
+    {
+      "name": "hidden tests run in under about 2 minutes",
+      "ok": true,
+      "note": "0.7s"
+    },
+    {
+      "name": "naive.patch: at least one hidden test fails",
+      "ok": true,
+      "failing": [
+        "tests.hidden.test_hidden_t5.TestHiddenT5::test_dialects_without_update_or_report_it"
+      ],
+      "note": "1/4 hidden fail"
+    },
+    {
+      "name": "naive.patch: existing tests still pass (a competent fix)",
+      "ok": true,
+      "failing": []
+    }
+  ]
+}

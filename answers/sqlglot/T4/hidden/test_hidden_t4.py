@@ -28,7 +28,9 @@ class TestHiddenT4(unittest.TestCase):
                 conn = duckdb.connect()
                 conn.execute("CREATE TABLE t (id INT, arr INT[])")
                 conn.execute("INSERT INTO t VALUES (1, [1, 2, 3]), (2, [1]), (3, []), (4, NULL)")
-                ordered = f"SELECT id, r FROM ({sql.replace(' FROM t', ' AS r, id FROM t')}) ORDER BY id"
+                ordered = (
+                    f"SELECT id, r FROM ({sql.replace(' FROM t', ' AS r, id FROM t')}) ORDER BY id"
+                )
                 self.assertEqual(
                     conn.execute(ordered).fetchall(),
                     [(1, True), (2, False), (3, False), (4, None)],
