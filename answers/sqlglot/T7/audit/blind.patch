@@ -1,0 +1,172 @@
+diff --git a/sqlglot/optimizer/simplify.py b/sqlglot/optimizer/simplify.py
+index 23e4a4599..a564dc3cd 100644
+--- a/sqlglot/optimizer/simplify.py
++++ b/sqlglot/optimizer/simplify.py
+@@ -832,6 +832,7 @@ class Simplifier:
+             node = flatten(node)
+             node = self.simplify_connectors(node, root)
+             node = self.remove_complements(node, root)
++            node = self.remove_null_coalesce_args(node)
+ 
+             if coalesce_simplification:
+                 node = self.simplify_coalesce(node)
+@@ -1415,6 +1416,36 @@ class Simplifier:
+ 
+         return None
+ 
++    @annotate_types_on_change
++    def remove_null_coalesce_args(self, expression: exp.Expr) -> exp.Expr:
++        """
++        Drops literal NULL arguments, which can never be the result of a COALESCE:
++
++            COALESCE(NULL, x, NULL, y) -> COALESCE(x, y)
++            COALESCE(x, NULL) -> x
++            COALESCE(NULL, NULL) -> NULL
++        """
++        if (
++            not isinstance(expression, exp.Coalesce)
++            # COALESCE is also used as a Spark partitioning hint
++            or isinstance(expression.parent, exp.Hint)
++        ):
++            return expression
++
++        args = [expression.this, *expression.expressions]
++        kept = [arg for arg in args if not isinstance(arg, exp.Null)]
++
++        if len(kept) == len(args):
++            return expression
++        if not kept:
++            return exp.null()
++        if len(kept) == 1:
++            return kept[0]
++
++        expression.set("this", kept[0])
++        expression.set("expressions", kept[1:])
++        return expression
++
+     @annotate_types_on_change
+     def simplify_coalesce(self, expression: exp.Expr) -> exp.Expr:
+         # COALESCE(x) -> x
+diff --git a/tests/fixtures/optimizer/simplify.sql b/tests/fixtures/optimizer/simplify.sql
+index 20f446283..7f6be2eef 100644
+--- a/tests/fixtures/optimizer/simplify.sql
++++ b/tests/fixtures/optimizer/simplify.sql
+@@ -1298,36 +1298,63 @@ CAST(x AS INT) < 0 AND CAST(x AS INT) >= -500;
+ # dialect: duckdb
+ # execute: true
+ SELECT COALESCE(a, NULL, 1) = 1 AS eq FROM x;
+-SELECT COALESCE(a, NULL) = 1 OR COALESCE(a, NULL) IS NULL AS eq FROM x;
++SELECT a = 1 OR a IS NULL AS eq FROM x;
+ 
+ # dialect: duckdb
+ # execute: true
+ SELECT 1 = COALESCE(a, NULL, 1) AS eq FROM x;
+-SELECT COALESCE(a, NULL) = 1 OR COALESCE(a, NULL) IS NULL AS eq FROM x;
++SELECT a = 1 OR a IS NULL AS eq FROM x;
+ 
+ # dialect: duckdb
+ # execute: true
+ SELECT 0 < COALESCE(a, NULL, -1) AS gt FROM x;
+-SELECT COALESCE(a, NULL, -1) > 0 AS gt FROM x;
++SELECT COALESCE(a, -1) > 0 AS gt FROM x;
+ 
+ # dialect: duckdb
+ # execute: true
+ SELECT COALESCE(a, NULL, b, 3) = 3 AS eq FROM x;
+-SELECT COALESCE(a, NULL, b) = 3 OR COALESCE(a, NULL, b) IS NULL AS eq FROM x;
++SELECT COALESCE(a, b) = 3 OR COALESCE(a, b) IS NULL AS eq FROM x;
+ 
+ # dialect: duckdb
+ # execute: true
+ SELECT COALESCE(a, NULL, NULL, 1) = 1 AS eq FROM x;
+-SELECT COALESCE(a, NULL, NULL) = 1 OR COALESCE(a, NULL, NULL) IS NULL AS eq FROM x;
++SELECT a = 1 OR a IS NULL AS eq FROM x;
+ 
+ # dialect: duckdb
+ # execute: true
+ SELECT COALESCE(a, NULL) = 1 AS eq FROM x;
+-SELECT COALESCE(a, NULL) = 1 AS eq FROM x;
++SELECT a = 1 AS eq FROM x;
+ 
+ COALESCE(x);
+ x;
+ 
++COALESCE(NULL, x);
++x;
++
++COALESCE(x, NULL);
++x;
++
++COALESCE(x, NULL, y);
++COALESCE(x, y);
++
++COALESCE(NULL, NULL, x, NULL, y);
++COALESCE(x, y);
++
++COALESCE(NULL, NULL);
++NULL;
++
++COALESCE(x, y);
++COALESCE(x, y);
++
++# dialect: duckdb
++# execute: true
++SELECT COALESCE(NULL, a, NULL, b) AS c FROM x;
++SELECT COALESCE(a, b) AS c FROM x;
++
++# dialect: spark
++SELECT /*+ COALESCE(3) */ * FROM t;
++SELECT /*+ COALESCE(3) */ * FROM t;
++
+ COALESCE(x, 1) = 2;
+ NOT x IS NULL AND x = 2;
+ 
+diff --git a/tests/test_optimizer.py b/tests/test_optimizer.py
+index a9fc025b8..f6104a0f5 100644
+--- a/tests/test_optimizer.py
++++ b/tests/test_optimizer.py
+@@ -2300,6 +2300,44 @@ SELECT :with_,WITH :expressions,CTE :this,UNION :this,SELECT :expressions,1,:exp
+             "SELECT :expressions,item_id /* description */",
+         )
+ 
++    def test_simplify_coalesce_null_arguments(self):
++        # Literal NULL arguments are dropped by default, without coalesce_simplification
++        for sql, expected in (
++            ("COALESCE(NULL, x)", "x"),
++            ("COALESCE(x, NULL)", "x"),
++            ("COALESCE(x, NULL, y)", "COALESCE(x, y)"),
++            ("COALESCE(NULL, NULL, x, NULL, y)", "COALESCE(x, y)"),
++            ("COALESCE(NULL, NULL)", "NULL"),
++            ("COALESCE(x, y)", "COALESCE(x, y)"),
++            ("COALESCE(CAST(NULL AS DATE), x)", "COALESCE(CAST(NULL AS DATE), x)"),
++        ):
++            for coalesce_simplification in (False, True):
++                with self.subTest(sql=sql, coalesce_simplification=coalesce_simplification):
++                    simplified = optimizer.simplify.simplify(
++                        parse_one(sql), coalesce_simplification=coalesce_simplification
++                    )
++                    self.assertEqual(simplified.sql(), expected)
++
++        self.assertEqual(
++            optimizer.optimize(
++                "SELECT COALESCE(NULL, a, NULL, b) AS c FROM t",
++                schema={"t": {"a": "INT", "b": "INT"}},
++            ).sql(),
++            'SELECT COALESCE("t"."a", "t"."b") AS "c" FROM "t" AS "t"',
++        )
++
++        # COALESCE as a Spark partitioning hint is not a function call
++        hint = "SELECT /*+ COALESCE(3) */ * FROM t"
++        self.assertEqual(
++            optimizer.simplify.simplify(parse_one(hint, read="spark")).sql("spark"), hint
++        )
++
++        # Plain transpilation is unaffected
++        self.assertEqual(
++            parse_one("SELECT COALESCE(NULL, a, NULL, b)").sql(),
++            "SELECT COALESCE(NULL, a, NULL, b)",
++        )
++
+     def test_simplify_conditional_result_type(self):
+         for sql, folds in (
+             ("IF(TRUE, 7, 2)", True),
