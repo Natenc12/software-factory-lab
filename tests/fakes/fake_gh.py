@@ -13,6 +13,11 @@ def main() -> int:
         f.write(json.dumps(args) + "\n")
     head = args[args.index("--head") + 1] if "--head" in args else ""
     # One pull request per branch, so runs sharing this fake (a stage) don't see each other's.
+    need = os.environ.get("FAKE_GH_REQUIRE_CONFIG")
+    if need and (os.environ.get("GH_CONFIG_DIR") != need or "GH_TOKEN" in os.environ):
+        # As the real gh does when its login is not where it looks.
+        print("You are not logged into any GitHub hosts. To log in, run: gh auth login", file=sys.stderr)
+        return 4
     opened = log.with_suffix(".opened") if not head else log.parent / f"{log.stem}.{head.replace('/', '_')}.opened"
     if args[:2] == ["pr", "list"]:
         print(json.dumps([{"number": 7}] if opened.exists() else []))

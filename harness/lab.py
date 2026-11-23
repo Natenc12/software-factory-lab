@@ -33,10 +33,21 @@ def log(cfg: dict, event: dict) -> None:
         f.write(json.dumps(event, sort_keys=True) + "\n")
 
 
+def owner_env(cfg: dict) -> dict:
+    """The environment for lab's own gh and git calls: the session's, with the owner's gh login pinned.
+
+    A codebase's run_env may set XDG_CONFIG_HOME (or HOME) for its toolchain, which would hide gh's login.
+    No token is put in the environment: gh reads it from its own config, as for the owner.
+    """
+    env = {k: v for k, v in os.environ.items() if k not in ("XDG_CONFIG_HOME", "GH_TOKEN", "GITHUB_TOKEN", "GH_HOST")}
+    env.update(cfg.get("owner_env") or {})
+    return env
+
+
 def gh(cfg: dict, *args: str) -> subprocess.CompletedProcess:
     if tuple(args[:2]) not in GH_ALLOWED:
         raise SystemExit(f"lab: refusing gh {' '.join(args[:2])}")
-    return subprocess.run([cfg["gh"], *args, "--repo", cfg["repo"]], capture_output=True, text=True)
+    return subprocess.run([cfg["gh"], *args, "--repo", cfg["repo"]], capture_output=True, text=True, env=owner_env(cfg))
 
 
 def inside(cfg: dict, path: str) -> Path:
@@ -69,6 +80,7 @@ def push(cfg: dict) -> None:
         ],
         capture_output=True,
         text=True,
+        env=owner_env(cfg),
     )
     if out.returncode != 0:
         raise SystemExit(f"lab: push failed: {out.stderr.strip()}")
