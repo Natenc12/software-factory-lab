@@ -1,0 +1,14 @@
+diff --git a/sqlglot/generator.py b/sqlglot/generator.py
+index 202fcc70e..0d881b9c0 100644
+--- a/sqlglot/generator.py
++++ b/sqlglot/generator.py
+@@ -3895,6 +3895,9 @@ class Generator:
+         return f"ANY {this}"
+ 
+     def exists_sql(self, expression: exp.Exists) -> str:
++        # Spark's EXISTS(array, lambda): keep the lambda instead of dropping it
++        if expression.expression:
++            return self.function_fallback_sql(expression)
+         return f"EXISTS{self.wrap(expression)}"
+ 
+     def case_sql(self, expression: exp.Case) -> str:

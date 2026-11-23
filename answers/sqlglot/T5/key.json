@@ -1,0 +1,28 @@
+{
+  "hidden_test_cmd": "sh -c 'PATH=\"$PWD/.venv/bin:$PATH\" exec python -m pytest -q -p no:subtests \"$@\"' sh tests/hidden",
+  "unchanged_paths": [],
+  "scope_out_paths": [],
+  "tests_may_change": [
+    "tests/dialects/test_sqlite.py",
+    "tests/dialects/test_dialect.py",
+    "tests/dialects/test_postgres.py",
+    "tests/dialects/test_mysql.py",
+    "tests/dialects/test_teradata.py",
+    "tests/test_parser.py",
+    "tests/test_generator.py",
+    "tests/test_expressions.py"
+  ],
+  "tests_may_change_note": "A fix naturally adds cases to the existing SQLite DML tests (where INSERT OR REPLACE is covered), to the default dialect's tests, or to the write tests of the dialects that must report it.",
+  "traps": [],
+  "replay": {
+    "source": "tobymao/sqlglot issue 9281",
+    "fix_commits": ["68ef75b2b6e6d1223115f16c9ff257fea662ab5c"],
+    "reference_note": "the fix's whole diff, tests included",
+    "hidden_tests_from": "the fix's TestSQLite::test_update_or, without its check of the private arg name 'alternative', plus MySQL beside Postgres and Teradata"
+  },
+  "naive_patches": {
+    "naive.patch": "reads UPDATE OR in every dialect and always writes it back: Postgres, MySQL and Teradata get it silently (Teradata even drops it), nothing is reported"
+  },
+  "planted_bugs": [],
+  "not_bugs": []
+}

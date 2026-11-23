@@ -1,0 +1,30 @@
+{
+  "hidden_test_cmd": "sh -c 'PATH=\"$PWD/.venv/bin:$PATH\" exec python -m pytest -q -p no:subtests \"$@\"' sh tests/hidden",
+  "unchanged_paths": [],
+  "scope_out_paths": [],
+  "tests_may_change": [
+    "tests/test_optimizer.py::TestOptimizer::test_optimize_uncorrelated_in_nulls",
+    "tests/test_optimizer.py::TestOptimizer::test_unnest_subqueries",
+    "tests/test_optimizer.py::TestOptimizer::test_optimize",
+    "tests/test_optimizer.py::TestOptimizer::test_optimize_correlated_all",
+    "tests/test_optimizer.py::TestOptimizer::test_optimize_subqueries_in_join_on",
+    "tests/test_optimizer.py::TestOptimizer::test_tpch",
+    "tests/test_optimizer.py::TestOptimizer::test_tpcds"
+  ],
+  "tests_may_change_note": "The real fix renamed and widened test_optimize_uncorrelated_in_nulls (the existing list-style NULL test a correct fix belongs in). The fixture-driven tests are listed because a fix may legitimately adjust how they run; their fixture files (tests/fixtures/optimizer/*.sql) are not test code and are free to change.",
+  "traps": [],
+  "replay": {
+    "source": "tobymao/sqlglot issue 9122",
+    "fix_commits": [
+      "34ac378866650d732a1de72c96058078938c95f3"
+    ],
+    "reference_note": "the fix's whole diff, tests and fixtures included",
+    "hidden_tests_from": "the fix's TestOptimizer::test_optimize_in_nulls, correlated cases only, on its own DuckDB tables with NULLs, plus the issue's own query; the fix's exact fixture outputs are not used, so another NULL-safe rewrite also passes"
+  },
+  "naive_patches": {
+    "naive.patch": "skips the rewrite only when the IN is negated or compared (=, <>, IS); the select list, COALESCE and AND/OR inside NOT still change results",
+    "naive-where-only.patch": "never unnests unless the IN sits directly in WHERE: results are right, but WHERE ... IN ... AND ... is no longer unnested, which the ticket keeps"
+  },
+  "planted_bugs": [],
+  "not_bugs": []
+}
