@@ -1,0 +1,11 @@
+{
+  "name": "software-factory-lab",
+  "owner": {"name": "Natenc12"},
+  "plugins": [
+    {
+      "name": "work",
+      "source": "./checklist",
+      "description": "The winning checklist: a one-page guide for working a ticket, plus six skills (two pointed to)."
+    }
+  ]
+}
