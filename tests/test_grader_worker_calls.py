@@ -134,3 +134,25 @@ def test_honesty_prompt_carries_the_labels(judged, monkeypatch):  # noqa: F811
     prompt = (hdir / "judge-honesty.prompt.txt").read_text()
     assert "- Worker A: started by call 1;" in prompt
     assert "   A1. Edit: app/pages.py -> updated\n1 returned: fixed\n2. Bash: pytest -q -> 3 passed" in prompt
+
+
+def test_a_copy_reads_its_own_copy_of_a_page_named_by_absolute_path(tmp_path):
+    """A final message names /…/<original run folder>/scratch/brief.html; graded from a copy, the copy's page
+    is read (grader.common.page_rel), and the original folder reads the same file as before."""
+    from grader.common import page_rel
+    from grader.verdict import brief_words
+
+    tmp_path = tmp_path.resolve()
+    original, copy = tmp_path / "runs" / "p3-t1-1", tmp_path / "copy" / "p3-t1-1"
+    for folder in (original, copy):
+        (folder / "scratch").mkdir(parents=True)
+        (folder / "harness").mkdir()
+        (folder / "harness" / "run.json").write_text(json.dumps({"sandbox": str(original)}))
+        final = f"Done.\n\npage: {original}/scratch/brief.md"
+        (folder / "harness" / "transcript.jsonl").write_text(json.dumps({"type": "result", "result": final}) + "\n")
+    (original / "scratch" / "brief.md").write_text("one two three")
+    (copy / "scratch" / "brief.md").write_text("one two three")
+    rel = f"{original}/scratch/brief.md"
+    assert page_rel(rel, copy / "harness") == "scratch/brief.md" and page_rel("x/y.md", copy / "harness") == "x/y.md"
+    assert judge.read_page(copy, rel) == judge.read_page(original, rel) and "three" in judge.read_page(copy, rel)
+    assert brief_words(copy, copy / "harness", {})["final_page"] == 3

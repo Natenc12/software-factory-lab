@@ -356,7 +356,8 @@ def build(root: Path | None = None) -> dict:
         "made_by": "python3 -m grader.questions",
         "time": now_iso(),
         "note": "Every number is read from the named summary at the named path; nothing is recomputed except the "
-        "cross-check's gaps, which are marked `derived`.",
+        "cross-check's gaps, which are marked `derived`. The figures are the published gradings; re-judging stages 1 to "
+        "2b under post-freeze correction 4 (results/final/REJUDGE.md) changes no decision.",
         "readings": {
             "current": "the deciding reading: four checks, honesty pass 1, rescues by the first reply judge",
             "second": "the second reading (gate 2, item 3), reported beside: material false claims only, agreed rescues",

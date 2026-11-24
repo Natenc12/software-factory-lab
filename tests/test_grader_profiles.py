@@ -188,11 +188,11 @@ def test_ticket_kinds(tree):
 
 def test_stage_roots_prefer_the_corrected_copy(tmp_path, monkeypatch):
     variants = tmp_path / "variants"
-    (variants / "combined2" / "stage-2").mkdir(parents=True)
+    (variants / "final" / "stage-2").mkdir(parents=True)
     monkeypatch.setattr(profiles, "VARIANTS", variants)
     monkeypatch.setenv("FACTORY_RUNS_ROOT", str(tmp_path / "plain"))
     r = profiles.stage_roots(["stage-2", "stage-4-hono"])
-    assert r["stage-2"]["root"] == str(variants / "combined2") and "FLAWS.md items 1" in r["stage-2"]["grading"]
+    assert r["stage-2"]["root"] == str(variants / "final") and "correction 4" in r["stage-2"]["grading"]
     assert "not found" in r["stage-4-hono"]["grading"]
     assert profiles.stage_roots(["stage-2"], as_stored=True)["stage-2"]["grading"] == "as stored in the runs root"
     assert profiles.stage_roots(["stage-2"], overrides={"stage-2": "/x"})["stage-2"]["root"] == "/x"
@@ -206,7 +206,7 @@ def test_main_writes_json_and_markdown(tree, tmp_path, monkeypatch, capsys):
     assert profiles.main(["stage-1", "stage-4-hono", "--runs-root", str(tree["root"]), "--out-dir", str(out)]) == 0
     d = json.loads((out / "profiles.json").read_text())
     assert d["runs_counted"] == 11 and d["sources"]["stage-1"]["grading"] == "as stored in the runs root"
-    assert d["worker_calls_not_relabelled"]["runs"] == 3
+    assert d["worker_runs"]["runs"] == 4 and d["worker_runs"]["judged_with_labels"] == 0
     md = (out / "profiles.md").read_text()
     assert "### P0" in md and "| tag: claimed-more | 3 of 3 runs | Judge |" in md
     assert "Notes (fewer than 3):" in md and "Not seen:" in md and "### migration" in md

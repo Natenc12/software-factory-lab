@@ -1311,8 +1311,8 @@
       "group": "method",
       "lines": [
         {
-          "count": "20 of 24 runs",
-          "k": 20,
+          "count": "19 of 24 runs",
+          "k": 19,
           "kind": "profile",
           "line": "trustworthy",
           "n": 24,
@@ -1359,8 +1359,8 @@
           "source": "Judge"
         },
         {
-          "count": "1 of 24 runs",
-          "k": 1,
+          "count": "2 of 24 runs",
+          "k": 2,
           "kind": "note",
           "line": "tag: claimed-more",
           "n": 24,
@@ -1445,16 +1445,16 @@
           "line": "false claim (any)",
           "n": 24,
           "source": "Judge",
-          "total": 6
+          "total": 5
         },
         {
-          "count": "4 of 24 runs",
-          "k": 4,
-          "kind": "profile",
+          "count": "1 of 24 runs",
+          "k": 1,
+          "kind": "note",
           "line": "material false claim",
           "n": 24,
           "source": "Second reading",
-          "total": 6
+          "total": 1
         },
         {
           "count": "0 of 24 runs",
@@ -1630,8 +1630,8 @@
       "group": "method",
       "lines": [
         {
-          "count": "14 of 24 runs",
-          "k": 14,
+          "count": "16 of 24 runs",
+          "k": 16,
           "kind": "profile",
           "line": "trustworthy",
           "n": 24,
@@ -1678,16 +1678,16 @@
           "source": "Judge"
         },
         {
-          "count": "1 of 24 runs",
-          "k": 1,
+          "count": "0 of 24 runs",
+          "k": 0,
           "kind": "note",
           "line": "tag: claimed-more",
           "n": 24,
           "source": "Judge"
         },
         {
-          "count": "0 of 24 runs",
-          "k": 0,
+          "count": "2 of 24 runs",
+          "k": 2,
           "kind": "note",
           "line": "tag: trusted-wrong-fact",
           "n": 24,
@@ -1758,13 +1758,13 @@
           "source": "Script"
         },
         {
-          "count": "6 of 24 runs",
-          "k": 6,
+          "count": "4 of 24 runs",
+          "k": 4,
           "kind": "profile",
           "line": "false claim (any)",
           "n": 24,
           "source": "Judge",
-          "total": 8
+          "total": 5
         },
         {
           "count": "3 of 24 runs",
@@ -1973,8 +1973,8 @@
           "source": "Judge"
         },
         {
-          "count": "1 of 24 runs",
-          "k": 1,
+          "count": "0 of 24 runs",
+          "k": 0,
           "kind": "note",
           "line": "tag: asked-or-guessed (guessed)",
           "n": 24,
@@ -2005,9 +2005,9 @@
           "source": "Judge"
         },
         {
-          "count": "3 of 24 runs",
-          "k": 3,
-          "kind": "profile",
+          "count": "2 of 24 runs",
+          "k": 2,
+          "kind": "note",
           "line": "tag: trusted-wrong-fact",
           "n": 24,
           "source": "Judge"
@@ -2021,17 +2021,17 @@
           "source": "Judge"
         },
         {
-          "count": "1 of 24 runs",
-          "k": 1,
+          "count": "0 of 24 runs",
+          "k": 0,
           "kind": "note",
           "line": "tag: over-built",
           "n": 24,
           "source": "Judge"
         },
         {
-          "count": "3 of 24 runs",
-          "k": 3,
-          "kind": "profile",
+          "count": "0 of 24 runs",
+          "k": 0,
+          "kind": "note",
           "line": "tag: needless-stop",
           "n": 24,
           "source": "Judge"
@@ -2400,10 +2400,27 @@
           "count": "1 of 8 runs",
           "k": 1,
           "kind": "note",
+          "line": "material false claim",
+          "n": 8,
+          "source": "Second reading",
+          "total": 1
+        },
+        {
+          "count": "1 of 8 runs",
+          "k": 1,
+          "kind": "note",
           "line": "rescue",
           "n": 8,
           "source": "Owner log",
           "total": 1
+        },
+        {
+          "count": "0 of 8 runs",
+          "k": 0,
+          "kind": "note",
+          "line": "rescue both reply judges agree on",
+          "n": 8,
+          "source": "Second reading"
         },
         {
           "count": "1 of 8 runs",
@@ -2480,6 +2497,14 @@
           "n": 8,
           "source": "Transcript",
           "total": 53
+        },
+        {
+          "count": "1 of 2 runs",
+          "k": 1,
+          "kind": "note",
+          "line": "trustworthy, second reading",
+          "n": 2,
+          "source": "Second reading"
         },
         {
           "count": "1 of 1 runs",
@@ -3628,7 +3653,7 @@
           "line": "false claim (any)",
           "n": 16,
           "source": "Judge",
-          "total": 2
+          "total": 3
         },
         {
           "count": "1 of 16 runs",
@@ -3821,8 +3846,8 @@
           "source": "Second reading"
         },
         {
-          "count": "21 of 56 runs",
-          "k": 21,
+          "count": "22 of 56 runs",
+          "k": 22,
           "kind": "profile",
           "line": "tag: asked-or-guessed (asked)",
           "n": 56,
@@ -5165,8 +5190,8 @@
           "source": "Judge"
         },
         {
-          "count": "2 of 122 runs",
-          "k": 2,
+          "count": "0 of 122 runs",
+          "k": 0,
           "kind": "note",
           "line": "tag: needless-stop",
           "n": 122,
@@ -5219,14 +5244,14 @@
           "line": "false claim (any)",
           "n": 122,
           "source": "Judge",
-          "total": 17
+          "total": 16
         },
         {
-          "count": "5 of 119 runs",
+          "count": "5 of 122 runs",
           "k": 5,
           "kind": "profile",
           "line": "material false claim",
-          "n": 119,
+          "n": 122,
           "source": "Second reading",
           "total": 9
         },
@@ -5240,11 +5265,11 @@
           "total": 0
         },
         {
-          "count": "0 of 119 runs",
+          "count": "0 of 122 runs",
           "k": 0,
           "kind": "note",
           "line": "rescue both reply judges agree on",
-          "n": 119,
+          "n": 122,
           "source": "Second reading",
           "total": 0
         },
@@ -5400,16 +5425,16 @@
           "source": "Script"
         },
         {
-          "count": "51 of 59 runs",
+          "count": "51 of 60 runs",
           "k": 51,
           "kind": "profile",
           "line": "trustworthy, second reading",
-          "n": 59,
+          "n": 60,
           "source": "Second reading"
         },
         {
-          "count": "5 of 60 runs",
-          "k": 5,
+          "count": "6 of 60 runs",
+          "k": 6,
           "kind": "profile",
           "line": "tag: asked-or-guessed (asked)",
           "n": 60,
@@ -5526,16 +5551,16 @@
           "line": "false claim (any)",
           "n": 60,
           "source": "Judge",
-          "total": 9
+          "total": 10
         },
         {
-          "count": "6 of 59 runs",
-          "k": 6,
+          "count": "7 of 60 runs",
+          "k": 7,
           "kind": "profile",
           "line": "material false claim",
-          "n": 59,
+          "n": 60,
           "source": "Second reading",
-          "total": 10
+          "total": 11
         },
         {
           "count": "0 of 60 runs",
@@ -5547,11 +5572,11 @@
           "total": 0
         },
         {
-          "count": "0 of 59 runs",
+          "count": "0 of 60 runs",
           "k": 0,
           "kind": "note",
           "line": "rescue both reply judges agree on",
-          "n": 59,
+          "n": 60,
           "source": "Second reading",
           "total": 0
         },
@@ -5828,11 +5853,11 @@
           "total": 2
         },
         {
-          "count": "1 of 41 runs",
+          "count": "1 of 42 runs",
           "k": 1,
           "kind": "note",
           "line": "material false claim",
-          "n": 41,
+          "n": 42,
           "source": "Second reading",
           "total": 1
         },
@@ -5846,11 +5871,11 @@
           "total": 0
         },
         {
-          "count": "0 of 41 runs",
+          "count": "0 of 42 runs",
           "k": 0,
           "kind": "note",
           "line": "rescue both reply judges agree on",
-          "n": 41,
+          "n": 42,
           "source": "Second reading",
           "total": 0
         },
@@ -6020,8 +6045,8 @@
           "source": "Judge"
         },
         {
-          "count": "1 of 74 runs",
-          "k": 1,
+          "count": "0 of 74 runs",
+          "k": 0,
           "kind": "note",
           "line": "tag: asked-or-guessed (guessed)",
           "n": 74,
@@ -6052,8 +6077,8 @@
           "source": "Judge"
         },
         {
-          "count": "23 of 74 runs",
-          "k": 23,
+          "count": "24 of 74 runs",
+          "k": 24,
           "kind": "profile",
           "line": "tag: trusted-wrong-fact",
           "n": 74,
@@ -6068,8 +6093,8 @@
           "source": "Judge"
         },
         {
-          "count": "4 of 74 runs",
-          "k": 4,
+          "count": "3 of 74 runs",
+          "k": 3,
           "kind": "profile",
           "line": "tag: over-built",
           "n": 74,
@@ -6124,22 +6149,22 @@
           "source": "Script"
         },
         {
-          "count": "8 of 74 runs",
-          "k": 8,
+          "count": "7 of 74 runs",
+          "k": 7,
           "kind": "profile",
           "line": "false claim (any)",
           "n": 74,
           "source": "Judge",
-          "total": 11
+          "total": 9
         },
         {
-          "count": "8 of 73 runs",
-          "k": 8,
+          "count": "5 of 74 runs",
+          "k": 5,
           "kind": "profile",
           "line": "material false claim",
-          "n": 73,
+          "n": 74,
           "source": "Second reading",
-          "total": 13
+          "total": 8
         },
         {
           "count": "7 of 74 runs",
@@ -6151,11 +6176,11 @@
           "total": 7
         },
         {
-          "count": "6 of 73 runs",
+          "count": "6 of 74 runs",
           "k": 6,
           "kind": "profile",
           "line": "rescue both reply judges agree on",
-          "n": 73,
+          "n": 74,
           "source": "Second reading",
           "total": 6
         },
@@ -6319,8 +6344,8 @@
       "group": "ticket_kind",
       "lines": [
         {
-          "count": "25 of 30 runs",
-          "k": 25,
+          "count": "26 of 30 runs",
+          "k": 26,
           "kind": "profile",
           "line": "trustworthy",
           "n": 30,
@@ -6399,8 +6424,8 @@
           "source": "Judge"
         },
         {
-          "count": "1 of 30 runs",
-          "k": 1,
+          "count": "0 of 30 runs",
+          "k": 0,
           "kind": "note",
           "line": "tag: needless-stop",
           "n": 30,
@@ -6447,20 +6472,20 @@
           "source": "Script"
         },
         {
-          "count": "3 of 30 runs",
-          "k": 3,
-          "kind": "profile",
+          "count": "2 of 30 runs",
+          "k": 2,
+          "kind": "note",
           "line": "false claim (any)",
           "n": 30,
           "source": "Judge",
-          "total": 4
+          "total": 3
         },
         {
-          "count": "4 of 29 runs",
+          "count": "4 of 30 runs",
           "k": 4,
           "kind": "profile",
           "line": "material false claim",
-          "n": 29,
+          "n": 30,
           "source": "Second reading",
           "total": 6
         },
@@ -6474,11 +6499,11 @@
           "total": 1
         },
         {
-          "count": "0 of 29 runs",
+          "count": "0 of 30 runs",
           "k": 0,
           "kind": "note",
           "line": "rescue both reply judges agree on",
-          "n": 29,
+          "n": 30,
           "source": "Second reading",
           "total": 0
         },
@@ -6621,9 +6646,9 @@
           "source": "Second reading"
         },
         {
-          "count": "2 of 32 runs",
-          "k": 2,
-          "kind": "note",
+          "count": "3 of 32 runs",
+          "k": 3,
+          "kind": "profile",
           "line": "tag: asked-or-guessed (asked)",
           "n": 32,
           "source": "Judge"
@@ -6739,7 +6764,7 @@
           "line": "false claim (any)",
           "n": 32,
           "source": "Judge",
-          "total": 6
+          "total": 7
         },
         {
           "count": "4 of 32 runs",
@@ -6893,11 +6918,11 @@
           "source": "Script"
         },
         {
-          "count": "12 of 15 runs",
-          "k": 12,
+          "count": "13 of 16 runs",
+          "k": 13,
           "kind": "profile",
           "line": "trustworthy, second reading",
-          "n": 15,
+          "n": 16,
           "source": "Second reading"
         },
         {
@@ -6990,11 +7015,11 @@
           "total": 5
         },
         {
-          "count": "3 of 15 runs",
+          "count": "3 of 16 runs",
           "k": 3,
           "kind": "profile",
           "line": "material false claim",
-          "n": 15,
+          "n": 16,
           "source": "Second reading",
           "total": 5
         },
@@ -7008,11 +7033,11 @@
           "total": 0
         },
         {
-          "count": "0 of 15 runs",
+          "count": "0 of 16 runs",
           "k": 0,
           "kind": "note",
           "line": "rescue both reply judges agree on",
-          "n": 15,
+          "n": 16,
           "source": "Second reading",
           "total": 0
         },
@@ -7170,39 +7195,41 @@
   },
   "sources": {
     "stage-1": {
-      "copy": "combined2",
-      "grading": "corrected: results/stage-1/FLAWS.md items 1 and 4, first reply picks restored",
-      "root": "~/factory-runs-variants/combined2"
+      "copy": "final",
+      "grading": "corrected: results/stage-1/FLAWS.md items 1 and 4, first reply picks restored; worker calls labelled (post-freeze correction 4): runs with worker calls re-judged",
+      "root": "~/factory-runs-variants/final"
     },
     "stage-1-confirm": {
-      "copy": "combined2",
-      "grading": "as graded (the confirm round had no corrections)",
-      "root": "~/factory-runs-variants/combined2"
+      "copy": "final",
+      "grading": "as graded; worker calls labelled (post-freeze correction 4): runs with worker calls re-judged",
+      "root": "~/factory-runs-variants/final"
     },
     "stage-2": {
-      "copy": "combined2",
-      "grading": "corrected: results/stage-2/FLAWS.md items 1 (T11 key) and 2 (one run judged)",
-      "root": "~/factory-runs-variants/combined2"
+      "copy": "final",
+      "grading": "corrected: results/stage-2/FLAWS.md items 1 (T11 key) and 2 (one run judged); worker calls labelled (post-freeze correction 4): runs with worker calls re-judged",
+      "root": "~/factory-runs-variants/final"
     },
     "stage-2b": {
-      "copy": "combined2",
-      "grading": "as graded, with post-freeze corrections 2 and 3 in place from the start",
-      "root": "~/factory-runs-variants/combined2"
+      "copy": "final",
+      "grading": "as graded, with post-freeze corrections 2 and 3 in place from the start; worker calls labelled (post-freeze correction 4): runs with worker calls re-judged",
+      "root": "~/factory-runs-variants/final"
     },
     "stage-4-hono": {
-      "copy": "corrected4",
-      "grading": "corrected: post-freeze correction 4 (worker calls labelled; 36 runs re-judged)",
-      "root": "~/factory-runs-variants/corrected4"
+      "copy": "final",
+      "grading": "corrected: worker calls labelled (post-freeze correction 4): runs with worker calls re-judged (36 runs, from corrected4)",
+      "root": "~/factory-runs-variants/final"
     },
     "stage-4-sqlglot": {
-      "copy": "corrected4",
-      "grading": "corrected: post-freeze correction 4 (worker calls labelled; 36 runs re-judged)",
-      "root": "~/factory-runs-variants/corrected4"
+      "copy": "final",
+      "grading": "corrected: worker calls labelled (post-freeze correction 4): runs with worker calls re-judged (36 runs, from corrected4)",
+      "root": "~/factory-runs-variants/final"
     }
   },
-  "time": "2026-11-24T02:13:43Z",
-  "worker_calls_not_relabelled": {
-    "note": "honesty lines (tags, false claims) for these runs come from the judge's unlabelled tool-call list (stage 4 FLAWS.md item 1); stage 4 runs were re-judged, these were not",
-    "runs": 80
+  "time": "2026-11-24T02:39:31Z",
+  "worker_runs": {
+    "judged_with_labels": 115,
+    "not_judged_with_labels": [],
+    "note": "runs whose lead started a worker; honesty lines for them are sound only where they were judged with worker calls labelled (post-freeze correction 4)",
+    "runs": 115
   }
 }

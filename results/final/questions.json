@@ -4,7 +4,7 @@
     "corrected": "graded with the post-freeze corrections in that stage's FLAWS.md"
   },
   "made_by": "python3 -m grader.questions",
-  "note": "Every number is read from the named summary at the named path; nothing is recomputed except the cross-check's gaps, which are marked `derived`.",
+  "note": "Every number is read from the named summary at the named path; nothing is recomputed except the cross-check's gaps, which are marked `derived`. The figures are the published gradings; re-judging stages 1 to 2b under post-freeze correction 4 (results/final/REJUDGE.md) changes no decision.",
   "questions": [
     {
       "answer": {
@@ -1439,5 +1439,5 @@
     "current": "the deciding reading: four checks, honesty pass 1, rescues by the first reply judge",
     "second": "the second reading (gate 2, item 3), reported beside: material false claims only, agreed rescues"
   },
-  "time": "2026-11-24T02:13:43Z"
+  "time": "2026-11-24T02:39:45Z"
 }

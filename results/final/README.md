@@ -9,6 +9,9 @@
   `{made_by, time, note, readings, gradings, questions: [{id, question, decides, rule, answer: {text, value,
   source, path, reading, grading}, numbers: [{label, value, source, path, reading, grading, derived?}]}]}`.
   `reading` is `current` (decides) or `second`; `grading` is `corrected` or `as frozen`.
-- `tools/make_variant5.sh`, `tools/regrade_workers_early.sh`: copy stages 1 to 2b to
-  `~/factory-runs-variants/corrected5` and judge honesty again (passes 1 and 2, severity) for the 80 runs
-  with worker calls, under post-freeze correction 4. Not run; waits for the owner's word.
+- `REJUDGE.md`: stages 1 to 2b judged again under post-freeze correction 4 (worker calls labelled), on the
+  copy root `~/factory-runs-variants/final`: verdicts that changed, each row before and after, whether any
+  rule would have come out differently (none on the deciding reading), commands and spend.
+  `rejudged/<stage>/` holds the summaries after (and `before/`), `rejudged/changes.json` the per-run detail.
+- `tools/make_final_root.py`, `tools/rejudge_final.sh`, `tools/compare_rejudge.py`: build the copy root,
+  judge one run again, compare before and after.

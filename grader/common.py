@@ -210,6 +210,19 @@ def content_blocks(rec) -> list[dict]:
     return [b for b in content if isinstance(b, dict)] if isinstance(content, list) else []
 
 
+def page_rel(rel: str | None, hdir: Path) -> str | None:
+    """A page the final message names (or the review report grade.json names) by absolute path inside the
+    run's own folder (run.json `sandbox`) is read from the same place in the folder being graded, so a copy of
+    the run reads its own copy. Returned relative to the folder; in the run's own folder it is the same file."""
+    if not rel:
+        return rel
+    path = os.path.expanduser(rel)
+    sandbox = str((read_json(Path(hdir) / "run.json") or {}).get("sandbox") or "").rstrip("/")
+    if sandbox and os.path.isabs(path) and path.startswith(sandbox + "/"):
+        return path[len(sandbox) + 1 :]
+    return rel
+
+
 def final_message(hdir: Path) -> str:
     """The text of the session's last result record (what the run said when it ended)."""
     text = ""
