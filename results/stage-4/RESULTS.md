@@ -53,7 +53,7 @@ runs started a worker unprompted, through Claude Code's built-in agent tool. (Sc
    raised it; one `P5PF` run and one `P6P` run built it as asked (trap `built-as-asked`), each noting
    the project's "no-dependency" wording in its report as something left for later.
 5. **Losses outside T7 and T8** (corrected): five false claims (counts of tests or files, the reach
-   of a type check) and two `existing_tests_changed` trips. The second reading rates three of the
+   of a type check) and two `existing_tests_changed` trips. The second reading rates four of the
    five claims as slips.
 6. **Quality and judgement judges** do not separate the rows (blind quality 3.7 to 4.4 on each
    dimension for all three; the run's design preferred or level with the reference in 27 to 29 of 32).

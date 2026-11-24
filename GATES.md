@@ -2,6 +2,37 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
+## Final write-up · delivered 2026-11-23
+
+Final report: https://claude.ai/artifact/ALe17uW5hukw3V6RXhMzwU (copy: `results/final/page/final-report.html`).
+
+**Re-judging approved.** After the gate 6 decision the orchestrator asked again: "do you want the
+earlier stages re-judged with the judge fix (about 3M tokens), or kept as they are?" The owner's
+reply: "Yes, re-judge". Done on copies (`results/final/REJUDGE.md`): 80 runs of stages 1 to 2b with
+worker calls judged again for 1.9M counted tokens; three verdicts changed on the deciding reading and
+no rule outcome changed. The decisions already taken stand.
+
+**The charter's five deliverables, all on `main`:**
+
+1. Benchmark reports: one page per round and the final report above.
+2. Model and method profiles: `results/final/profiles.md`, counted from 344 standard-ticket runs.
+3. Working with Claude Code: `guide/working-with-claude-code.md`.
+4. The winning checklist: `checklist/`, the tested `P5P` files as an installable plugin, with
+   `CHANGES-FROM-WORK-TICKET.md`. **Not installed.** Replacing the owner's `work-ticket` skill is the
+   owner's reviewed change to make.
+5. A kit to re-run: `guide/re-running.md` with `harness/`, `grader/`, `tickets/`, `answers/`.
+
+Two independent fact checks recomputed the documents' figures from the run records
+(`results/final/FACT-CHECK-guide-and-checklist.md`, `FACT-CHECK-final-page-and-profiles.md`): 43
+errors found across the guide, the checklist documents, the final page and the re-judging record, none
+changing a decision; every must-fix item was corrected.
+
+**Left with the owner, none blocking:** installing the checklist (never run as an installed plugin);
+whether the orchestrator may delete about 166 GB of run folders; the Astra judge login
+(`CODEX_HOME=~/.codex-judge codex login`), without which that judge stays "not run"; the
+`existing_tests_changed` rule if the kit is used again; the chief-of-staff setup, which the guide
+carries as the orchestrator's recommendation (special cases only), not as an owner decision.
+
 ## Gate 6 · stage 4 results · decided 2026-11-23
 
 Page: https://claude.ai/artifact/1x92Zg5rpWuK4G7LFrnJzy (copy: `results/stage-4/page/stage-4-results.html`).
