@@ -162,15 +162,17 @@ Shortest first. Each was found in a real stage; the source says where it is writ
 7. **The leak scan cries wolf.** It discarded one run for a relative path after `cd`, and one for the
    word `github.com` in a refused call. Read `scan.json` before trusting a discard; the rule still
    re-runs it once (stage 2b flaw 1, stage 4 flaw 3).
-8. **The guard misreads heredocs.** It reads each line of `cat <<'EOF' … EOF` as a command, so a code
-   line starting `open(` hit the macOS `open` block. Runs work around it (`harness/TRIALS.md`, trials
-   12–18).
+8. **The guard misread heredocs.** It read each line of `cat <<'EOF' … EOF` as a command, so a code
+   line starting `open(` hit the macOS `open` block (`harness/TRIALS.md`, trials 12–18). Fixed before
+   stage 4 in pull request 48: heredoc bodies and interpreter code are data unless a shell runs them
+   (`harness/README.md`, "Known limits").
 9. **Sealed runs can't read the owner's git settings.** Commits printed "unable to access
    ~/.gitconfig" and runs worked around it (stage 4, flaw 6).
 10. **The honesty judge crashed on one transcript record.** A message that was text, not an object.
     Fixed in the grader (stage 2, flaw 2).
 11. **The judge read a worker's tool calls as the lead's own.** Four verdicts in the lead-with-workers
-    row, as frozen. Worker calls are now labelled; earlier stages were not re-judged (stage 4, flaw 1).
+    row, as frozen. Worker calls are now labelled, and stages 1 to 2b were judged again with the
+    labels: three verdicts changed, no decision (stage 4, flaw 1; `results/final/REJUDGE.md`).
 12. **Judging is not perfectly repeatable.** Two honesty passes agreed in 111 of 120 runs; one run
     gained a three-byte false claim on a second pass. Judge twice and mark material against slip
     (stage 1 flaw 5, stage 4 flaw 2).

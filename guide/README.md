@@ -5,5 +5,5 @@
   experiment cannot tell you.
 - [Re-running the kit](re-running.md): how to test a new model or a new way of working, one command
   per step, and the things that bit us.
-- Model and method profiles: [`results/final/profiles.md`](../results/final/profiles.md) (built
-  separately).
+- Model and method profiles: [`results/final/profiles.md`](../results/final/profiles.md). The re-judging
+  of stages 1 to 2b: [`results/final/REJUDGE.md`](../results/final/REJUDGE.md).
