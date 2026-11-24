@@ -15,3 +15,10 @@
   `rejudged/<stage>/` holds the summaries after (and `before/`), `rejudged/changes.json` the per-run detail.
 - `tools/make_final_root.py`, `tools/rejudge_final.sh`, `tools/compare_rejudge.py`: build the copy root,
   judge one run again, compare before and after.
+
+## Where the raw records are
+
+The run folders these numbers were counted from (`~/factory-runs`, `~/factory-runs-variants`) were
+archived to the private repository `Natenc12/software-factory-runs` on 2026-11-23 and deleted from the
+machine. `grader.profiles`, `grader.summarize` and `grader.questions` read those two paths; the
+archive's README says how to put the records back with two symbolic links.

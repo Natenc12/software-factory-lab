@@ -2,6 +2,27 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
+## Run records archived, run folders deleted · 2026-11-23
+
+Asked whether the run folders could go on GitHub, the orchestrator proposed a private repository for
+the records and deleting the rest. The owner's reply: "yes make the private repo and delete the rest".
+Done:
+
+1. **`Natenc12/software-factory-runs` (private)** holds every run's records as graded, and every
+   corrected copy: 40,489 files, about 1.3 GB of text, 58 MB once packed. A fresh clone was compared
+   with the originals by checksum: 40,479 identical, 10 different, none missing (Script). The 10 are
+   one stage 1 run's transcript and the judge prompts quoting it, where a personal email address in
+   git output was replaced with `owner@example.invalid`. A scan found no credential.
+2. **Not archived, by intent:** each run's working copy, package caches and database (every run's code
+   is its pull request in the practice repositories), and the Claude Code scout's scratch folder,
+   which held a copy of a Claude Code config folder.
+3. **Deleted:** `~/factory-runs` and `~/factory-runs-variants`, after `harness.sandbox down` on every
+   run. All 277 run databases were dropped; the owner's own seven databases were listed before and
+   after and are unchanged (Script). Free disk space went from 59 GiB to 142 GiB; the earlier "166 GB"
+   counted hard-linked package files more than once.
+
+To use the records with the lab's tools again, see the archive's README (two symbolic links).
+
 ## Final write-up · delivered 2026-11-23
 
 Final report: https://claude.ai/artifact/ALe17uW5hukw3V6RXhMzwU (copy: `results/final/page/final-report.html`).
