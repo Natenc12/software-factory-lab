@@ -27,12 +27,19 @@ this repo. Race 1's grader stays in `races/race-1/grader/`.
 | Stage 4 summary (Q5 rule) | `python3 -m grader.summarize stage-4-hono` | `results/stage-4-hono/summary.json`, `summary.csv` |
 | Stage 2 summary (Q3 rule) | `python3 -m grader.summarize stage-1 stage-1-confirm stage-2` | `results/stage-2/summary.json`, `summary.csv` |
 | Confirm-round summary | `python3 -m grader.summarize stage-1 stage-1-confirm --rows P0,P1,P1R,P3,P2` | `results/stage-1-confirm/summary.json`, `summary.csv` |
+| Model and method profiles | `python3 -m grader.profiles` (corrected copies by default; `--runs-root`, `--stage-root STAGE=PATH`, `--as-stored`) | `results/final/profiles.json`, `profiles.md` |
+| Numbers per charter question | `python3 -m grader.questions` (reads the committed summaries only) | `results/final/questions.json` |
 
 Order for a run: `python3 -m harness.scan`, then grade, the three judges, verdict. Grade before the sandbox is
 torn down (`harness.sandbox down` removes `repo/` and `scratch/`). Stage 1 order: run
 `plan-meter.json` with `python3 -m harness.stage`, check the meter against the budget, then run
 `plan.json` (finished runs are skipped). After the first wave is graded, `grader.summarize` names the
 best process arm; `python3 -m grader.make_plan stage-1 --best-process <arm>` fills wave 2.
+
+The summary's printed line gives each row's trustworthy per 8 with each ticket weighted equally
+(`per_row.*.trustworthy_per_8_per_ticket`), so a lone re-run filling a discarded run's cell is not weighted as a
+whole repeat (marked `re-run` in the by-repeat counts). `per_row.*.trustworthy_per_8` (the mean over repeats,
+which the stage 1 rules use) and every decision are unchanged.
 
 To prove the dry run before the gct tickets land, use race 1's T1 wrapped in the package format:
 

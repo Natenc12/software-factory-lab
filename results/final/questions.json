@@ -1,0 +1,1443 @@
+{
+  "gradings": {
+    "as frozen": "graded with the tree at the stage's freeze tag",
+    "corrected": "graded with the post-freeze corrections in that stage's FLAWS.md"
+  },
+  "made_by": "python3 -m grader.questions",
+  "note": "Every number is read from the named summary at the named path; nothing is recomputed except the cross-check's gaps, which are marked `derived`. The figures are the published gradings; re-judging stages 1 to 2b under post-freeze correction 4 (results/final/REJUDGE.md) changes no decision.",
+  "questions": [
+    {
+      "answer": {
+        "grading": "corrected",
+        "path": "decision.q1_process_needed.answer",
+        "reading": "current",
+        "source": "results/stage-1-confirm/summary.json",
+        "text": "process is needed",
+        "value": true
+      },
+      "decides": "Whether to keep building the pipeline",
+      "id": "Q1",
+      "numbers": [
+        {
+          "grading": "corrected",
+          "label": "process needed (three repeats)",
+          "path": "decision.q1_process_needed.answer",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "process needed (three repeats)",
+          "path": "decision_second_reading.q1_process_needed.answer",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "best process arm",
+          "path": "decision.q1_process_needed.best_process",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": "P1"
+        },
+        {
+          "grading": "corrected",
+          "label": "best process arm",
+          "path": "decision_second_reading.q1_process_needed.best_process",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": "P1"
+        },
+        {
+          "grading": "corrected",
+          "label": "margin over P0, trustworthy per 8",
+          "path": "decision.q1_process_needed.margin_per_8",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 1.333
+        },
+        {
+          "grading": "corrected",
+          "label": "margin over P0, trustworthy per 8",
+          "path": "decision_second_reading.q1_process_needed.margin_per_8",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 1.334
+        },
+        {
+          "grading": "corrected",
+          "label": "P0 trustworthy per 8",
+          "path": "per_row.P0.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 5.667
+        },
+        {
+          "grading": "corrected",
+          "label": "P0 trustworthy per 8",
+          "path": "per_row_second_reading.P0.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 5.333
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 trustworthy per 8",
+          "path": "per_row.P1.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 7.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 trustworthy per 8",
+          "path": "per_row_second_reading.P1.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 6.667
+        },
+        {
+          "grading": "corrected",
+          "label": "P0 rescues per 8",
+          "path": "decision.q1_process_needed.p0_rescues_per_8",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P0 rescues per 8",
+          "path": "decision_second_reading.q1_process_needed.p0_rescues_per_8",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "best process arm rescues per 8",
+          "path": "decision.q1_process_needed.best_rescues_per_8",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "best process arm rescues per 8",
+          "path": "decision_second_reading.q1_process_needed.best_rescues_per_8",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "margin over P0, stage 1 alone",
+          "path": "decision.q1_process_needed.margin_per_8",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 2.0
+        },
+        {
+          "grading": "as frozen",
+          "label": "margin over P0, stage 1 alone",
+          "path": "decision.q1_process_needed.margin_per_8",
+          "reading": "current",
+          "source": "results/stage-1/as-frozen/summary.json",
+          "value": 2.0
+        }
+      ],
+      "question": "Does process help at all, or is Opus 5.5 good enough with just the ticket?",
+      "rule": "Process is needed only if the best process arm beats P0 by more than one trustworthy PR per 8 tickets, or P0 needs more rescues."
+    },
+    {
+      "answer": {
+        "grading": "corrected",
+        "path": "decision.best_process.pick",
+        "reading": "current",
+        "source": "results/stage-1-confirm/summary.json",
+        "text": "the loose guide (P1) wins; P1R and P3 are tied with it and P1 is simpler",
+        "value": "P1"
+      },
+      "decides": "How heavy the checklist should be",
+      "id": "Q2",
+      "numbers": [
+        {
+          "grading": "corrected",
+          "label": "best process arm",
+          "path": "decision.best_process.pick",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": "P1"
+        },
+        {
+          "grading": "corrected",
+          "label": "best process arm",
+          "path": "decision_second_reading.best_process.pick",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": "P1"
+        },
+        {
+          "grading": "corrected",
+          "label": "tied within one of the leader",
+          "path": "decision.best_process.tied_within_one",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": [
+            "P1",
+            "P1R",
+            "P3"
+          ]
+        },
+        {
+          "grading": "corrected",
+          "label": "tied within one of the leader",
+          "path": "decision_second_reading.best_process.tied_within_one",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": [
+            "P1",
+            "P1R",
+            "P3",
+            "P2"
+          ]
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 trustworthy per 8",
+          "path": "per_row.P1.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 7.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 trustworthy per 8",
+          "path": "per_row_second_reading.P1.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 6.667
+        },
+        {
+          "grading": "corrected",
+          "label": "P1R trustworthy per 8",
+          "path": "per_row.P1R.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 6.667
+        },
+        {
+          "grading": "corrected",
+          "label": "P1R trustworthy per 8",
+          "path": "per_row_second_reading.P1R.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 6.667
+        },
+        {
+          "grading": "corrected",
+          "label": "P3 trustworthy per 8",
+          "path": "per_row.P3.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 6.667
+        },
+        {
+          "grading": "corrected",
+          "label": "P3 trustworthy per 8",
+          "path": "per_row_second_reading.P3.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 6.667
+        },
+        {
+          "grading": "corrected",
+          "label": "P2 trustworthy per 8",
+          "path": "per_row.P2.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 4.667
+        },
+        {
+          "grading": "corrected",
+          "label": "P2 trustworthy per 8",
+          "path": "per_row_second_reading.P2.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 6.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 counted tokens per run",
+          "path": "per_row.P1.counted_tokens_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 77720.708
+        },
+        {
+          "grading": "corrected",
+          "label": "P1R counted tokens per run",
+          "path": "per_row.P1R.counted_tokens_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 120893.083
+        },
+        {
+          "grading": "corrected",
+          "label": "P3 counted tokens per run",
+          "path": "per_row.P3.counted_tokens_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 170596.708
+        },
+        {
+          "grading": "corrected",
+          "label": "P2 counted tokens per run",
+          "path": "per_row.P2.counted_tokens_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 152667.208
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 owner words per ticket",
+          "path": "per_row.P1.attention_words_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 1467.917
+        },
+        {
+          "grading": "corrected",
+          "label": "P1R owner words per ticket",
+          "path": "per_row.P1R.attention_words_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 1502.125
+        },
+        {
+          "grading": "corrected",
+          "label": "P3 owner words per ticket",
+          "path": "per_row.P3.attention_words_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 2287.5
+        },
+        {
+          "grading": "corrected",
+          "label": "P2 owner words per ticket",
+          "path": "per_row.P2.attention_words_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 2738.25
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 stops per run",
+          "path": "per_row.P1.stops_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 0.125
+        },
+        {
+          "grading": "corrected",
+          "label": "P1R stops per run",
+          "path": "per_row.P1R.stops_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 0.167
+        },
+        {
+          "grading": "corrected",
+          "label": "P3 stops per run",
+          "path": "per_row.P3.stops_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 1.292
+        },
+        {
+          "grading": "corrected",
+          "label": "P2 stops per run",
+          "path": "per_row.P2.stops_avg",
+          "reading": "current",
+          "source": "results/stage-1-confirm/summary.json",
+          "value": 2.042
+        }
+      ],
+      "question": "Loose or rigorous, and if rigorous, which shape?",
+      "rule": "Ties go to the simpler arm: within one trustworthy PR per 8 of the leader counts as tied; order P0, P1, P1R, P3, P2, P4; then fewer owner stops, then lower cost."
+    },
+    {
+      "answer": {
+        "grading": "corrected",
+        "path": "decision.addons.P5P.answer",
+        "reading": "current",
+        "source": "results/stage-2/corrected/summary.json",
+        "text": "the pointed skills (P5P) go in; tests first, small slices and pure-discretion skills stay out; P5P stays the base over P5PA",
+        "value": true
+      },
+      "decides": "Whether to write them into the checklist",
+      "id": "Q3",
+      "numbers": [
+        {
+          "grading": "corrected",
+          "label": "P1T goes in (stage 2)",
+          "path": "decision.addons.P1T.answer",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "P1T goes in (stage 2)",
+          "path": "decision_second_reading.addons.P1T.answer",
+          "reading": "second",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "P1L goes in (stage 2)",
+          "path": "decision.addons.P1L.answer",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "P1L goes in (stage 2)",
+          "path": "decision_second_reading.addons.P1L.answer",
+          "reading": "second",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "P1A goes in (stage 2)",
+          "path": "decision.addons.P1A.answer",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "P1A goes in (stage 2)",
+          "path": "decision_second_reading.addons.P1A.answer",
+          "reading": "second",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "P5 goes in (stage 2)",
+          "path": "decision.addons.P5.answer",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "P5 goes in (stage 2)",
+          "path": "decision_second_reading.addons.P5.answer",
+          "reading": "second",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P goes in (stage 2)",
+          "path": "decision.addons.P5P.answer",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P goes in (stage 2)",
+          "path": "decision_second_reading.addons.P5P.answer",
+          "reading": "second",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": true
+        },
+        {
+          "grading": "as frozen",
+          "label": "P1T goes in (stage 2, as frozen)",
+          "path": "decision.addons.P1T.answer",
+          "reading": "current",
+          "source": "results/stage-2/as-frozen/summary.json",
+          "value": false
+        },
+        {
+          "grading": "as frozen",
+          "label": "P1L goes in (stage 2, as frozen)",
+          "path": "decision.addons.P1L.answer",
+          "reading": "current",
+          "source": "results/stage-2/as-frozen/summary.json",
+          "value": false
+        },
+        {
+          "grading": "as frozen",
+          "label": "P1A goes in (stage 2, as frozen)",
+          "path": "decision.addons.P1A.answer",
+          "reading": "current",
+          "source": "results/stage-2/as-frozen/summary.json",
+          "value": false
+        },
+        {
+          "grading": "as frozen",
+          "label": "P5 goes in (stage 2, as frozen)",
+          "path": "decision.addons.P5.answer",
+          "reading": "current",
+          "source": "results/stage-2/as-frozen/summary.json",
+          "value": false
+        },
+        {
+          "grading": "as frozen",
+          "label": "P5P goes in (stage 2, as frozen)",
+          "path": "decision.addons.P5P.answer",
+          "reading": "current",
+          "source": "results/stage-2/as-frozen/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "P1T improves, of 3",
+          "path": "decision.addons.P1T.improved_count",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 0
+        },
+        {
+          "grading": "corrected",
+          "label": "P1L improves, of 3",
+          "path": "decision.addons.P1L.improved_count",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 1
+        },
+        {
+          "grading": "corrected",
+          "label": "P1A improves, of 3",
+          "path": "decision.addons.P1A.improved_count",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 1
+        },
+        {
+          "grading": "corrected",
+          "label": "P5 improves, of 3",
+          "path": "decision.addons.P5.improved_count",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 1
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P improves, of 3",
+          "path": "decision.addons.P5P.improved_count",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 2
+        },
+        {
+          "grading": "corrected",
+          "label": "P1T cost ratio against P1",
+          "path": "decision.addons.P1T.cost_ratio",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 1.05
+        },
+        {
+          "grading": "corrected",
+          "label": "P1L cost ratio against P1",
+          "path": "decision.addons.P1L.cost_ratio",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 1.099
+        },
+        {
+          "grading": "corrected",
+          "label": "P1A cost ratio against P1",
+          "path": "decision.addons.P1A.cost_ratio",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 1.04
+        },
+        {
+          "grading": "corrected",
+          "label": "P5 cost ratio against P1",
+          "path": "decision.addons.P5.cost_ratio",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 1.242
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P cost ratio against P1",
+          "path": "decision.addons.P5P.cost_ratio",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 1.104
+        },
+        {
+          "grading": "corrected",
+          "label": "P1T trustworthy per 8",
+          "path": "decision.addons.P1T.addon.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 6.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P1T trustworthy per 8",
+          "path": "decision_second_reading.addons.P1T.addon.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 6.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P1L trustworthy per 8",
+          "path": "decision.addons.P1L.addon.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 5.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P1L trustworthy per 8",
+          "path": "decision_second_reading.addons.P1L.addon.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 5.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P1A trustworthy per 8",
+          "path": "decision.addons.P1A.addon.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 7.5
+        },
+        {
+          "grading": "corrected",
+          "label": "P1A trustworthy per 8",
+          "path": "decision_second_reading.addons.P1A.addon.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 7.5
+        },
+        {
+          "grading": "corrected",
+          "label": "P5 trustworthy per 8",
+          "path": "decision.addons.P5.addon.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 6.5
+        },
+        {
+          "grading": "corrected",
+          "label": "P5 trustworthy per 8",
+          "path": "decision_second_reading.addons.P5.addon.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 7.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P trustworthy per 8",
+          "path": "decision.addons.P5P.addon.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 7.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P trustworthy per 8",
+          "path": "decision_second_reading.addons.P5P.addon.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 7.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 trustworthy per 8 (control)",
+          "path": "decision.addons.P5P.p1.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 6.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 trustworthy per 8 (control)",
+          "path": "decision_second_reading.addons.P5P.p1.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-2/corrected/summary.json",
+          "value": 6.167
+        },
+        {
+          "grading": "corrected",
+          "label": "P1A goes in (with the tie-break round)",
+          "path": "decision.addons.P1A.answer",
+          "reading": "current",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "P1A goes in (with the tie-break round)",
+          "path": "decision_second_reading.addons.P1A.answer",
+          "reading": "second",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P goes in (with the tie-break round)",
+          "path": "decision.addons.P5P.answer",
+          "reading": "current",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P goes in (with the tie-break round)",
+          "path": "decision_second_reading.addons.P5P.answer",
+          "reading": "second",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PA goes in (with the tie-break round)",
+          "path": "decision.addons.P5PA.answer",
+          "reading": "current",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PA goes in (with the tie-break round)",
+          "path": "decision_second_reading.addons.P5PA.answer",
+          "reading": "second",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "P1A trustworthy per 8 (with the tie-break round)",
+          "path": "decision.addons.P1A.addon.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": 7.333
+        },
+        {
+          "grading": "corrected",
+          "label": "P1A trustworthy per 8 (with the tie-break round)",
+          "path": "decision_second_reading.addons.P1A.addon.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": 7.333
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P trustworthy per 8 (with the tie-break round)",
+          "path": "decision.addons.P5P.addon.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": 7.333
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P trustworthy per 8 (with the tie-break round)",
+          "path": "decision_second_reading.addons.P5P.addon.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": 7.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PA trustworthy per 8 (with the tie-break round)",
+          "path": "decision.addons.P5PA.addon.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": 7.5
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PA trustworthy per 8 (with the tie-break round)",
+          "path": "decision_second_reading.addons.P5PA.addon.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": 7.5
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PA against P5P: trustworthy per 8 difference",
+          "path": "against_control.plain_facts.P5PA.trustworthy_per_8_difference",
+          "reading": "current",
+          "source": "results/stage-2b/summary-against-p5p/summary.json",
+          "value": 0.167
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PA against P5P: trustworthy per 8 difference",
+          "path": "against_control_second_reading.plain_facts.P5PA.trustworthy_per_8_difference",
+          "reading": "second",
+          "source": "results/stage-2b/summary-against-p5p/summary.json",
+          "value": 0.5
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PA against P5P: cost ratio",
+          "path": "against_control.plain_facts.P5PA.cost_ratio",
+          "reading": "current",
+          "source": "results/stage-2b/summary-against-p5p/summary.json",
+          "value": 1.09
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PA against P5P: cost ratio",
+          "path": "against_control_second_reading.plain_facts.P5PA.cost_ratio",
+          "reading": "second",
+          "source": "results/stage-2b/summary-against-p5p/summary.json",
+          "value": 1.09
+        }
+      ],
+      "question": "Do engineering habits matter: tests first, small slices, an architecture brief?",
+      "rule": "A habit add-on goes in only if it improves at least two of: trustworthy rate, quality score, rescues, without adding more than 30% to cost."
+    },
+    {
+      "answer": {
+        "grading": "corrected",
+        "path": "decision.best_process.pick",
+        "reading": "current",
+        "source": "results/stage-1/corrected/summary.json",
+        "text": "no: the team (P4) is tied with the leader and costs most, so the simpler arm wins",
+        "value": "P1"
+      },
+      "decides": "Whether to build a factory of roles",
+      "id": "Q4",
+      "numbers": [
+        {
+          "grading": "corrected",
+          "label": "P4 trustworthy per 8 (stage 1, one run per ticket)",
+          "path": "per_row.P4.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 6.0
+        },
+        {
+          "grading": "as frozen",
+          "label": "P4 trustworthy per 8 (stage 1, as frozen)",
+          "path": "per_row.P4.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-1/as-frozen/summary.json",
+          "value": 5.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 trustworthy per 8 (stage 1)",
+          "path": "per_row.P1.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 7.0
+        },
+        {
+          "grading": "corrected",
+          "label": "tied within one of the leader (stage 1)",
+          "path": "decision.best_process.tied_within_one",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": [
+            "P1",
+            "P1R",
+            "P3",
+            "P2",
+            "P4"
+          ]
+        },
+        {
+          "grading": "corrected",
+          "label": "P4 counted tokens per run",
+          "path": "per_row.P4.counted_tokens_avg",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 579981.625
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 counted tokens per run",
+          "path": "per_row.P1.counted_tokens_avg",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 79510.25
+        },
+        {
+          "grading": "corrected",
+          "label": "P4 stops per run",
+          "path": "per_row.P4.stops_avg",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 1.625
+        },
+        {
+          "grading": "corrected",
+          "label": "P4 rescues per 8",
+          "path": "per_row.P4.rescues_per_8",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 1.0
+        }
+      ],
+      "question": "Does a team of role agents beat one agent with a checklist?",
+      "rule": "Ties go to the simpler arm (P4 is the least simple). Stage 1 only: P4 was not in the confirm round."
+    },
+    {
+      "answer": {
+        "grading": "corrected",
+        "path": "decision.fable_builds",
+        "reading": "current",
+        "source": "results/stage-4/corrected/summary.json",
+        "text": "Opus builds",
+        "value": false
+      },
+      "decides": "Which model builds, and which one checks",
+      "id": "Q5",
+      "numbers": [
+        {
+          "grading": "corrected",
+          "label": "Fable builds",
+          "path": "decision.fable_builds",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "Fable builds",
+          "path": "decision_second_reading.fable_builds",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "as frozen",
+          "label": "Fable builds (as frozen)",
+          "path": "decision.fable_builds",
+          "reading": "current",
+          "source": "results/stage-4/as-frozen/summary.json",
+          "value": false
+        },
+        {
+          "grading": "as frozen",
+          "label": "Fable builds (as frozen)",
+          "path": "decision_second_reading.fable_builds",
+          "reading": "second",
+          "source": "results/stage-4/as-frozen/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "Fable's gain, trustworthy per 8",
+          "path": "decision.trustworthy_gain_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "Fable's gain, trustworthy per 8",
+          "path": "decision_second_reading.trustworthy_gain_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P (Opus) trustworthy per 8",
+          "path": "decision.rows.P5P.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 6.75
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P (Opus) trustworthy per 8",
+          "path": "decision_second_reading.rows.P5P.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 7.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PF (Fable) trustworthy per 8",
+          "path": "decision.rows.P5PF.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 6.75
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PF (Fable) trustworthy per 8",
+          "path": "decision_second_reading.rows.P5PF.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 7.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P6P (Fable leading Opus) trustworthy per 8",
+          "path": "decision.rows.P6P.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 6.5
+        },
+        {
+          "grading": "corrected",
+          "label": "P6P (Fable leading Opus) trustworthy per 8",
+          "path": "decision_second_reading.rows.P6P.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 6.75
+        },
+        {
+          "grading": "as frozen",
+          "label": "P6P trustworthy per 8 (as frozen)",
+          "path": "decision.rows.P6P.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-4/as-frozen/summary.json",
+          "value": 6.0
+        },
+        {
+          "grading": "corrected",
+          "label": "correction rounds note",
+          "path": "decision.corrections_note",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": "P5P had no correction rounds on these tickets, so 'at least 30% fewer' cannot be met"
+        },
+        {
+          "grading": "corrected",
+          "label": "list price ratio per run, Fable over Opus",
+          "path": "decision.list_price_ratio_per_run",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 1.437
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P list price per run, USD",
+          "path": "decision.rows.P5P.list_price_usd_per_run",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 0.953
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PF list price per run, USD",
+          "path": "decision.rows.P5PF.list_price_usd_per_run",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 1.369
+        },
+        {
+          "grading": "corrected",
+          "label": "P6P list price per run, USD",
+          "path": "decision.rows.P6P.list_price_usd_per_run",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 1.943
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P counted tokens per run",
+          "path": "decision.rows.P5P.counted_tokens_per_run",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 63466.969
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PF counted tokens per run",
+          "path": "decision.rows.P5PF.counted_tokens_per_run",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 55709.375
+        },
+        {
+          "grading": "corrected",
+          "label": "P6P counted tokens per run",
+          "path": "decision.rows.P6P.counted_tokens_per_run",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 106209.531
+        },
+        {
+          "grading": "corrected",
+          "label": "Fable's gain on hono, trustworthy per 8",
+          "path": "decision.per_codebase.hono.trustworthy_gain_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "Fable's gain on hono, trustworthy per 8",
+          "path": "decision_second_reading.per_codebase.hono.trustworthy_gain_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "Fable's gain on sqlglot, trustworthy per 8",
+          "path": "decision.per_codebase.sqlglot.trustworthy_gain_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "Fable's gain on sqlglot, trustworthy per 8",
+          "path": "decision_second_reading.per_codebase.sqlglot.trustworthy_gain_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 0.0
+        }
+      ],
+      "question": "Is Fable 5.2 worth its extra cost over Opus 5.5?",
+      "rule": "Fable builds only if it gains at least one trustworthy PR per 8 tickets, or needs at least 30% fewer correction rounds; decided on both stage 4 codebases pooled."
+    },
+    {
+      "answer": {
+        "grading": "corrected",
+        "path": "decision.q6_full_spec_replaces_pipeline.answer",
+        "reading": "current",
+        "source": "results/stage-1/corrected/summary.json",
+        "text": "no: within one, but the owner's attention is higher",
+        "value": false
+      },
+      "decides": "Where to spend effort: on the ticket before the run, or on the process during it",
+      "id": "Q6",
+      "numbers": [
+        {
+          "grading": "corrected",
+          "label": "full spec replaces the pipeline",
+          "path": "decision.q6_full_spec_replaces_pipeline.answer",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "as frozen",
+          "label": "full spec replaces the pipeline (as frozen)",
+          "path": "decision.q6_full_spec_replaces_pipeline.answer",
+          "reading": "current",
+          "source": "results/stage-1/as-frozen/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "S2: P0 trustworthy per 8",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S2.p0_per_8",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 6.857
+        },
+        {
+          "grading": "corrected",
+          "label": "S2: best process arm on S1, trustworthy per 8",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S2.best_process_per_8",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 6.857
+        },
+        {
+          "grading": "corrected",
+          "label": "S2: within one",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S2.within_one",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "S2: P0 owner words per ticket, spec included",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S2.p0_attention_avg",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 1763.286
+        },
+        {
+          "grading": "corrected",
+          "label": "S2: best process arm owner words per ticket",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S2.best_process_attention_avg",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 1602.571
+        },
+        {
+          "grading": "corrected",
+          "label": "S2: attention no higher",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S2.attention_no_higher",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "S2: tickets compared",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S2.shared_tickets",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": [
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5",
+            "T6",
+            "T7"
+          ]
+        },
+        {
+          "grading": "corrected",
+          "label": "S3: P0 trustworthy per 8",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S3.p0_per_8",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 6.857
+        },
+        {
+          "grading": "corrected",
+          "label": "S3: best process arm on S1, trustworthy per 8",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S3.best_process_per_8",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 6.857
+        },
+        {
+          "grading": "corrected",
+          "label": "S3: within one",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S3.within_one",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": true
+        },
+        {
+          "grading": "corrected",
+          "label": "S3: P0 owner words per ticket, spec included",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S3.p0_attention_avg",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 1723.429
+        },
+        {
+          "grading": "corrected",
+          "label": "S3: best process arm owner words per ticket",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S3.best_process_attention_avg",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 1602.571
+        },
+        {
+          "grading": "corrected",
+          "label": "S3: attention no higher",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S3.attention_no_higher",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": false
+        },
+        {
+          "grading": "corrected",
+          "label": "S3: tickets compared",
+          "path": "decision.q6_full_spec_replaces_pipeline.levels.S3.shared_tickets",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": [
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5",
+            "T6",
+            "T7"
+          ]
+        },
+        {
+          "grading": "corrected",
+          "label": "P1 on S3, trustworthy per 8 (reported, no rule)",
+          "path": "decision.q6_full_spec_replaces_pipeline.best_process_on_s3.per_8",
+          "reading": "current",
+          "source": "results/stage-1/corrected/summary.json",
+          "value": 6.857
+        }
+      ],
+      "question": "Does a fully specified ticket remove the need for a pipeline?",
+      "rule": "A full spec replaces the pipeline only if a bare run on S2 or S3 comes within one trustworthy PR of the best process arm on S1, and the owner's total attention, spec included, is no higher."
+    },
+    {
+      "answer": {
+        "derived": "every P5P gap to the best row, current reading, is 1.0 or less",
+        "grading": "corrected",
+        "path": "decision.per_codebase.*.rows",
+        "reading": "current",
+        "source": "results/stage-4/corrected/summary.json",
+        "text": "confirmed: P5P is within one of the best row on Hono and on sqlglot",
+        "value": true
+      },
+      "decides": "Whether the way of working travels",
+      "id": "cross-check",
+      "numbers": [
+        {
+          "grading": "corrected",
+          "label": "P5P trustworthy per 8 on gct (stage 2 and the tie-break round)",
+          "path": "decision.addons.P5P.addon.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-2b/summary/summary.json",
+          "value": 7.333
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P trustworthy per 8 on hono",
+          "path": "decision.per_codebase.hono.rows.P5P.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 7.5
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PF trustworthy per 8 on hono",
+          "path": "decision.per_codebase.hono.rows.P5PF.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 7.5
+        },
+        {
+          "grading": "corrected",
+          "label": "P6P trustworthy per 8 on hono",
+          "path": "decision.per_codebase.hono.rows.P6P.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 7.0
+        },
+        {
+          "derived": "best of P5P, P5PF, P6P (7.5) minus P5P (7.5)",
+          "grading": "corrected",
+          "label": "P5P gap to the best row on hono, trustworthy per 8",
+          "path": "decision.per_codebase.hono.rows",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P trustworthy per 8 on sqlglot",
+          "path": "decision.per_codebase.sqlglot.rows.P5P.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 6.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PF trustworthy per 8 on sqlglot",
+          "path": "decision.per_codebase.sqlglot.rows.P5PF.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 6.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P6P trustworthy per 8 on sqlglot",
+          "path": "decision.per_codebase.sqlglot.rows.P6P.trustworthy_per_8",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 6.0
+        },
+        {
+          "derived": "best of P5P, P5PF, P6P (6.0) minus P5P (6.0)",
+          "grading": "corrected",
+          "label": "P5P gap to the best row on sqlglot, trustworthy per 8",
+          "path": "decision.per_codebase.sqlglot.rows",
+          "reading": "current",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P trustworthy per 8 on hono",
+          "path": "decision_second_reading.per_codebase.hono.rows.P5P.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 8.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PF trustworthy per 8 on hono",
+          "path": "decision_second_reading.per_codebase.hono.rows.P5PF.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 8.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P6P trustworthy per 8 on hono",
+          "path": "decision_second_reading.per_codebase.hono.rows.P6P.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 7.5
+        },
+        {
+          "derived": "best of P5P, P5PF, P6P (8.0) minus P5P (8.0)",
+          "grading": "corrected",
+          "label": "P5P gap to the best row on hono, trustworthy per 8",
+          "path": "decision_second_reading.per_codebase.hono.rows",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 0.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P5P trustworthy per 8 on sqlglot",
+          "path": "decision_second_reading.per_codebase.sqlglot.rows.P5P.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 6.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P5PF trustworthy per 8 on sqlglot",
+          "path": "decision_second_reading.per_codebase.sqlglot.rows.P5PF.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 6.0
+        },
+        {
+          "grading": "corrected",
+          "label": "P6P trustworthy per 8 on sqlglot",
+          "path": "decision_second_reading.per_codebase.sqlglot.rows.P6P.trustworthy_per_8",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 6.0
+        },
+        {
+          "derived": "best of P5P, P5PF, P6P (6.0) minus P5P (6.0)",
+          "grading": "corrected",
+          "label": "P5P gap to the best row on sqlglot, trustworthy per 8",
+          "path": "decision_second_reading.per_codebase.sqlglot.rows",
+          "reading": "second",
+          "source": "results/stage-4/corrected/summary.json",
+          "value": 0.0
+        }
+      ],
+      "question": "Does the winner still win on a codebase other than GCT?",
+      "rule": "Generalising (stage 4): the winner is confirmed if it stays within one trustworthy PR of the best arm on each extra codebase."
+    }
+  ],
+  "readings": {
+    "current": "the deciding reading: four checks, honesty pass 1, rescues by the first reply judge",
+    "second": "the second reading (gate 2, item 3), reported beside: material false claims only, agreed rescues"
+  },
+  "time": "2026-11-24T02:39:45Z"
+}

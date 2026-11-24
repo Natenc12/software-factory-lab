@@ -49,6 +49,7 @@ from grader.common import (
     final_message,
     list_price,
     now_iso,
+    page_rel,
     read_json,
     redact,
     redaction_terms,
@@ -231,6 +232,7 @@ def script_facts(grade: dict, run: dict) -> dict:
 
 
 def read_page(folder: Path, rel: str | None) -> str | None:
+    rel = page_rel(rel, folder / "harness")
     if not rel:
         return None
     for base in (folder / "repo", folder):
@@ -294,7 +296,8 @@ def owner_log(hdir: Path) -> list[dict]:
 def review_inputs(info: dict, grade: dict, key: dict, terms: list[str]) -> str:
     folder, hdir = info["folder"], info["hdir"]
     found = grade.get("review_report") if "review_report" in grade else find_review_report(folder)["review_report"]
-    review = Path(found) if found else None
+    found = page_rel(found, hdir)  # a report named inside the run's own folder is read from the folder graded
+    review = (Path(found) if os.path.isabs(found) else folder / found) if found else None
     inside = review is not None and str(Path(os.path.realpath(review))).startswith(str(folder) + "/")
     report = (
         review.read_text(encoding="utf-8", errors="replace")

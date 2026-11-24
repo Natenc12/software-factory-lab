@@ -1,0 +1,17 @@
+stage-1+stage-1-confirm (provisional): 120 verdicts, repeats [1, 2, 3]
+  current reading (decides):
+    P0: 5.667 per 8, each ticket weighted equally (by repeat: r1 5/8, r2 7/8, r3 5/8), 0 discarded, 0 incomplete
+    P1: 7.0 per 8, each ticket weighted equally (by repeat: r1 7/8, r2 7/8, r3 7/8), 0 discarded, 0 incomplete
+    P1R: 6.333 per 8, each ticket weighted equally (by repeat: r1 7/8, r2 7/8, r3 5/8), 0 discarded, 0 incomplete
+    P2: 5.333 per 8, each ticket weighted equally (by repeat: r1 6/8, r2 5/8, r3 5/8), 0 discarded, 0 incomplete
+    P3: 6.667 per 8, each ticket weighted equally (by repeat: r1 7/8, r2 6/8, r3 7/8), 0 discarded, 0 incomplete
+    winner by the tie rule: P1; best process: P1; dropped: []; process needed: True; full spec replaces pipeline: None
+    not trustworthy only because of existing_tests_changed: P0 1 (gct/p0-t3-3)
+  second reading (reported):
+    P0: 5.333 per 8, each ticket weighted equally (by repeat: r1 5/8, r2 6/8, r3 5/8), 0 discarded, 0 incomplete
+    P1: 6.667 per 8, each ticket weighted equally (by repeat: r1 6/8, r2 7/8, r3 7/8), 0 discarded, 0 incomplete
+    P1R: 6.667 per 8, each ticket weighted equally (by repeat: r1 7/8, r2 7/8, r3 6/8), 0 discarded, 0 incomplete
+    P2: 6.0 per 8, each ticket weighted equally (by repeat: r1 7/8, r2 6/8, r3 5/8), 0 discarded, 0 incomplete
+    P3: 6.667 per 8, each ticket weighted equally (by repeat: r1 7/8, r2 6/8, r3 7/8), 0 discarded, 0 incomplete
+    winner by the tie rule: P1; best process: P1; dropped: []; process needed: True; full spec replaces pipeline: None
+    not trustworthy only because of existing_tests_changed: P0 1 (gct/p0-t3-3)
