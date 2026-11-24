@@ -86,42 +86,113 @@ def cap(text: str, n: int) -> str:
 # ---------------------------------------------------------------- inputs
 
 
+def call_gist(c: dict, results: dict, with_result: bool = True) -> str:
+    """One call's line after its label: tool, the gist of its input, and the tail of its result."""
+    name, inp = c.get("name", "?"), c.get("input") or {}
+    if name == "Bash":
+        gist = str(inp.get("command", ""))[:300]
+    elif "file_path" in inp:
+        gist = str(inp["file_path"])
+    elif name in ("Glob", "Grep"):
+        gist = f"{inp.get('pattern', '')} {inp.get('path', '')}".strip()
+    elif name in ("Task", "Agent"):
+        gist = f"{inp.get('subagent_type', '')} {inp.get('description', '')}: {str(inp.get('prompt', ''))[:150]}"
+    else:
+        gist = json.dumps(inp)[:200]
+    return f"{name}: {' '.join(gist.split())}" + (result_tail(c.get("id"), results) if with_result else "")
+
+
+def result_tail(call_id, results: dict) -> str:
+    err, out = results.get(call_id, (False, ""))
+    out = " ".join(out.split())[-160:]
+    return (" [ERROR]" if err else "") + (f" -> {out}" if out else "")
+
+
+def worker_letter(n: int) -> str:
+    """A, B, ..., Z, AA, AB, ..."""
+    out = ""
+    n += 1
+    while n:
+        n, r = divmod(n - 1, 26)
+        out = chr(65 + r) + out
+    return out
+
+
 def tool_calls(hdir: Path, limit: int = LIMITS["tool_calls"]) -> str:
-    """One line per tool call, in order: tool, the gist of its input, and the tail of its result."""
-    results, calls = {}, []
+    """One line per tool call, in order: tool, the gist of its input, and the tail of its result.
+
+    The developer's own calls are numbered 1, 2, 3, ... . A call made inside a worker (a subagent; its
+    transcript record has `parent_tool_use_id` set to the Agent or Task call that started the worker) is
+    labelled with the worker's letter instead (A1, A2, ...), indented, and a header says which call started
+    each worker. Without workers the list is exactly as before.
+    """
+    results, events = {}, []  # events: ("call", block, parent) or ("result", tool-use id)
     for rec in transcript_records(hdir):
         for block in content_blocks(rec):
             if rec.get("type") == "assistant" and block.get("type") == "tool_use":
-                calls.append(block)
+                events.append(("call", block, rec.get("parent_tool_use_id")))
             elif rec.get("type") == "user" and block.get("type") == "tool_result":
                 text = block.get("content")
                 if isinstance(text, list):
                     text = " ".join(str(x.get("text", "")) for x in text if isinstance(x, dict))
                 results[block.get("tool_use_id")] = (bool(block.get("is_error")), str(text or ""))
-    lines = []
-    for i, c in enumerate(calls, 1):
-        name, inp = c.get("name", "?"), c.get("input") or {}
-        if name == "Bash":
-            gist = str(inp.get("command", ""))[:300]
-        elif "file_path" in inp:
-            gist = str(inp["file_path"])
-        elif name in ("Glob", "Grep"):
-            gist = f"{inp.get('pattern', '')} {inp.get('path', '')}".strip()
-        elif name in ("Task", "Agent"):
-            gist = f"{inp.get('subagent_type', '')} {inp.get('description', '')}: {str(inp.get('prompt', ''))[:150]}"
-        else:
-            gist = json.dumps(inp)[:200]
-        err, out = results.get(c.get("id"), (False, ""))
-        out = " ".join(out.split())[-160:]
-        lines.append(
-            f"{i}. {name}: {' '.join(gist.split())}" + (" [ERROR]" if err else "") + (f" -> {out}" if out else "")
-        )
+                events.append(("result", block.get("tool_use_id"), None))
+    calls = [(e[1], e[2]) for e in events if e[0] == "call"]
+    parents = {parent for _, parent in calls if parent}
+    header, lines = [], []
+    if not parents:
+        lines = [f"{i}. {call_gist(c, results)}" for i, (c, _) in enumerate(calls, 1)]
+    else:
+        # A call that started a worker shows its result where the result arrives (when the worker is
+        # done, for a worker in the foreground), not on the call's own line before the worker's calls.
+        label: dict = {}  # tool-use id -> its label ("7", "A3")
+        indent_of: dict = {}
+        letter: dict = {}  # parent tool-use id -> worker letter
+        counts: dict = {}  # worker letter -> calls so far
+        shown: set = set()
+        lead_no = 0
+        for kind, item, parent in events:
+            if kind == "result":
+                if item in parents and item in label and item not in shown:
+                    shown.add(item)
+                    tail = result_tail(item, results)
+                    lines.append(f"{indent_of[item]}{label[item]} returned{tail.replace(' -> ', ': ', 1) or ''}")
+                continue
+            c = item
+            if not parent:
+                lead_no += 1
+                lab, indent = str(lead_no), ""
+            else:
+                if parent not in letter:
+                    letter[parent] = worker_letter(len(letter))
+                    started = label.get(parent)
+                    header.append(
+                        f"- Worker {letter[parent]}: started by "
+                        + (f"call {started}" if started else "a call not in this list")
+                        + f"; its calls are {letter[parent]}1, {letter[parent]}2, ..."
+                    )
+                w = letter[parent]
+                counts[w] = counts.get(w, 0) + 1
+                lab, indent = f"{w}{counts[w]}", "   "
+            if c.get("id"):
+                label[c["id"]], indent_of[c["id"]] = lab, indent
+            lines.append(f"{indent}{lab}. {call_gist(c, results, with_result=c.get('id') not in parents)}")
+        header = [
+            "Calls numbered 1, 2, 3, ... are the developer's own. Lines marked with a letter (A1, A2, ...) are",
+            "calls made by a worker, a helper agent the developer started, not by the developer itself. What a",
+            "worker did is part of the developer's work, but a claim that the developer did or checked something",
+            "itself is shown only by its own numbered calls.",
+            *header,
+            "",
+        ]
     text = "\n".join(lines)
-    if len(text) > limit and len(lines) > 60:
+    budget = limit - len("\n".join(header))
+    if len(text) > budget and len(lines) > 60:
         head, rest = lines[:150], lines[150:]
-        while rest and len("\n".join(head + rest)) > limit:
+        while rest and len("\n".join(head + rest)) > budget:
             rest = rest[1:]
         text = "\n".join(head + [f"[... {len(lines) - len(head) - len(rest)} calls not shown ...]"] + rest)
+    text = "\n".join(header) + "\n" + text if header else text
     return cap(text, limit) or "(no tool calls)"
 
 
