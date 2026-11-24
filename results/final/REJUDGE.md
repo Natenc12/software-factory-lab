@@ -1,6 +1,7 @@
 # Re-judging stages 1 to 2b under post-freeze correction 4
 
-The owner's word (gate 6): "Yes, re-judge". Post-freeze correction 4 (pull request 67) labels a worker's
+The owner's word, typed on 2026-11-23: "Yes, re-judge" (`GATES.md`, entry "Final write-up · re-judging
+approved"). Post-freeze correction 4 (pull request 67) labels a worker's
 tool calls in the honesty judge's list. Stage 4 was judged again with it at the time. This does the same
 for the earlier stages, on copies. **The decisions already taken stand.** Rules are not re-read after the
 fact; this page says only whether one would have come out differently.
@@ -13,8 +14,10 @@ fact; this page says only whether one would have come out differently.
   graded, stage 4 from `corrected4`. Records only (`harness/`, `TICKET.md`): no repo clones and no scratch
   folders. The exception is 18 single files from scratch folders (16 review-ticket reports, 2 pages named in
   final messages), so the judges read what they read before. The originals were not written to.
-- **Re-judged** every run in stages 1 to 2b with worker calls in its transcript: 80 runs (one discarded run
-  skipped). Each got honesty pass 1, pass 2 and the severity call with this branch's grader, then a
+- **Re-judged** every run in stages 1 to 2b with worker calls in its transcript: 80 runs. 81 run folders in
+  these stages have worker calls; the 81st is the discarded `stage-2b/p5pa-t10-2`, skipped. (The 110 in
+  `results/stage-4/FLAWS.md` item 1 and gate 6 counted every folder under `~/factory-runs` while stage 4
+  was being graded: these 81, plus 4 smoke runs, 2 trial runs and the 23 stage 4 runs graded by then.) Each got honesty pass 1, pass 2 and the severity call with this branch's grader, then a
   rebuilt current and second reading (`tools/rejudge_final.sh`). The old judge files and verdict are kept
   beside the new ones in `harness/before-correction-4/`. Script grades were not re-run.
 - **Checks.** Every prompt sent (both passes, all 80 runs) equals what this branch's grader renders. Apart
@@ -45,7 +48,9 @@ reading, which uses both passes, none of the three moved.
 ## Each row's trustworthy figure, per 8 (before → after)
 
 Before = the stored verdicts in the copy root; after = with the re-judging. Spec-level rows are left out
-(no worker calls). Bold marks a change.
+(no worker calls). Bold marks a change. Stage 1 and the confirm round give `per_row.*.trustworthy_per_8`,
+the figure their rules use; stage 2 and 2b give the Q3 rule's figures, each ticket weighted equally
+(`decision.addons.*`), except the P2 line.
 
 | Stage summary | Row | Current reading | Second reading |
 | --- | --- | --- | --- |
@@ -60,10 +65,10 @@ Before = the stored verdicts in the copy root; after = with the re-judging. Spec
 | | P1R | 6.667 → **6.333** | 6.667 |
 | | P2 | 4.667 → **5.333** | 6 |
 | | P3 | 6.667 | 6.667 |
-| stage 2 (and 2b) | P1 (control) | 6 | 6 |
-| | P1T, P1L, P1A, P5, P5P | 6, 5, 7.5, 6.5, 7 (2b: P1A 7.333, P5P 7.333) | 6, 5, 7.5, 7, 7 |
-| | P5PA (2b) | 7.619 | 7.619 |
-| | P2 (earlier runs on stage 2's tickets, not in the rule) | 3.333 → **4.667** | 5.333 |
+| stage 2 (and 2b) | P1 (control) | 6 | 6.167 |
+| | P1T, P1L, P1A, P5, P5P | 6, 5, 7.5, 6.5, 7 (2b: P1A 7.333, P5P 7.333) | 6, 5, 7.5, 7, 7 (2b: P1A 7.333, P5P 7) |
+| | P5PA (2b) | 7.5 | 7.5 |
+| | P2 (earlier runs on stage 2's tickets, not in the rule; mean over repeats) | 3.333 → **4.667** | 5.333 |
 
 Stage 1's "before" comes from the `combined2` copy, which has the first reply picks restored and not
 FLAWS.md item 3. Its P2 therefore starts at 5, against 6 in `results/stage-1/corrected/`. The re-judging

@@ -165,6 +165,8 @@ def test_vague_and_wrong_request_lines_count_only_their_tickets(tree):
     assert line(p1, "wrong request: raised it before building")["count"] == "1 of 1 runs"
     assert line(p1, "vague ticket: asked the open decision") is None
     assert line(p1, "review: caught every planted bug")["count"] == "1 of 1 runs"
+    assert line(p1, "review: caught every planted bug")["source"] == "Judge"
+    assert line(p1, "trustworthy")["source"] == "Script and Judge"
     assert line(p1, "hidden tests passed")["n"] == 2  # the review run has no hidden tests
 
 
