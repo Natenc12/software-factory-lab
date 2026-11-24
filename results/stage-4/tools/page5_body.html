@@ -1,0 +1,114 @@
+<main data-v="corrected">
+
+<h1>Stage 4 results: Opus, Fable, or Fable leading Opus</h1>
+<p class="sub">23 November 2026. The same way of working on two projects it was never tuned on, Hono and sqlglot, with three setups: Opus alone, Fable alone, and a Fable lead handing the building to Opus workers. 96 runs graded, plus one re-run. Below the results are four decisions for you.</p>
+
+<div class="strip">
+  <div class="slot"><b>Which model builds</b><strong>Opus</strong>6.75 against 6.75 of 8: a dead tie, so the cheaper model keeps the job</div>
+  <div class="slot"><b>Did the process travel</b><strong>Yes</strong>{{ordinary_ok}} of {{ordinary_n}} ordinary-ticket runs passed the hidden tests</div>
+  <div class="slot"><b>Fable leading Opus</b><strong>{{p6p}} of 8</strong>no gain in trust, at {{ratio_l}} times the cost of Opus alone</div>
+  <div class="slot"><b>This stage</b><strong>about {{total_m}}</strong>tokens with grading; runs cost about ${{usd_runs}} at list price</div>
+</div>
+
+<div class="ask">
+  <h3>Gate 6: what I need from you</h3>
+  <ol class="steps">
+    <li><b>Accept the rule's answer: Opus builds, with the guide and the pointed skills.</b> Recommended. Fable alone was exactly as trustworthy, cost {{ratio_f}} times as much per run, and finished about four minutes sooner. The rule asked for one more trustworthy pull request in eight; the gain was zero on each codebase, under every reading and both judges.</li>
+    <li><b>Your chief-of-staff idea: keep it for special cases, not as the default.</b> My recommendation. On single tickets it bought no extra trust, no less reading and no fewer stops, for twice the money and three more minutes. What this stage did not test is where a lead might earn its keep: several tickets at once, or one job too long for a single session.</li>
+    <li><b>Re-judge the earlier stages with the judge fix found here?</b> Recommended, and cheap (about 3M tokens). The honesty judge was misreading runs that used a helper agent. 110 earlier runs had one; a rough search points at four whose verdict may be wrong. The frozen numbers stay; the corrected ones are shown beside them, as before.</li>
+    <li><b>What next: write up, or one more round?</b> I recommend the write-up: the guide, the model and method profiles, and the checklist. Three codebases now give the same answer. The other option is a round on longer work, since every stage ends near the top and short tickets may simply be too easy to tell these setups apart.</li>
+  </ol>
+  <p class="small">Optional, any time: <code>CODEX_HOME=~/.codex-judge codex login</code> lets me add the Astra judge to these finished runs.</p>
+</div>
+
+<h2>What the runs say</h2>
+<ol class="steps">
+  <li><b>Opus and Fable tied, exactly.</b> Each was trustworthy in 27 of 32 runs: 7.5 of 8 on Hono and 6.0 on sqlglot for both. They tie under the second reading (7.0 each) and when Opus judges instead of Fable (6.75 each). Fable costs ${{usd_p5pf}} a run against ${{usd_p5p}} and takes {{min_p5pf}} minutes against {{min_p5p}}. <span class="tag s">Script</span> <span class="tag">Judge</span></li>
+  <li><b>The way of working travelled.</b> On the twelve ordinary tickets (replays and features), all {{ordinary_n}} runs passed the hidden tests, on both models and both projects. The two pointed skills were used in every run. Trust came out at 6.75 of 8 here against 7.3 on your own app. <span class="tag s">Script</span></li>
+  <li><b>They ask when they are stuck, not when a point is merely open.</b> Hono's vague ticket cannot be built without knowing what <code>*</code> matches: all six runs asked you, and all six then built it right. sqlglot's vague ticket says in so many words that one point is "not yet decided", but the rest can be built without it: no run asked about it, all six left it alone, and all six failed. <span class="tag s">Script</span></li>
+  <li><b>On sqlglot's wrong request, Opus raised it both times; Fable built it as asked in one run of two, alone and again as lead.</b> In both of those runs Fable's report shows it had seen the project's "no-dependency" line and listed it as wording to tidy up later. Two runs each, so this is an example, not a rate. On Hono's wrong request all six runs raised it. <span class="tag s">Script</span></li>
+  <li><b>The Fable lead delegates when told to, and it costs double.</b> It started {{workers}} workers across 32 runs. A run costs ${{usd_p6p}}: about ${{lead_usd}} for the lead and ${{work_usd}} for the workers, so the lead is the bigger half of the bill. Trust is {{p6p}} of 8; you would read the same amount and be stopped as often. <span class="tag s">Script</span> <span class="tag">Judge</span></li>
+  <li><b>What costs trust now is the report, not the code.</b> Outside the vague and wrong-request tickets, every loss but two is a small false statement in the report, such as "the type check passes on the five changed files" when six had changed. The second reading forgives most of these as slips. <span class="tag">Judge</span></li>
+</ol>
+
+<h2>Scoreboard</h2>
+<p class="lead">Each mark is one run. Hover or tap a mark for why it was lost and what the other readings said. The switch changes between the grading as frozen and the grading with the one correction made after the freeze.</p>
+<div class="toggle" role="group" aria-label="Grading">
+  <button type="button" data-v="frozen" aria-pressed="false">As frozen</button>
+  <button type="button" data-v="corrected" aria-pressed="true">With the judge correction</button>
+</div>
+<div class="panel"><h3>Hono <span class="an">TypeScript web framework, almost nothing written down</span></h3>{{matrix_hono}}</div>
+<div class="panel" style="margin-top:12px"><h3>sqlglot <span class="an">Python SQL parser, with a written rules file</span></h3>{{matrix_sqlglot}}</div>
+<p class="small">"Of 8" counts each ticket equally. The dash on Hono T7 is a run the leak scan threw out; its re-run is the mark beside it. See "Flaws found".</p>
+
+<div class="charts" style="margin-top:12px">
+  <div class="panel chart"><h3>Trustworthy pull requests of 8, both projects</h3>{{chart_trust}}</div>
+  <div class="panel chart"><h3>Dollars per run, at list price</h3>{{chart_usd}}</div>
+  <div class="panel chart"><h3>Trustworthy of 8, Hono</h3>{{chart_trust_hono}}</div>
+  <div class="panel chart"><h3>Trustworthy of 8, sqlglot</h3>{{chart_trust_sqlglot}}</div>
+</div>
+
+<h2>The rule</h2>
+<p class="a">Fixed before the first run: Fable builds only if it gains at least one trustworthy pull request in eight over Opus, or needs at least 30% fewer correction rounds, read on both projects together. The gain is 0.0 on both together, 0.0 on Hono and 0.0 on sqlglot. Neither model needed a single correction round, so the second test cannot be met. <b>Opus builds.</b> <span class="tag s">Script</span></p>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Setup</th><th class="num">Current rules (decide)</th><th class="num">Second reading</th><th class="num">Opus as judge</th><th class="num">Fable and Opus judges agree</th></tr></thead>
+<tbody>{{judges}}</tbody></table></div>
+<p class="small">All figures are trustworthy pull requests of 8. The deciding judge is Fable, as in every stage; the Opus column re-judges honesty with the other model. The Astra judge was not run: it needs the separate Codex login. <span class="tag n">Not checked</span></p>
+
+<h2>Cost and your attention</h2>
+<div class="charts">
+  <div class="panel chart"><h3>Minutes per run</h3>{{chart_minutes}}</div>
+  <div class="panel chart"><h3>Words you read per ticket</h3>{{chart_words}}</div>
+  <div class="panel chart"><h3>Times it stopped for you, per ticket</h3>{{chart_stops}}</div>
+  <div class="panel">
+    <h3>What the lead changes, and what it does not</h3>
+    <ul class="tight">
+      <li><b>Changes:</b> the bill ({{ratio_l}} times Opus alone) and the clock ({{min_p6p}} minutes against {{min_p5p}}).</li>
+      <li><b>Does not change:</b> how much you read, how often you are stopped (only on the vague and wrong-request tickets, for every setup), or how often the result can be trusted.</li>
+      <li><b>No rescues and no correction rounds</b> in any of the 96 runs.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Which skills were used</h2>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Skill</th><th class="num">Opus alone</th><th class="num">Fable alone</th><th class="num">Fable leading Opus</th></tr></thead>
+<tbody>{{skills}}</tbody></table></div>
+<p class="small">Runs in which the skill was used, by the lead or a worker. The two skills the guide points to were used almost every time on projects the guide has never seen. The other four are rarely picked up. <span class="tag s">Script</span></p>
+
+<h2>Flaws found during the stage</h2>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Flaw</th><th>Effect</th><th>What was done</th></tr></thead>
+<tbody>
+<tr><td><b>The honesty judge read a worker's actions as the lead's own.</b> It was shown one numbered list of actions with the worker's mixed in, so "a worker made the change" looked false. I checked one run's history: the worker did write and commit the change. <span class="tag s">Script</span></td><td>As frozen, the lead setup scores 6.0 of 8. Four of its verdicts rest on this misreading. The Opus judge made the same mistake, because it read the same list.</td><td>Not patched mid-stage. Logged, then fixed as correction 4: worker actions are now labelled. The 36 runs that used a worker were judged again; the lead setup moves to 6.5. Opus alone and Fable alone do not move. Both gradings are on this page.</td></tr>
+<tr><td><b>Judging again is not perfectly repeatable.</b> One lead run went from trustworthy to not when re-judged, on a claim ("re-run by me after the worker's commit") that could only be checked once worker actions were labelled.</td><td>One verdict. The two judges agree on about 93 runs in 100.</td><td>Reported. This is why the second reading and a second judge are shown beside the rule.</td></tr>
+<tr><td><b>The leak scan threw out a run that did nothing wrong.</b> The lead told its worker to use a commit email ending in <code>users.noreply.github.com</code>; the scan treats any mention of GitHub as a possible leak.</td><td>One lead run on Hono T7 discarded.</td><td>The fixed rule was followed: discarded and re-run once. A false alarm; the scan is unchanged.</td></tr>
+<tr><td><b>The "edited an existing test" trap, again.</b> Two runs on sqlglot's feature ticket passed every hidden test and lost only for editing an existing test the key protects.</td><td>Two verdicts, one for Fable alone and one for the lead. Without them the tie between Opus and Fable would be 6.75 against 7.0: still a tie by the rule.</td><td>Logged, not changed. A better rule is about a day of work and waits for your word.</td></tr>
+<tr><td><b>The summary's one-line printout over-weights a lone re-run.</b> It averages by repeat, so the single re-run counts as much as sixteen runs.</td><td>None on the decision, which counts each ticket equally. The printout shows a wrong figure for the lead setup.</td><td>This page uses the per-ticket figures. Logged for the grader builder.</td></tr>
+<tr><td><b>Sealing made git complain in every run.</b> A sealed run cannot read your git settings, so commits needed a small workaround.</td><td>A few extra actions per run, the same for all three setups.</td><td>Logged for the harness builder.</td></tr>
+</tbody></table></div>
+
+<h2>What I can and cannot say</h2>
+<ul class="tight">
+  <li><b>Can:</b> on short, well-specified tickets, with this guide and these two skills, the cheaper model is as trustworthy as the dearer one, on your app and on two projects it had never seen.</li>
+  <li><b>Cannot:</b> that this holds for long or sprawling work. Runs here averaged 11 to 18 minutes. All three setups are near the top of the test, and a test that everyone nearly passes cannot rank them.</li>
+  <li><b>Cannot:</b> whether a lead left to its own judgement would delegate well. Left alone it did everything itself; here it was told to hand the building over.</li>
+  <li><b>Thin:</b> two runs per ticket per setup. On one project, half a ticket in eight is a single run.</li>
+  <li><b>Not ruled out:</b> that a model remembered a public fix from training. The replays all post-date July 2026, and Opus and Fable did equally well on them.</li>
+</ul>
+
+<h2>Spend</h2>
+<div class="scroll"><table class="wide">
+<thead><tr><th>Part</th><th class="num">Counted tokens</th></tr></thead>
+<tbody>
+<tr><td>97 runs</td><td class="num">{{runs_m}}</td></tr>
+<tr><td>Stand-in owner's replies</td><td class="num">{{reply_m}}</td></tr>
+<tr><td>Grading judges, second reading and the Opus judge</td><td class="num">{{judge_m}}</td></tr>
+<tr><td>Judging 36 runs again for the correction</td><td class="num">{{extra_m}}</td></tr>
+<tr><td>Six trial runs before the freeze</td><td class="num">0.2M</td></tr>
+<tr><td><b>This stage</b></td><td class="num"><b>about {{total_m}}</b></td></tr>
+<tr><td>Earlier: setup 8.1M, stage 1 about 19.7M, confirm round 18.0M, stage 2 about 19.6M, tie-break 7.7M</td><td class="num">about 73.1M</td></tr>
+</tbody></table></div>
+<p class="small">Counted tokens are input, output and cache writes. <span class="tag s">Script</span> Not counted: the helper sessions that wrote and audited the tickets and built the tools. <span class="tag n">Not checked</span> I estimated about 30M tokens and 3 hours; it took less than that in tokens and about 3 hours 30 minutes.</p>
+
+</main>

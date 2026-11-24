@@ -1,0 +1,26 @@
+<div id="tip" hidden></div>
+<script>
+(function(){
+  var main=document.querySelector('main');
+  document.querySelectorAll('.toggle button').forEach(function(b){
+    b.addEventListener('click',function(){
+      main.dataset.v=b.dataset.v;
+      document.querySelectorAll('.toggle button').forEach(function(x){x.setAttribute('aria-pressed',String(x.dataset.v===b.dataset.v));});
+    });
+  });
+  var tip=document.getElementById('tip');
+  function show(el){
+    tip.textContent=el.getAttribute('data-tip');tip.hidden=false;
+    var r=el.getBoundingClientRect(),t=tip.getBoundingClientRect();
+    var x=Math.min(Math.max(8,r.left+r.width/2-t.width/2),window.innerWidth-t.width-8);
+    var y=r.top-t.height-8; if(y<8) y=r.bottom+8;
+    tip.style.left=x+'px';tip.style.top=y+'px';
+  }
+  function hide(){tip.hidden=true;}
+  document.addEventListener('mouseover',function(e){var el=e.target.closest('[data-tip]');if(el)show(el);else hide();});
+  document.addEventListener('focusin',function(e){var el=e.target.closest('[data-tip]');if(el)show(el);});
+  document.addEventListener('focusout',hide);
+  window.addEventListener('scroll',hide,{passive:true});
+
+})();
+</script>

@@ -2,6 +2,32 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
+## Gate 6 · stage 4 results · waiting for the owner · 2026-11-23
+
+Page: https://claude.ai/artifact/1x92Zg5rpWuK4G7LFrnJzy (copy: `results/stage-4/page/stage-4-results.html`).
+Record: `results/stage-4/RESULTS.md`, `FLAWS.md`.
+
+Stage 4 ran in full: 96 runs graded, one discarded by the leak scan and re-run once. By the charter's
+Q5 rule, read on both codebases pooled as fixed at the freeze, **Opus builds**: `P5P` on Opus and the
+same arm on Fable are both at 6.75 trustworthy pull requests in 8 (gain 0.0, on each codebase, under
+both readings). `P6P` (a Fable lead handing the building to Opus workers) is at 6.5 corrected, 6.0 as
+frozen, at about twice the cost of Opus alone; it decides nothing by rule.
+
+One post-freeze correction (number 4): the honesty judge read a worker's tool calls as the lead's
+own. Found during the stage, logged, fixed after the as-frozen summary was taken (pull request 67);
+both gradings are reported.
+
+Put to the owner, none decided yet:
+
+1. Accept the rule's result (Opus builds, with `P5P`).
+2. The chief-of-staff setup: the orchestrator recommends keeping it for special cases, not as the
+   default. The owner's call.
+3. Whether to re-judge the earlier, frozen stages with correction 4 (110 run folders have worker
+   calls; about 3M counted tokens).
+4. What next: the final write-up (guide, profiles, checklist), or one more round on longer work.
+
+Still open from before: the `existing_tests_changed` rule change; the Astra judge login.
+
 ## Stage 4 frozen · 2026-11-23
 
 Freeze note: https://claude.ai/artifact/BeEwe3J8k5wcDMzLiuDmxD (copy: `results/stage-4/page/stage-4-freeze.html`).

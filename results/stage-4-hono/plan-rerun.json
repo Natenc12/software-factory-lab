@@ -1,0 +1,77 @@
+{
+ "budget_tokens": 24000000,
+ "codebase": "hono",
+ "defaults": {
+  "effort": "medium",
+  "judge_model": "claude-opus-5-5"
+ },
+ "parallel": 1,
+ "problems": [],
+ "repeats": [
+  1,
+  2
+ ],
+ "rows": {
+  "P5P": {
+   "arm": "P5P",
+   "ceiling": 500000,
+   "model": "claude-opus-5-5"
+  },
+  "P5PF": {
+   "arm": "P5P",
+   "ceiling": 500000,
+   "model": "claude-fable-5-2"
+  },
+  "P6P": {
+   "arm": "P6P",
+   "ceiling": 1200000,
+   "model": "claude-fable-5-2"
+  }
+ },
+ "stage": "stage-4-hono",
+ "ticket_ceilings": {},
+ "tickets": [
+  "T1",
+  "T2",
+  "T3",
+  "T4",
+  "T5",
+  "T6",
+  "T7",
+  "T8"
+ ],
+ "written": "2026-11-23T21:46:30Z",
+ "runs": [
+  {
+   "arm": "arms/P6P",
+   "base": "base/T7",
+   "ceiling": 1200000,
+   "db": "none",
+   "env": [
+    "CI=1",
+    "PNPM_HOME={run}/scratch/pnpm-home",
+    "XDG_CACHE_HOME={run}/scratch/xdg-cache",
+    "XDG_CONFIG_HOME={run}/scratch/xdg-config",
+    "XDG_DATA_HOME={run}/scratch/xdg-data",
+    "XDG_STATE_HOME={run}/scratch/xdg-state"
+   ],
+   "model": "claude-fable-5-2",
+   "own_package": [
+    "hono"
+   ],
+   "redact": [
+    "P6P",
+    "p6p"
+   ],
+   "reply_sheet": "results/stage-4-hono/sheets/hono-T7.md",
+   "repo": "Natenc12/hono-lab",
+   "run_id": "p6p-t7-3",
+   "sealed": true,
+   "setup": [
+    "pnpm install --frozen-lockfile"
+   ],
+   "ticket": "tickets/hono/T7/S1.md"
+  }
+ ],
+ "note": "Re-run once of p6p-t7-2, discarded because its leak scan was not clean (the lead's brief to its worker suggested a commit email at users.noreply.github.com; the guard blocked that call and the scan counts the mention). Same row, ticket, base, ceiling and sheet; a new run id so its branch does not collide."
+}
