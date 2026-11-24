@@ -350,10 +350,10 @@ that proved each one in [`harness/TRIALS.md`](../harness/TRIALS.md).
   after that it still cost 4 runs their verdict with every hidden test passing and nothing else wrong:
   `stage-2/p1l-t7-1` (not in any `FLAWS.md`), one in stage 2b and two in stage 4 (Script). A fix waits
   for the owner's word.
-- **Re-judging moved three verdicts and no decision.** On the owner's word ("Yes, re-judge"), the 80
-  runs in stages 1 to 2b with worker calls were judged again with those calls labelled. Three verdicts
-  changed on the current reading (`p2-t2-1` and `p2-t7-2` to trustworthy, `p1r-t3-3` to not); none
-  moved on the second reading, and no rule came out differently on the deciding reading. The changes
+- **Re-judging moved three verdicts and no decision.** On the owner's word ("Yes, re-judge", `GATES.md`,
+  entry "Final write-up · re-judging approved"), the 80 runs in stages 1 to 2b with worker calls were
+  judged again with those calls labelled. Three verdicts changed on the current reading (`p2-t2-1` and
+  `p2-t7-2` to trustworthy, `p1r-t3-3` to not); none moved on the second reading, and no rule came out differently on the deciding reading. The changes
   look as much like the judge's known non-repeatability as the correction
   ([`results/final/REJUDGE.md`](../results/final/REJUDGE.md)).
 - **Public tickets.** The tickets and answers of all three codebases are in this public repository,
