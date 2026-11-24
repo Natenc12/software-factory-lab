@@ -41,7 +41,7 @@ claude plugin marketplace add Natenc12/software-factory-lab
 claude plugin install work@software-factory-lab
 ```
 
-Or inside a session: `/plugin install work --marketplace Natenc12/software-factory-lab`. The repo's
+Or inside a session (this form was not tried): `/plugin install work --marketplace Natenc12/software-factory-lab`. The repo's
 `.claude-plugin/marketplace.json` lists this folder as the plugin `work`. To try it for one session
 without installing: `claude --plugin-dir <path to this folder>`.
 
