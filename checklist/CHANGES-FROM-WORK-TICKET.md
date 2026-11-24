@@ -3,9 +3,15 @@
 The owner's skill (`~/.claude/skills/work-ticket/SKILL.md` and `NOTES.md`, as of 2026-11-22) against
 the winning checklist (this plugin, which is arm P5P). "Tested" cites the stage and the count; the
 results are in `results/<stage>/` and `results/final/`. A practice the experiment never ran is marked
-**not tested here**, with a recommendation. Every practice in the owner's `SKILL.md` and `NOTES.md`
-has a line in one of the four tables below; corrected against the independent fact check
-(`results/final/FACT-CHECK-guide-and-checklist.md`).
+**not tested here**, with a recommendation. Corrected against the independent fact checks
+(`results/final/FACT-CHECK-guide-and-checklist.md`, `results/final/FACT-CHECK-final-page-and-profiles.md`).
+
+**What the tables cover.** Every rule and step in the owner's `SKILL.md`, and the standing practices
+in `NOTES.md` (its process sections and the owner's decisions), each with a line. Three smaller
+habits from `NOTES.md` that the fact check found without one have their own table at the end. Not
+listed one by one: the dated lessons in `NOTES.md` that record a single ticket's incident and its fix
+(for example the zsh `--library` mishap or the filing script's placeholder check). Where such a
+lesson became a rule in `SKILL.md` or the reviewer brief, that rule has its line.
 
 Two arms matter as references, both from the stage 1 confirm round (24 runs each):
 
@@ -77,6 +83,14 @@ nothing was ever merged. So none of these was tested here; each is marked **not 
 | Artifact pages, templates, the board | Owner's call. Not part of the way of working that won |
 | Spikes (report instead of a pull request) | **Keep** the spike paragraph in the owner's notes until a spike is tested; every ticket here ended in a pull request or a review report |
 | Retro entry in `NOTES.md` after each ticket | Owner's call; it is how `work-ticket` learned, not how a ticket is worked |
+
+## Smaller habits from `NOTES.md`
+
+| `work-ticket` piece | Tested? | Recommendation |
+| --- | --- | --- |
+| Fact-check an explainer video's script against the reviewer's numbers, and look at the frames, before sending it | **Not tested here** (no run made a video) | Keep, for as long as the owner wants videos |
+| For a ticket about CI or GitHub behaviour, prove it with throwaway probe pull requests aimed at the ticket's branch, and finish the probes before the review starts | **Not tested here** | Keep in the owner's notes for CI tickets |
+| Bundle the plan's defaults into the same yes as the plan, rather than one decision card each | Only inside P2, whose plan stop asked for one approval | Keep as how to ask when several defaults need the owner; the checklist itself has no plan stop |
 
 ## Packaging (not tested here)
 
