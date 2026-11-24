@@ -32,6 +32,7 @@ from grader.common import (
     final_message,
     list_price,
     now_iso,
+    page_rel,
     parse_arm,
     read_json,
     resolve_ticket,
@@ -105,7 +106,7 @@ def brief_words(folder: Path, hdir: Path, grade: dict) -> dict:
     """Words in the final brief: the final message, the page it names, and the pull request body."""
     final = final_message(hdir)
     page = 0
-    rel = find_page(final)
+    rel = page_rel(find_page(final), hdir)
     if rel:
         for base in (folder / "repo", folder):
             p = (base / rel).resolve()

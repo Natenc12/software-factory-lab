@@ -5,7 +5,10 @@
 
 Several stage folders can go into one summary (the confirm round: `stage-1 stage-1-confirm`), and a
 cell can hold several repeats (run ids ending -1, -2, -3). Trustworthy per 8 is then the mean over the
-repeats of each repeat's own rate, and the per-repeat counts are shown. `--rows` keeps only those rows.
+repeats of each repeat's own rate (`trustworthy_per_8`, which the stage 1 rules use), and the per-repeat counts
+are shown. The printed line gives `trustworthy_per_8_per_ticket` instead (each cell's mean over its runs,
+averaged over cells), so a lone re-run that fills a discarded run's cell is not weighted as a whole
+repeat; such a repeat is marked `re_run`. `--rows` keeps only those rows.
 
 Two readings are reported, each with the decision rules applied to it. `decision` is the current
 reading, which decides. `decision_second_reading` (gate 2, item 3) uses each verdict's
@@ -127,6 +130,15 @@ def totals(rows: list[dict], tickets: set[str] | None = None, reading: str = "cu
         n = sum(1 for v in g if trust(v, reading))
         repeats[str(r)] = {"trustworthy": n, "graded": len(g), "trustworthy_per_8": per8(n, len(g)),
                            "rescues_per_8": per8(sum(rescues_of(v, reading) for v in g), len(g))}  # fmt: skip
+    # A re-run fills the cell of a discarded run; on its own it is not a repeat of the whole row.
+    discarded_cells = {(v.get("codebase"), v["ticket"]) for v in rows if v.get("discarded")}
+    for r, x in repeats.items():
+        g = [v for v in graded if str(v.get("repeat", 1)) == r]
+        x["re_run"] = r != "1" and all((v.get("codebase"), v["ticket"]) in discarded_cells for v in g)
+    by_cell: dict[tuple, list[bool]] = {}
+    for v in graded:
+        by_cell.setdefault((v.get("codebase"), v["ticket"]), []).append(bool(trust(v, reading)))
+    per_ticket = sum(sum(c) / len(c) for c in by_cell.values()) / len(by_cell) if by_cell else None
 
     def s(key):
         return sum((x.get(key) or 0) for x in m)
@@ -172,6 +184,7 @@ def totals(rows: list[dict], tickets: set[str] | None = None, reading: str = "cu
         "tickets_graded": sorted({v["ticket"] for v in graded}),
         "trustworthy": trusted,
         "trustworthy_per_8": mean([x["trustworthy_per_8"] for x in repeats.values()]),
+        "trustworthy_per_8_per_ticket": None if per_ticket is None else round(8 * per_ticket, 3),
         "repeats": repeats,
         "discarded": [v["run_id"] for v in rows if v.get("discarded")],
         "incomplete": [v["run_id"] for v in rows if v.get("outcome") == "incomplete"],
@@ -864,8 +877,10 @@ def main(argv: list[str] | None = None) -> int:
                             ("second reading (reported)", "per_row_second_reading", "decision_second_reading")):  # fmt: skip
         print(f"  {name}:")
         for row, t in s[key].items():
-            reps = ", ".join(f"r{r} {x['trustworthy']}/{x['graded']}" for r, x in t["repeats"].items())
-            print(f"    {row}: {t['trustworthy_per_8']} per 8 (mean over repeats: {reps or 'none'}), "
+            reps = ", ".join(f"r{r} {x['trustworthy']}/{x['graded']}" + (" re-run" if x.get("re_run") else "")
+                             for r, x in t["repeats"].items())  # fmt: skip
+            print(f"    {row}: {t['trustworthy_per_8_per_ticket']} per 8, each ticket weighted equally "
+                  f"(by repeat: {reps or 'none'}), "
                   f"{len(t['discarded'])} discarded, {len(t['incomplete'])} incomplete")  # fmt: skip
         print(f"    {describe(s[dkey])}")
         only = s["only_existing_tests_changed"]["current" if dkey == "decision" else "second"]

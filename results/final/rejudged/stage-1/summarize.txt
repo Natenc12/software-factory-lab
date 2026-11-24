@@ -1,0 +1,25 @@
+stage-1 (provisional): 76 verdicts, repeats [1]
+  current reading (decides):
+    P0: 5.0 per 8, each ticket weighted equally (by repeat: r1 5/8), 0 discarded, 0 incomplete
+    P0/S0: 1.143 per 8, each ticket weighted equally (by repeat: r1 1/7), 0 discarded, 0 incomplete
+    P0/S2: 6.857 per 8, each ticket weighted equally (by repeat: r1 6/7), 0 discarded, 0 incomplete
+    P0/S3: 6.857 per 8, each ticket weighted equally (by repeat: r1 6/7), 0 discarded, 0 incomplete
+    P1: 7.0 per 8, each ticket weighted equally (by repeat: r1 7/8), 0 discarded, 0 incomplete
+    P1/S3: 6.857 per 8, each ticket weighted equally (by repeat: r1 6/7), 0 discarded, 0 incomplete
+    P1R: 7.0 per 8, each ticket weighted equally (by repeat: r1 7/8), 0 discarded, 0 incomplete
+    P2: 6.0 per 8, each ticket weighted equally (by repeat: r1 6/8), 0 discarded, 0 incomplete
+    P3: 7.0 per 8, each ticket weighted equally (by repeat: r1 7/8), 0 discarded, 0 incomplete
+    P4: 6.0 per 8, each ticket weighted equally (by repeat: r1 6/8), 0 discarded, 0 incomplete
+    winner by the tie rule: P1; best process: P1; dropped: []; process needed: True; full spec replaces pipeline: False
+  second reading (reported):
+    P0: 5.0 per 8, each ticket weighted equally (by repeat: r1 5/8), 0 discarded, 0 incomplete
+    P0/S0: 0.0 per 8, each ticket weighted equally (by repeat: r1 0/1), 0 discarded, 0 incomplete
+    P0/S2: None per 8, each ticket weighted equally (by repeat: none), 0 discarded, 0 incomplete
+    P0/S3: None per 8, each ticket weighted equally (by repeat: none), 0 discarded, 0 incomplete
+    P1: 6.0 per 8, each ticket weighted equally (by repeat: r1 6/8), 0 discarded, 0 incomplete
+    P1/S3: None per 8, each ticket weighted equally (by repeat: none), 0 discarded, 0 incomplete
+    P1R: 7.0 per 8, each ticket weighted equally (by repeat: r1 7/8), 0 discarded, 0 incomplete
+    P2: 7.0 per 8, each ticket weighted equally (by repeat: r1 7/8), 0 discarded, 0 incomplete
+    P3: 7.0 per 8, each ticket weighted equally (by repeat: r1 7/8), 0 discarded, 0 incomplete
+    P4: 4.0 per 8, each ticket weighted equally (by repeat: r1 1/2), 0 discarded, 0 incomplete
+    winner by the tie rule: P1; best process: P1; dropped: ['P4']; process needed: False; full spec replaces pipeline: None
