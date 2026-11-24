@@ -20,6 +20,7 @@ requests the owner can trust, for the least attention and money.
 | `results/<stage>/` | grades, owner logs, results pages | no |
 | `guide/` | Working with Claude Code, model profiles | no |
 | `races/race-1/` | race 1 as it finished, with its history | no |
+| `checklist/` | the winning checklist (arm P5P) as the Claude Code plugin `work`; install notes inside | no (runs get `arms/P5P`) |
 
 Run sandboxes live outside this repo, in `~/factory-runs/`. Raw transcripts stay on the owner's Mac
 and are not committed.
