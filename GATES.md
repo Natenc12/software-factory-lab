@@ -2,7 +2,7 @@
 
 Every owner decision, newest first. The orchestrator starts nothing past a gate without an entry here.
 
-## Gate 6 · stage 4 results · waiting for the owner · 2026-11-23
+## Gate 6 · stage 4 results · decided 2026-11-23
 
 Page: https://claude.ai/artifact/1x92Zg5rpWuK4G7LFrnJzy (copy: `results/stage-4/page/stage-4-results.html`).
 Record: `results/stage-4/RESULTS.md`, `FLAWS.md`.
@@ -27,6 +27,20 @@ Put to the owner, none decided yet:
 4. What next: the final write-up (guide, profiles, checklist), or one more round on longer work.
 
 Still open from before: the `existing_tests_changed` rule change; the Astra judge login.
+
+**Decision (2026-11-23).** The orchestrator asked: "Do you want to accept Opus as the builder and go
+to the final write-up, or run one more round?" The owner's reply: "Yes, write it up". Applied:
+
+1. **Opus 5.5 builds, with `P5P`** (the one-page guide and the six skills, two of them pointed to).
+   This is the winner the final deliverables are written around.
+2. **The final phase starts:** the final results page, the model and method profiles, the Working
+   with Claude Code guide, the winning checklist as a reviewed change, and the re-run kit. No further
+   experiment round.
+3. **Not answered, so not applied:** the chief-of-staff recommendation (items 2) goes into the guide
+   as the orchestrator's recommendation, marked as such; re-judging the earlier stages with
+   correction 4 (item 3) is asked again before the profiles are counted.
+
+The owner also asked for an explainer video of stage 4; a helper session is making it.
 
 ## Stage 4 frozen · 2026-11-23
 
